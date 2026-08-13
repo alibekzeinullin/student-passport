@@ -1,26 +1,89 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Sofia Pro";
+  src:
+    local("Sofia Pro"),
+    local("SofiaPro-Regular"),
+    url("/fonts/SofiaPro-Regular.woff2") format("woff2"),
+    url("/fonts/SofiaPro-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sofia Pro";
+  src:
+    local("Sofia Pro Medium"),
+    local("SofiaPro-Medium"),
+    url("/fonts/SofiaPro-Medium.woff2") format("woff2"),
+    url("/fonts/SofiaPro-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sofia Pro";
+  src:
+    local("Sofia Pro Semi Bold"),
+    local("SofiaPro-SemiBold"),
+    url("/fonts/SofiaPro-SemiBold.woff2") format("woff2"),
+    url("/fonts/SofiaPro-SemiBold.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sofia Pro";
+  src:
+    local("Sofia Pro Bold"),
+    local("SofiaPro-Bold"),
+    url("/fonts/SofiaPro-Bold.woff2") format("woff2"),
+    url("/fonts/SofiaPro-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --burgundy: #7f2231;
+  --navy: #23334a;
+  --gold: #cbb073;
+  --light-gray: #d1d1d1;
+  --background: #ececec;
+  --foreground: #23334a;
+  --card: #ffffff;
+  --muted: #5c6675;
+  --border: #d1d1d1;
+  --font-sofia: "Sofia Pro", "Helvetica Neue", Arial, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-burgundy: var(--burgundy);
+  --color-navy: var(--navy);
+  --color-gold: var(--gold);
+  --color-light-gray: var(--light-gray);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --font-sans: var(--font-sofia);
+  --font-display: var(--font-sofia);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sofia);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-sofia);
+  font-weight: 600;
 }
