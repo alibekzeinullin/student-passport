@@ -74,7 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const next = await loadAuthUser();
+      const next = await Promise.race([
+        loadAuthUser(),
+        new Promise<null>((resolve) => {
+          window.setTimeout(() => resolve(null), 8000);
+        }),
+      ]);
       setUser(next);
     } catch (error) {
       console.error(error);
@@ -107,7 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isSupabaseConfigured()) {
         return {
           ok: false,
-          error: "Supabase не настроен. Проверьте .env.local",
+          error:
+            "Supabase не настроен. В Vercel → Settings → Environment Variables укажите реальные NEXT_PUBLIC_SUPABASE_URL и NEXT_PUBLIC_SUPABASE_ANON_KEY из .env.local, затем Redeploy.",
         };
       }
 
@@ -160,7 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!isSupabaseConfigured()) {
         return {
           ok: false,
-          error: "Supabase не настроен. Проверьте .env.local",
+          error:
+            "Supabase не настроен. В Vercel → Settings → Environment Variables укажите реальные ключи из .env.local, затем Redeploy.",
         };
       }
 
