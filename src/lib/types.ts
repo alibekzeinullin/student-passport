@@ -39,6 +39,8 @@ export interface TestScores {
   ielts: number | null;
   satTarget: number | null;
   ieltsTarget: number | null;
+  cambridgeTest: number | null;
+  cambridgeTestTarget: number | null;
 }
 
 export interface MentorSummary {
@@ -92,6 +94,7 @@ export interface MonthlyFocus {
   month: string;
   title: string;
   description: string;
+  achieved?: boolean;
 }
 
 export interface GrowthZone {

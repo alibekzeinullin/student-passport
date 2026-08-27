@@ -6,11 +6,11 @@ import { useAuth } from "@/context/AuthContext";
 import { LoginForm } from "@/components/LoginForm";
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!user) return;
+    if (loading || !user) return;
     if (user.role === "admin") {
       router.replace("/admin");
     } else if (user.role === "student") {
@@ -18,7 +18,15 @@ export default function HomePage() {
     } else {
       router.replace("/");
     }
-  }, [user, router]);
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center text-muted">
+        Загрузка…
+      </div>
+    );
+  }
 
   if (user) return null;
 
@@ -32,7 +40,7 @@ export default function HomePage() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-48 bg-[linear-gradient(180deg,rgba(127,34,49,0.08),transparent)]"
       />
-      <div className="mx-auto flex min-h-[calc(100vh-73px)] max-w-6xl items-center px-4 py-16 sm:px-6">
+      <div className="mx-auto flex min-h-[calc(100vh-73px)] max-w-6xl items-center px-4 py-10 sm:px-6 sm:py-16">
         <LoginForm />
       </div>
     </div>

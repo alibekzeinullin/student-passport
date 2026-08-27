@@ -1,5 +1,6 @@
 import type { StudentProfile } from "./types";
 import { calculateAcademicSuccessScore } from "./academic-score";
+import type { ReportType } from "./report-types";
 
 const NAVY: [number, number, number] = [35, 51, 74];
 const BURGUNDY: [number, number, number] = [127, 34, 49];
@@ -59,7 +60,7 @@ function ensureSpace(doc: JsPdf, y: number, needed: number): number {
   return 24;
 }
 
-function drawHeader(doc: JsPdf, pageWidth: number) {
+function drawHeader(doc: JsPdf, pageWidth: number, reportType: ReportType) {
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, pageWidth, 26, "F");
   doc.setFillColor(...BURGUNDY);
@@ -76,7 +77,13 @@ function drawHeader(doc: JsPdf, pageWidth: number) {
 
   doc.setFont(FONT, "normal");
   doc.setFontSize(9);
-  doc.text("Академический отчёт для родителей", MARGIN, 23);
+  doc.text(
+    reportType === "short"
+      ? "Краткосрочный отчёт для родителей"
+      : "Долгосрочный отчёт для родителей",
+    MARGIN,
+    23,
+  );
 }
 
 function drawFooter(doc: JsPdf) {
@@ -136,7 +143,10 @@ function drawWrappedText(
   return y;
 }
 
-export async function downloadStudentPdf(student: StudentProfile) {
+export async function downloadStudentPdf(
+  student: StudentProfile,
+  reportType: ReportType = "long",
+) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -144,11 +154,10 @@ export async function downloadStudentPdf(student: StudentProfile) {
   const valueCol = MARGIN + 58;
 
   await loadFonts(doc);
-  drawHeader(doc, pageWidth);
+  drawHeader(doc, pageWidth, reportType);
 
   let y = 38;
 
-  // Student identity
   doc.setFont(FONT, "bold");
   doc.setFontSize(16);
   doc.setTextColor(...NAVY);
@@ -181,20 +190,6 @@ export async function downloadStudentPdf(student: StudentProfile) {
     contentWidth,
   );
 
-  if (student.mentorNote?.trim()) {
-    y += 3;
-    doc.setFont(FONT, "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(...NAVY);
-    y = ensureSpace(doc, y, 8);
-    doc.text("Обратная связь от ментора", MARGIN, y);
-    y += 5;
-    doc.setFont(FONT, "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(...TEXT);
-    y = drawWrappedText(doc, student.mentorNote, MARGIN, y, contentWidth);
-  }
-
   if (
     student.mentorSummary.monthlyComment?.trim() ||
     student.mentorSummary.nextMonthFocus?.trim()
@@ -204,7 +199,7 @@ export async function downloadStudentPdf(student: StudentProfile) {
     doc.setFontSize(10);
     doc.setTextColor(...NAVY);
     y = ensureSpace(doc, y, 8);
-    doc.text("Mentor Summary", MARGIN, y);
+    doc.text("Комментарии месяца от ментора", MARGIN, y);
     y += 5;
     doc.setFont(FONT, "normal");
     doc.setFontSize(9);
@@ -259,15 +254,77 @@ export async function downloadStudentPdf(student: StudentProfile) {
     valueCol,
   );
 
-  y += 3;
-  doc.setDrawColor(...LINE);
-  doc.setLineWidth(0.3);
-  doc.line(MARGIN, y, pageWidth - MARGIN, y);
-  y += 10;
+  if (reportType === "short") {
+    y += 4;
+    y = drawSectionTitle(doc, "1. Личные ежемесячные фокусы", y);
+    y = drawMonthlyFocusesPdf(doc, student, y, contentWidth);
 
-  // Section 1
-  y = drawSectionTitle(doc, "1. Академическая динамика", y);
+    y += 4;
+    y = drawSectionTitle(doc, "2. Спринты по групповой работе", y);
+    y = drawSprintsPdf(doc, student, y, contentWidth);
+  } else {
+    if (student.mentorNote?.trim()) {
+      y += 3;
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(...NAVY);
+      y = ensureSpace(doc, y, 8);
+      doc.text("Обратная связь от ментора", MARGIN, y);
+      y += 5;
+      doc.setFont(FONT, "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(...TEXT);
+      y = drawWrappedText(doc, student.mentorNote, MARGIN, y, contentWidth);
+    }
 
+    y += 3;
+    doc.setDrawColor(...LINE);
+    doc.setLineWidth(0.3);
+    doc.line(MARGIN, y, pageWidth - MARGIN, y);
+    y += 10;
+
+    y = drawSectionTitle(doc, "1. Академическая динамика", y);
+    y = drawAcademicPdf(doc, student, y, contentWidth, valueCol);
+
+    y += 4;
+    y = drawSectionTitle(doc, "2. Личные ежемесячные фокусы", y);
+    y = drawMonthlyFocusesPdf(doc, student, y, contentWidth);
+
+    y += 4;
+    y = drawSectionTitle(doc, "3. Спринты по групповой работе", y);
+    y = drawSprintsPdf(doc, student, y, contentWidth);
+
+    y += 4;
+    y = drawSectionTitle(doc, "4. Внеучебная деятельность", y);
+    y = drawProjectsPdf(doc, student, y, contentWidth);
+
+    y += 4;
+    y = drawSectionTitle(doc, "5. Книги к прочтению", y);
+    y = drawBooksPdf(doc, student, y, contentWidth);
+
+    y += 4;
+    y = drawSectionTitle(doc, "6. Навыки к освоению", y);
+    y = drawSkillsPdf(doc, student, y, contentWidth);
+
+    y += 4;
+    y = drawSectionTitle(doc, "7. Зоны роста", y);
+    y = drawGrowthZonesPdf(doc, student, y, contentWidth);
+  }
+
+  drawFooter(doc);
+
+  const safeLast = student.lastName.replace(/\s+/g, "-");
+  const safeFirst = student.firstName.replace(/\s+/g, "-");
+  doc.save(`passport-${reportType}-${safeLast}-${safeFirst}.pdf`);
+}
+
+function drawAcademicPdf(
+  doc: JsPdf,
+  student: StudentProfile,
+  y: number,
+  contentWidth: number,
+  valueCol: number,
+): number {
   doc.setFont(FONT, "bold");
   doc.setFontSize(11);
   doc.setTextColor(...NAVY);
@@ -292,9 +349,6 @@ export async function downloadStudentPdf(student: StudentProfile) {
   y = ensureSpace(doc, y, 8);
   doc.text("SAT / IELTS", MARGIN, y);
   y += 7;
-  doc.setFont(FONT, "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(...TEXT);
   const testRows: Array<[string, string]> = [
     ["SAT", student.testScores.sat?.toString() ?? "—"],
     ["SAT (цель)", student.testScores.satTarget?.toString() ?? "—"],
@@ -318,305 +372,316 @@ export async function downloadStudentPdf(student: StudentProfile) {
     doc.setFontSize(10);
     doc.setTextColor(...MUTED);
     doc.text("Нет записей", MARGIN, y);
-    y += 8;
-  } else {
-    for (let i = 0; i < student.academicActivities.length; i += 1) {
-      const item = student.academicActivities[i];
-      y = ensureSpace(doc, y, 20);
-
-      doc.setFont(FONT, "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...TEXT);
-      y = drawWrappedText(
-        doc,
-        `${i + 1}. ${item.name || "Без названия"}`,
-        MARGIN,
-        y,
-        contentWidth,
-      );
-
-      doc.setFont(FONT, "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...MUTED);
-      y = drawWrappedText(
-        doc,
-        `Тип: ${item.type}`,
-        MARGIN + 4,
-        y,
-        contentWidth - 4,
-      );
-      y = drawWrappedText(
-        doc,
-        `Статус: ${item.status}`,
-        MARGIN + 4,
-        y,
-        contentWidth - 4,
-      );
-      y = drawWrappedText(
-        doc,
-        `Результат: ${item.result?.trim() ? item.result : "—"}`,
-        MARGIN + 4,
-        y,
-        contentWidth - 4,
-      );
-      y += 3;
-    }
+    return y + 8;
   }
 
-  y += 4;
-  y = drawSectionTitle(doc, "2. Спринты по групповой работе", y);
-  if (student.sprintTasks.length === 0) {
-    doc.setFont(FONT, "normal");
+  for (let i = 0; i < student.academicActivities.length; i += 1) {
+    const item = student.academicActivities[i];
+    y = ensureSpace(doc, y, 20);
+    doc.setFont(FONT, "bold");
     doc.setFontSize(10);
-    doc.setTextColor(...MUTED);
-    y = ensureSpace(doc, y, 8);
-    doc.text("Задачи не назначены", MARGIN, y);
-    y += 8;
-  } else {
-    for (let i = 0; i < student.sprintTasks.length; i += 1) {
-      const task = student.sprintTasks[i];
-      y = ensureSpace(doc, y, 18);
-      doc.setFont(FONT, "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...TEXT);
-      y = drawWrappedText(
-        doc,
-        `${i + 1}. ${task.title || "Без названия"}`,
-        MARGIN,
-        y,
-        contentWidth,
-      );
-      doc.setFont(FONT, "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...MUTED);
-      y = drawWrappedText(
-        doc,
-        `${task.sprintLabel} · ${task.completed ? "Выполнено" : "В работе"}`,
-        MARGIN + 4,
-        y,
-        contentWidth - 4,
-      );
-      y += 2;
-    }
-  }
-
-  y += 4;
-  y = drawSectionTitle(doc, "3. Внеучебная деятельность", y);
-
-  if (student.projects.length === 0) {
+    doc.setTextColor(...TEXT);
+    y = drawWrappedText(
+      doc,
+      `${i + 1}. ${item.name || "Без названия"}`,
+      MARGIN,
+      y,
+      contentWidth,
+    );
     doc.setFont(FONT, "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(...MUTED);
-    y = ensureSpace(doc, y, 8);
-    doc.text("Нет проектов", MARGIN, y);
-  } else {
-    for (let i = 0; i < student.projects.length; i += 1) {
-      const project = student.projects[i];
-      y = ensureSpace(doc, y, 28);
-
-      doc.setFont(FONT, "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...NAVY);
-      y = drawWrappedText(
-        doc,
-        `${i + 1}. ${project.title || "Без названия"}`,
-        MARGIN,
-        y,
-        contentWidth,
-      );
-
-      doc.setFont(FONT, "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...MUTED);
-      y = drawWrappedText(
-        doc,
-        `Роль: ${project.role || "—"}`,
-        MARGIN + 4,
-        y,
-        contentWidth - 4,
-      );
-
-      doc.setTextColor(...TEXT);
-      if (project.description?.trim()) {
-        y = drawWrappedText(
-          doc,
-          project.description,
-          MARGIN + 4,
-          y,
-          contentWidth - 4,
-        );
-      }
-
-      doc.setTextColor(...MUTED);
-      y = drawWrappedText(
-        doc,
-        `Статус: ${project.status}`,
-        MARGIN + 4,
-        y,
-        contentWidth - 4,
-      );
-      y = drawWrappedText(
-        doc,
-        `Импакт: ${project.impactMetrics || "—"}`,
-        MARGIN + 4,
-        y,
-        contentWidth - 4,
-      );
-      y += 5;
-    }
+    y = drawWrappedText(doc, `Тип: ${item.type}`, MARGIN + 4, y, contentWidth - 4);
+    y = drawWrappedText(
+      doc,
+      `Статус: ${item.status}`,
+      MARGIN + 4,
+      y,
+      contentWidth - 4,
+    );
+    y = drawWrappedText(
+      doc,
+      `Результат: ${item.result?.trim() ? item.result : "—"}`,
+      MARGIN + 4,
+      y,
+      contentWidth - 4,
+    );
+    y += 3;
   }
+  return y;
+}
 
-  y += 4;
-  y = drawSectionTitle(doc, "4. Книги к прочтению", y);
-  if (student.books.length === 0) {
-    doc.setFont(FONT, "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(...MUTED);
-    y = ensureSpace(doc, y, 8);
-    doc.text("Список пуст", MARGIN, y);
-    y += 8;
-  } else {
-    for (let i = 0; i < student.books.length; i += 1) {
-      const book = student.books[i];
-      y = ensureSpace(doc, y, 14);
-      doc.setFont(FONT, "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...TEXT);
-      y = drawWrappedText(
-        doc,
-        `${i + 1}. ${book.title || "Без названия"}`,
-        MARGIN,
-        y,
-        contentWidth,
-      );
-      doc.setFont(FONT, "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...MUTED);
-      y = drawWrappedText(
-        doc,
-        `Автор: ${book.author || "—"}  |  Статус: ${book.status}`,
-        MARGIN + 4,
-        y,
-        contentWidth - 4,
-      );
-      y += 2;
-    }
-  }
-
-  y += 4;
-  y = drawSectionTitle(doc, "5. Навыки к освоению", y);
-  if (student.skills.length === 0) {
-    doc.setFont(FONT, "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(...MUTED);
-    y = ensureSpace(doc, y, 8);
-    doc.text("Список пуст", MARGIN, y);
-    y += 8;
-  } else {
-    for (let i = 0; i < student.skills.length; i += 1) {
-      const skill = student.skills[i];
-      y = ensureSpace(doc, y, 16);
-      doc.setFont(FONT, "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...TEXT);
-      y = drawWrappedText(
-        doc,
-        `${i + 1}. ${skill.name || "Без названия"}`,
-        MARGIN,
-        y,
-        contentWidth,
-      );
-      doc.setFont(FONT, "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...MUTED);
-      y = drawWrappedText(
-        doc,
-        `Статус: ${skill.status}`,
-        MARGIN + 4,
-        y,
-        contentWidth - 4,
-      );
-      if (skill.notes?.trim()) {
-        y = drawWrappedText(
-          doc,
-          `Заметки: ${skill.notes}`,
-          MARGIN + 4,
-          y,
-          contentWidth - 4,
-        );
-      }
-      y += 2;
-    }
-  }
-
-  y += 4;
-  y = drawSectionTitle(doc, "6. Зоны роста", y);
-  if (student.growthZones.length === 0) {
-    doc.setFont(FONT, "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(...MUTED);
-    y = ensureSpace(doc, y, 8);
-    doc.text("Зоны роста не указаны", MARGIN, y);
-    y += 8;
-  } else {
-    for (let i = 0; i < student.growthZones.length; i += 1) {
-      const zone = student.growthZones[i];
-      y = ensureSpace(doc, y, 14);
-      doc.setFont(FONT, "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(...TEXT);
-      y = drawWrappedText(
-        doc,
-        `${i + 1}. ${zone.text || "—"}`,
-        MARGIN,
-        y,
-        contentWidth,
-      );
-      y += 2;
-    }
-  }
-
-  y += 4;
-  y = drawSectionTitle(doc, "7. Личные ежемесячные фокусы", y);
+function drawMonthlyFocusesPdf(
+  doc: JsPdf,
+  student: StudentProfile,
+  y: number,
+  contentWidth: number,
+): number {
   if (student.monthlyFocuses.length === 0) {
     doc.setFont(FONT, "normal");
     doc.setFontSize(10);
     doc.setTextColor(...MUTED);
     y = ensureSpace(doc, y, 8);
     doc.text("Фокусы не заданы", MARGIN, y);
-  } else {
-    for (let i = 0; i < student.monthlyFocuses.length; i += 1) {
-      const focus = student.monthlyFocuses[i];
-      y = ensureSpace(doc, y, 20);
-      doc.setFont(FONT, "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...NAVY);
-      y = drawWrappedText(
-        doc,
-        `${focus.month || "Месяц"} — ${focus.title || "Без названия"}`,
-        MARGIN,
-        y,
-        contentWidth,
-      );
-      doc.setFont(FONT, "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...MUTED);
-      if (focus.description?.trim()) {
-        y = drawWrappedText(
-          doc,
-          focus.description,
-          MARGIN + 4,
-          y,
-          contentWidth - 4,
-        );
-      }
-      y += 3;
-    }
+    return y + 8;
   }
 
-  drawFooter(doc);
+  for (let i = 0; i < student.monthlyFocuses.length; i += 1) {
+    const focus = student.monthlyFocuses[i];
+    y = ensureSpace(doc, y, 20);
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...NAVY);
+    y = drawWrappedText(
+      doc,
+      `${focus.month || "Месяц"} — ${focus.title || "Без названия"}`,
+      MARGIN,
+      y,
+      contentWidth,
+    );
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    if (focus.achieved) {
+      y = drawWrappedText(doc, "Статус: цель достигнута", MARGIN + 4, y, contentWidth - 4);
+    }
+    if (focus.description?.trim()) {
+      y = drawWrappedText(doc, focus.description, MARGIN + 4, y, contentWidth - 4);
+    }
+    y += 3;
+  }
+  return y;
+}
 
-  const safeLast = student.lastName.replace(/\s+/g, "-");
-  const safeFirst = student.firstName.replace(/\s+/g, "-");
-  doc.save(`passport-${safeLast}-${safeFirst}.pdf`);
+function drawSprintsPdf(
+  doc: JsPdf,
+  student: StudentProfile,
+  y: number,
+  contentWidth: number,
+): number {
+  if (student.sprintTasks.length === 0) {
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    y = ensureSpace(doc, y, 8);
+    doc.text("Задачи не назначены", MARGIN, y);
+    return y + 8;
+  }
+
+  for (let i = 0; i < student.sprintTasks.length; i += 1) {
+    const task = student.sprintTasks[i];
+    y = ensureSpace(doc, y, 18);
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...TEXT);
+    y = drawWrappedText(
+      doc,
+      `${i + 1}. ${task.title || "Без названия"}`,
+      MARGIN,
+      y,
+      contentWidth,
+    );
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    y = drawWrappedText(
+      doc,
+      `${task.sprintLabel} · ${task.completed ? "Выполнено" : "В работе"}`,
+      MARGIN + 4,
+      y,
+      contentWidth - 4,
+    );
+    y += 2;
+  }
+  return y;
+}
+
+function drawProjectsPdf(
+  doc: JsPdf,
+  student: StudentProfile,
+  y: number,
+  contentWidth: number,
+): number {
+  if (student.projects.length === 0) {
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    y = ensureSpace(doc, y, 8);
+    doc.text("Нет проектов", MARGIN, y);
+    return y + 8;
+  }
+
+  for (let i = 0; i < student.projects.length; i += 1) {
+    const project = student.projects[i];
+    y = ensureSpace(doc, y, 28);
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...NAVY);
+    y = drawWrappedText(
+      doc,
+      `${i + 1}. ${project.title || "Без названия"}`,
+      MARGIN,
+      y,
+      contentWidth,
+    );
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    y = drawWrappedText(
+      doc,
+      `Роль: ${project.role || "—"}`,
+      MARGIN + 4,
+      y,
+      contentWidth - 4,
+    );
+    doc.setTextColor(...TEXT);
+    if (project.description?.trim()) {
+      y = drawWrappedText(doc, project.description, MARGIN + 4, y, contentWidth - 4);
+    }
+    doc.setTextColor(...MUTED);
+    y = drawWrappedText(
+      doc,
+      `Статус: ${project.status}`,
+      MARGIN + 4,
+      y,
+      contentWidth - 4,
+    );
+    y = drawWrappedText(
+      doc,
+      `Импакт: ${project.impactMetrics || "—"}`,
+      MARGIN + 4,
+      y,
+      contentWidth - 4,
+    );
+    y += 5;
+  }
+  return y;
+}
+
+function drawBooksPdf(
+  doc: JsPdf,
+  student: StudentProfile,
+  y: number,
+  contentWidth: number,
+): number {
+  if (student.books.length === 0) {
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    y = ensureSpace(doc, y, 8);
+    doc.text("Список пуст", MARGIN, y);
+    return y + 8;
+  }
+
+  for (let i = 0; i < student.books.length; i += 1) {
+    const book = student.books[i];
+    y = ensureSpace(doc, y, 14);
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...TEXT);
+    y = drawWrappedText(
+      doc,
+      `${i + 1}. ${book.title || "Без названия"}`,
+      MARGIN,
+      y,
+      contentWidth,
+    );
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    y = drawWrappedText(
+      doc,
+      `Автор: ${book.author || "—"}  |  Статус: ${book.status}`,
+      MARGIN + 4,
+      y,
+      contentWidth - 4,
+    );
+    y += 2;
+  }
+  return y;
+}
+
+function drawSkillsPdf(
+  doc: JsPdf,
+  student: StudentProfile,
+  y: number,
+  contentWidth: number,
+): number {
+  if (student.skills.length === 0) {
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    y = ensureSpace(doc, y, 8);
+    doc.text("Список пуст", MARGIN, y);
+    return y + 8;
+  }
+
+  for (let i = 0; i < student.skills.length; i += 1) {
+    const skill = student.skills[i];
+    y = ensureSpace(doc, y, 16);
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...TEXT);
+    y = drawWrappedText(
+      doc,
+      `${i + 1}. ${skill.name || "Без названия"}`,
+      MARGIN,
+      y,
+      contentWidth,
+    );
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...MUTED);
+    y = drawWrappedText(
+      doc,
+      `Статус: ${skill.status}`,
+      MARGIN + 4,
+      y,
+      contentWidth - 4,
+    );
+    if (skill.notes?.trim()) {
+      y = drawWrappedText(
+        doc,
+        `Заметки: ${skill.notes}`,
+        MARGIN + 4,
+        y,
+        contentWidth - 4,
+      );
+    }
+    y += 2;
+  }
+  return y;
+}
+
+function drawGrowthZonesPdf(
+  doc: JsPdf,
+  student: StudentProfile,
+  y: number,
+  contentWidth: number,
+): number {
+  if (student.growthZones.length === 0) {
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    y = ensureSpace(doc, y, 8);
+    doc.text("Зоны роста не указаны", MARGIN, y);
+    return y + 8;
+  }
+
+  for (let i = 0; i < student.growthZones.length; i += 1) {
+    const zone = student.growthZones[i];
+    y = ensureSpace(doc, y, 14);
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...TEXT);
+    y = drawWrappedText(
+      doc,
+      `${i + 1}. ${zone.text || "—"}`,
+      MARGIN,
+      y,
+      contentWidth,
+    );
+    y += 2;
+  }
+  return y;
 }

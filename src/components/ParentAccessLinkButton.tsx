@@ -8,42 +8,64 @@ export function ParentAccessLinkButton({ studentId }: { studentId: string }) {
   const { regenerateParentToken, getStudent } = useStudents();
   const [copied, setCopied] = useState(false);
   const [link, setLink] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const generate = () => {
-    const token = regenerateParentToken(studentId);
-    const url =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/parent/${token}`
-        : `/parent/${token}`;
-    setLink(url);
-    setCopied(false);
+  const makeUrl = (token: string) =>
+    typeof window !== "undefined"
+      ? `${window.location.origin}/parent/${token}`
+      : `/parent/${token}`;
+
+  const generate = async () => {
+    setBusy(true);
+    try {
+      const token = await regenerateParentToken(studentId);
+      setLink(makeUrl(token));
+      setCopied(false);
+    } catch {
+      alert("Не удалось сгенерировать ссылку. Нужны права админа.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const copy = async () => {
     const student = getStudent(studentId);
     const url =
       link ??
-      (typeof window !== "undefined" && student
-        ? `${window.location.origin}/parent/${student.parentAccessToken}`
-        : student
-          ? `/parent/${student.parentAccessToken}`
-          : "");
-    if (!url) return;
+      (student?.parentAccessToken ? makeUrl(student.parentAccessToken) : "");
+    if (!url) {
+      await generate();
+      return;
+    }
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-      <Button type="button" variant="secondary" onClick={generate}>
-        Сгенерировать ссылку для родителей
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+      <Button
+        type="button"
+        variant="secondary"
+        className="w-full sm:w-auto"
+        onClick={generate}
+        disabled={busy}
+      >
+        {busy ? "Генерация…" : "Сгенерировать ссылку для родителей"}
       </Button>
-      <Button type="button" variant="ghost" onClick={copy}>
+      <Button
+        type="button"
+        variant="ghost"
+        className="w-full sm:w-auto"
+        onClick={copy}
+        disabled={busy}
+      >
         {copied ? "Скопировано" : "Копировать ссылку"}
       </Button>
       {link ? (
-        <p className="text-xs text-muted sm:max-w-xs sm:truncate">{link}</p>
+        <p className="break-all text-xs leading-relaxed text-muted sm:max-w-xs sm:text-right">
+          {link}
+        </p>
       ) : null}
     </div>
   );

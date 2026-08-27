@@ -8,6 +8,8 @@ import type {
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
+import { TermLabel } from "@/components/ui/TermHint";
+import { TableScroll } from "@/components/ui/TableScroll";
 
 const STATUSES: AcademicActivityStatus[] = [
   "В планах",
@@ -64,7 +66,9 @@ export function AcademicActivityTable({
   return (
     <Card>
       <CardHeader
-        title="Академ активность"
+        title={
+          <TermLabel term="Академ активность">Академ активность</TermLabel>
+        }
         subtitle="Олимпиады, хакатоны, academic honors и другие достижения"
         action={
           editable ? (
@@ -74,8 +78,9 @@ export function AcademicActivityTable({
           ) : null
         }
       />
-      <CardBody className="overflow-x-auto p-0">
-        <table className="min-w-full text-left text-sm">
+      <CardBody className="p-0">
+        <TableScroll>
+        <table className="min-w-[40rem] w-full text-left text-sm">
           <thead className="bg-light-gray/40 text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-5 py-3 font-semibold">Название</th>
@@ -96,90 +101,101 @@ export function AcademicActivityTable({
                 </td>
               </tr>
             ) : (
-              activities.map((item) => (
-                <tr key={item.id} className="border-t border-light-gray align-top">
-                  <td className="px-5 py-3 text-navy">
-                    {editable ? (
-                      <Input
-                        value={item.name}
-                        placeholder="Название"
-                        onChange={(e) =>
-                          updateRow(item.id, { name: e.target.value })
-                        }
-                      />
-                    ) : (
-                      item.name
-                    )}
-                  </td>
-                  <td className="px-5 py-3">
-                    {editable ? (
-                      <Select
-                        value={item.type}
-                        onChange={(e) =>
-                          updateRow(item.id, {
-                            type: e.target.value as AcademicActivityType,
-                          })
-                        }
-                      >
-                        {TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </Select>
-                    ) : (
-                      <span className="text-navy/80">{item.type}</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3">
-                    {editable ? (
-                      <Select
-                        value={item.status}
-                        onChange={(e) =>
-                          updateRow(item.id, {
-                            status: e.target.value as AcademicActivityStatus,
-                          })
-                        }
-                      >
-                        {STATUSES.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </Select>
-                    ) : (
-                      <StatusBadge status={item.status} />
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-navy/80">
-                    {editable ? (
-                      <Input
-                        value={item.result}
-                        placeholder="Результат"
-                        onChange={(e) =>
-                          updateRow(item.id, { result: e.target.value })
-                        }
-                      />
-                    ) : (
-                      item.result || "—"
-                    )}
-                  </td>
-                  {editable ? (
-                    <td className="px-5 py-3">
-                      <Button
-                        type="button"
-                        variant="danger"
-                        onClick={() => removeRow(item.id)}
-                      >
-                        Удалить
-                      </Button>
+              activities.map((item) => {
+                const done = item.status === "Завершено";
+                return (
+                  <tr
+                    key={item.id}
+                    className={`border-t align-top transition-colors ${
+                      done
+                        ? "border-emerald-200 bg-emerald-50"
+                        : "border-light-gray"
+                    }`}
+                  >
+                    <td className="px-5 py-3 text-navy">
+                      {editable ? (
+                        <Input
+                          value={item.name}
+                          placeholder="Название"
+                          onChange={(e) =>
+                            updateRow(item.id, { name: e.target.value })
+                          }
+                        />
+                      ) : (
+                        item.name
+                      )}
                     </td>
-                  ) : null}
-                </tr>
-              ))
+                    <td className="px-5 py-3">
+                      {editable ? (
+                        <Select
+                          value={item.type}
+                          onChange={(e) =>
+                            updateRow(item.id, {
+                              type: e.target.value as AcademicActivityType,
+                            })
+                          }
+                        >
+                          {TYPES.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </Select>
+                      ) : (
+                        <span className="text-navy/80">{item.type}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      {editable ? (
+                        <Select
+                          value={item.status}
+                          onChange={(e) =>
+                            updateRow(item.id, {
+                              status: e.target.value as AcademicActivityStatus,
+                            })
+                          }
+                        >
+                          {STATUSES.map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
+                        </Select>
+                      ) : (
+                        <StatusBadge status={item.status} />
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-navy/80">
+                      {editable ? (
+                        <Input
+                          value={item.result}
+                          placeholder="Результат"
+                          onChange={(e) =>
+                            updateRow(item.id, { result: e.target.value })
+                          }
+                        />
+                      ) : (
+                        item.result || "—"
+                      )}
+                    </td>
+                    {editable ? (
+                      <td className="px-5 py-3">
+                        <Button
+                          type="button"
+                          variant="danger"
+                          onClick={() => removeRow(item.id)}
+                        >
+                          Удалить
+                        </Button>
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
+        </TableScroll>
       </CardBody>
     </Card>
   );
@@ -190,7 +206,7 @@ function StatusBadge({ status }: { status: AcademicActivityStatus }) {
     "В планах": "bg-light-gray/60 text-navy",
     Подана: "bg-gold/25 text-navy",
     "В процессе": "bg-burgundy/10 text-burgundy",
-    Завершено: "bg-navy/10 text-navy",
+    Завершено: "bg-emerald-600 text-white",
   };
 
   return (

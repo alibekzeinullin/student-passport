@@ -68,7 +68,11 @@ export function SprintTasksTable({
           tasks.map((task) => (
             <div
               key={task.id}
-              className="rounded-md border border-light-gray bg-[#fafafa] p-4"
+              className={`rounded-md border p-4 transition-colors ${
+                task.completed
+                  ? "border-emerald-300 bg-emerald-50"
+                  : "border-light-gray bg-[#fafafa]"
+              }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -107,7 +111,7 @@ export function SprintTasksTable({
                       onChange={(e) =>
                         update(task.id, { completed: e.target.checked })
                       }
-                      className="h-4 w-4 rounded border-light-gray accent-burgundy"
+                      className="h-4 w-4 rounded border-light-gray accent-emerald-600"
                     />
                     Выполнено
                   </label>
@@ -115,7 +119,7 @@ export function SprintTasksTable({
                   <span
                     className={`rounded px-2 py-1 text-xs font-medium ${
                       task.completed
-                        ? "bg-emerald-100 text-emerald-800"
+                        ? "bg-emerald-600 text-white"
                         : "bg-light-gray/60 text-muted"
                     }`}
                   >

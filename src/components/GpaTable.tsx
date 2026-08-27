@@ -3,6 +3,8 @@
 import type { GpaRecord } from "@/lib/types";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Field";
+import { TermLabel } from "@/components/ui/TermHint";
+import { TableScroll } from "@/components/ui/TableScroll";
 
 function formatGpa(value: number | null) {
   return value === null ? "—" : value.toFixed(2);
@@ -17,17 +19,19 @@ interface GpaTableProps {
 export function GpaTable({ gpa, editable = false, onChange }: GpaTableProps) {
   const startLabel = gpa.startMonthLabel?.trim() || "Месяц старта менторства";
 
-  const valueRows: { key: "start" | "january2027" | "july2027"; label: string }[] =
-    [
-      { key: "start", label: `GPA ${startLabel}` },
-      { key: "january2027", label: "GPA Январь 2027" },
-      { key: "july2027", label: "GPA Июль 2027" },
-    ];
+  const valueRows: {
+    key: "start" | "january2027" | "july2027";
+    label: string;
+  }[] = [
+    { key: "start", label: `GPA ${startLabel}` },
+    { key: "january2027", label: "GPA Январь 2027" },
+    { key: "july2027", label: "GPA Июль 2027" },
+  ];
 
   return (
     <Card>
       <CardHeader
-        title="Отслеживание GPA"
+        title={<TermLabel term="GPA">Отслеживание GPA</TermLabel>}
         subtitle="Первая точка — месяц начала менторства (задаёт админ)"
       />
       <CardBody className="space-y-4">
@@ -44,8 +48,8 @@ export function GpaTable({ gpa, editable = false, onChange }: GpaTableProps) {
           </div>
         ) : null}
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        <TableScroll>
+        <table className="min-w-[20rem] w-full text-left text-sm">
             <thead className="bg-light-gray/40 text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-5 py-3 font-semibold">Период</th>
@@ -82,8 +86,8 @@ export function GpaTable({ gpa, editable = false, onChange }: GpaTableProps) {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+        </table>
+        </TableScroll>
       </CardBody>
     </Card>
   );

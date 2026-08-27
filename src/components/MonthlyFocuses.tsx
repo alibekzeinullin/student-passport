@@ -32,6 +32,7 @@ export function MonthlyFocuses({
         month: "",
         title: "",
         description: "",
+        achieved: false,
       },
     ]);
   };
@@ -60,59 +61,84 @@ export function MonthlyFocuses({
             Личные фокусы пока не заданы
           </p>
         ) : (
-          focuses.map((focus) => (
-            <div
-              key={focus.id}
-              className="rounded-md border border-light-gray bg-[#fafafa] p-4"
-            >
-              {editable ? (
-                <div className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Input
-                      value={focus.month}
-                      placeholder="Месяц, напр. Август 2026"
+          focuses.map((focus) => {
+            const achieved = Boolean(focus.achieved);
+            return (
+              <div
+                key={focus.id}
+                className={`rounded-md border p-4 transition-colors ${
+                  achieved
+                    ? "border-emerald-300 bg-emerald-50"
+                    : "border-light-gray bg-[#fafafa]"
+                }`}
+              >
+                {editable ? (
+                  <div className="space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Input
+                        value={focus.month}
+                        placeholder="Месяц, напр. Август 2026"
+                        onChange={(e) =>
+                          updateFocus(focus.id, { month: e.target.value })
+                        }
+                      />
+                      <Input
+                        value={focus.title}
+                        placeholder="Название фокуса"
+                        onChange={(e) =>
+                          updateFocus(focus.id, { title: e.target.value })
+                        }
+                      />
+                    </div>
+                    <Textarea
+                      value={focus.description}
+                      placeholder="Описание приоритетов месяца"
                       onChange={(e) =>
-                        updateFocus(focus.id, { month: e.target.value })
+                        updateFocus(focus.id, { description: e.target.value })
                       }
                     />
-                    <Input
-                      value={focus.title}
-                      placeholder="Название фокуса"
-                      onChange={(e) =>
-                        updateFocus(focus.id, { title: e.target.value })
-                      }
-                    />
+                    <label className="flex items-center gap-2 text-sm text-navy">
+                      <input
+                        type="checkbox"
+                        checked={achieved}
+                        onChange={(e) =>
+                          updateFocus(focus.id, { achieved: e.target.checked })
+                        }
+                        className="size-4 accent-emerald-600"
+                      />
+                      Цель достигнута
+                    </label>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => removeFocus(focus.id)}
+                    >
+                      Удалить
+                    </Button>
                   </div>
-                  <Textarea
-                    value={focus.description}
-                    placeholder="Описание приоритетов месяца"
-                    onChange={(e) =>
-                      updateFocus(focus.id, { description: e.target.value })
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="danger"
-                    onClick={() => removeFocus(focus.id)}
-                  >
-                    Удалить
-                  </Button>
-                </div>
-              ) : (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-burgundy">
-                    {focus.month}
-                  </p>
-                  <h4 className="mt-1 text-base font-semibold text-navy">
-                    {focus.title}
-                  </h4>
-                  <p className="mt-2 text-sm leading-relaxed text-muted">
-                    {focus.description}
-                  </p>
-                </div>
-              )}
-            </div>
-          ))
+                ) : (
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-burgundy">
+                        {focus.month}
+                      </p>
+                      {achieved ? (
+                        <span className="rounded bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                          Достигнуто
+                        </span>
+                      ) : null}
+                    </div>
+                    <h4 className="mt-1 text-base font-semibold text-navy">
+                      {focus.title}
+                    </h4>
+                    <p className="mt-2 text-sm leading-relaxed text-muted">
+                      {focus.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </CardBody>
     </Card>

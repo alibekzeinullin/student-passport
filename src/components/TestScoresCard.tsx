@@ -3,9 +3,10 @@
 import type { TestScores } from "@/lib/types";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Field";
+import { TermLabel } from "@/components/ui/TermHint";
 
-function formatScore(value: number | null, suffix = "") {
-  return value === null ? "—" : `${value}${suffix}`;
+function formatScore(value: number | null) {
+  return value === null ? "—" : String(value);
 }
 
 interface TestScoresCardProps {
@@ -19,59 +20,110 @@ export function TestScoresCard({
   editable = false,
   onChange,
 }: TestScoresCardProps) {
-  const fields: {
-    key: keyof TestScores;
-    label: string;
+  const groups: {
+    title: "SAT" | "IELTS" | "Cambridge Test";
+    currentKey: keyof TestScores;
+    targetKey: keyof TestScores;
     step?: string;
     max?: number;
   }[] = [
-    { key: "sat", label: "SAT (текущий)", step: "10", max: 1600 },
-    { key: "satTarget", label: "SAT (цель)", step: "10", max: 1600 },
-    { key: "ielts", label: "IELTS (текущий)", step: "0.5", max: 9 },
-    { key: "ieltsTarget", label: "IELTS (цель)", step: "0.5", max: 9 },
+    { title: "SAT", currentKey: "sat", targetKey: "satTarget", step: "10", max: 1600 },
+    { title: "IELTS", currentKey: "ielts", targetKey: "ieltsTarget", step: "0.5", max: 9 },
+    {
+      title: "Cambridge Test",
+      currentKey: "cambridgeTest",
+      targetKey: "cambridgeTestTarget",
+      step: "1",
+      max: 25,
+    },
   ];
 
   return (
     <Card>
       <CardHeader
-        title="SAT / IELTS"
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <TermLabel term="SAT">SAT</TermLabel>
+            <span className="text-muted">/</span>
+            <TermLabel term="IELTS">IELTS</TermLabel>
+            <span className="text-muted">/</span>
+            <TermLabel term="Cambridge Test">Cambridge Test</TermLabel>
+          </span>
+        }
         subtitle="Академическая динамика по стандартизированным тестам"
       />
       <CardBody>
         {editable && onChange ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {fields.map((field) => (
-              <div key={field.key}>
-                <Label>{field.label}</Label>
-                <Input
-                  type="number"
-                  step={field.step}
-                  min={0}
-                  max={field.max}
-                  value={scores[field.key] ?? ""}
-                  placeholder="—"
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    onChange({
-                      ...scores,
-                      [field.key]:
-                        raw === "" ? null : Number.parseFloat(raw),
-                    });
-                  }}
-                />
+          <div className="grid gap-4 lg:grid-cols-3">
+            {groups.map((group) => (
+              <div key={group.title} className="rounded-md border border-light-gray p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  {group.title}
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>{`${group.title} (сейчас)`}</Label>
+                    <Input
+                      type="number"
+                      step={group.step}
+                      min={0}
+                      max={group.max}
+                      value={scores[group.currentKey] ?? ""}
+                      placeholder="—"
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        onChange({
+                          ...scores,
+                          [group.currentKey]:
+                            raw === "" ? null : Number.parseFloat(raw),
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label>{`${group.title} (цель)`}</Label>
+                    <Input
+                      type="number"
+                      step={group.step}
+                      min={0}
+                      max={group.max}
+                      value={scores[group.targetKey] ?? ""}
+                      placeholder="—"
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        onChange({
+                          ...scores,
+                          [group.targetKey]:
+                            raw === "" ? null : Number.parseFloat(raw),
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {fields.map((field) => (
-              <div key={field.key}>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {groups.map((group) => (
+              <div key={group.title} className="rounded-md border border-light-gray p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-                  {field.label}
+                  {group.title}
                 </p>
-                <p className="mt-1 text-lg font-semibold text-navy">
-                  {formatScore(scores[field.key])}
-                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-muted">{`${group.title} (сейчас)`}</p>
+                    <p className="mt-1 text-base font-semibold text-navy">
+                      {formatScore(scores[group.currentKey])}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted">{`${group.title} (цель)`}</p>
+                    <p className="mt-1 text-base font-semibold text-navy">
+                      {formatScore(scores[group.targetKey])}
+                    </p>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

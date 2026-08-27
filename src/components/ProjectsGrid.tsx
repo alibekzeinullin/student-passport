@@ -70,96 +70,124 @@ export function ProjectsGrid({
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {projects.map((project) => (
-            <Card key={project.id} className="overflow-hidden">
-              <div className="border-b border-gold/40 bg-navy px-5 py-3 text-white">
-                {editable ? (
-                  <div className="space-y-2">
-                    <Input
-                      value={project.title}
-                      placeholder="Название проекта"
-                      onChange={(e) =>
-                        updateProject(project.id, { title: e.target.value })
-                      }
-                      className="border-light-gray bg-white text-navy"
-                    />
-                    <Input
-                      value={project.role}
-                      placeholder="Роль"
-                      onChange={(e) =>
-                        updateProject(project.id, { role: e.target.value })
-                      }
-                      className="border-light-gray bg-white text-navy"
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="text-base font-semibold">{project.title}</h3>
-                    <p className="mt-1 text-sm text-gold">{project.role}</p>
-                  </>
-                )}
-              </div>
-              <CardBody className="space-y-3">
-                {editable ? (
-                  <>
-                    <Textarea
-                      value={project.description}
-                      placeholder="Краткое описание"
-                      onChange={(e) =>
-                        updateProject(project.id, {
-                          description: e.target.value,
-                        })
-                      }
-                    />
-                    <Select
-                      value={project.status}
-                      onChange={(e) =>
-                        updateProject(project.id, {
-                          status: e.target.value as ProjectStatus,
-                        })
-                      }
-                    >
-                      {STATUSES.map((status) => (
-                        <option key={status} value={status}>
-                          {status}
-                        </option>
-                      ))}
-                    </Select>
-                    <Input
-                      value={project.impactMetrics}
-                      placeholder="Метрики импакта"
-                      onChange={(e) =>
-                        updateProject(project.id, {
-                          impactMetrics: e.target.value,
-                        })
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="danger"
-                      onClick={() => removeProject(project.id)}
-                    >
-                      Удалить проект
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-sm leading-relaxed text-muted">
-                      {project.description}
-                    </p>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <span className="rounded bg-burgundy/10 px-2 py-1 font-medium text-burgundy">
-                        {project.status}
-                      </span>
-                      <span className="rounded bg-gold/20 px-2 py-1 text-navy">
-                        {project.impactMetrics}
-                      </span>
+          {projects.map((project) => {
+            const done = project.status === "Завершён";
+            return (
+              <Card
+                key={project.id}
+                className={`overflow-hidden ${
+                  done ? "ring-2 ring-emerald-400/70" : ""
+                }`}
+              >
+                <div
+                  className={`border-b px-5 py-3 text-white ${
+                    done
+                      ? "border-emerald-400/40 bg-emerald-700"
+                      : "border-gold/40 bg-navy"
+                  }`}
+                >
+                  {editable ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={project.title}
+                        placeholder="Название проекта"
+                        onChange={(e) =>
+                          updateProject(project.id, { title: e.target.value })
+                        }
+                        className="border-light-gray bg-white text-navy"
+                      />
+                      <Input
+                        value={project.role}
+                        placeholder="Роль"
+                        onChange={(e) =>
+                          updateProject(project.id, { role: e.target.value })
+                        }
+                        className="border-light-gray bg-white text-navy"
+                      />
                     </div>
-                  </>
-                )}
-              </CardBody>
-            </Card>
-          ))}
+                  ) : (
+                    <>
+                      <h3 className="text-base font-semibold">{project.title}</h3>
+                      <p
+                        className={`mt-1 text-sm ${
+                          done ? "text-emerald-100" : "text-gold"
+                        }`}
+                      >
+                        {project.role}
+                      </p>
+                    </>
+                  )}
+                </div>
+                <CardBody
+                  className={`space-y-3 ${done ? "bg-emerald-50/80" : ""}`}
+                >
+                  {editable ? (
+                    <>
+                      <Textarea
+                        value={project.description}
+                        placeholder="Краткое описание"
+                        onChange={(e) =>
+                          updateProject(project.id, {
+                            description: e.target.value,
+                          })
+                        }
+                      />
+                      <Select
+                        value={project.status}
+                        onChange={(e) =>
+                          updateProject(project.id, {
+                            status: e.target.value as ProjectStatus,
+                          })
+                        }
+                      >
+                        {STATUSES.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </Select>
+                      <Input
+                        value={project.impactMetrics}
+                        placeholder="Метрики импакта"
+                        onChange={(e) =>
+                          updateProject(project.id, {
+                            impactMetrics: e.target.value,
+                          })
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="danger"
+                        onClick={() => removeProject(project.id)}
+                      >
+                        Удалить проект
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm leading-relaxed text-muted">
+                        {project.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span
+                          className={`rounded px-2 py-1 font-medium ${
+                            done
+                              ? "bg-emerald-600 text-white"
+                              : "bg-burgundy/10 text-burgundy"
+                          }`}
+                        >
+                          {project.status}
+                        </span>
+                        <span className="rounded bg-gold/20 px-2 py-1 text-navy">
+                          {project.impactMetrics}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </CardBody>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

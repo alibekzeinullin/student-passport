@@ -15,6 +15,7 @@ export function LoginForm() {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [signupForm, setSignupForm] = useState({
     fullName: "",
@@ -25,36 +26,37 @@ export function LoginForm() {
     educationSystem: "IB" as EducationSystem,
   });
 
-  const doLogin = () => {
-    const result = loginWithCredentials(loginForm.email, loginForm.password);
-    if (!result.ok) {
-      setError(result.error ?? "Ошибка входа");
-      return;
+  const doLogin = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await loginWithCredentials(
+        loginForm.email,
+        loginForm.password,
+      );
+      if (!result.ok) {
+        setError(result.error ?? "Ошибка входа");
+        return;
+      }
+      router.push(result.user?.role === "admin" ? "/admin" : "/dashboard");
+    } finally {
+      setBusy(false);
     }
-    setError("");
-    router.push(result.user?.role === "admin" ? "/admin" : "/dashboard");
   };
 
-  const doRegister = () => {
-    const result = registerStudent(signupForm);
-    if (!result.ok) {
-      setError(result.error ?? "Ошибка регистрации");
-      return;
+  const doRegister = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const result = await registerStudent(signupForm);
+      if (!result.ok) {
+        setError(result.error ?? "Ошибка регистрации");
+        return;
+      }
+      router.push(result.user?.role === "admin" ? "/admin" : "/dashboard");
+    } finally {
+      setBusy(false);
     }
-    setError("");
-    router.push(result.user?.role === "admin" ? "/admin" : "/dashboard");
-  };
-
-  const fillDemoStudent = () => {
-    setMode("login");
-    setLoginForm({ email: "student@today.edu", password: "Student123!" });
-    setError("");
-  };
-
-  const fillDemoAdmin = () => {
-    setMode("login");
-    setLoginForm({ email: "admin@today.edu", password: "Admin123!" });
-    setError("");
   };
 
   return (
@@ -67,7 +69,7 @@ export function LoginForm() {
           Digital Passport TODAY Scholars
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Академический кабинет ученика и ментора: портфолио, спринты и отчёты.
+          Вход через Supabase. Зарегистрируйте ученика или войдите как админ.
         </p>
       </div>
 
@@ -104,7 +106,7 @@ export function LoginForm() {
                   onChange={(e) =>
                     setLoginForm((p) => ({ ...p, email: e.target.value }))
                   }
-                  placeholder="student@today.edu"
+                  placeholder="you@email.com"
                 />
               </div>
               <div>
@@ -118,11 +120,12 @@ export function LoginForm() {
                   placeholder="Введите пароль"
                 />
               </div>
-              <Button className="w-full" onClick={doLogin}>
-                Войти
+              <Button className="w-full" onClick={doLogin} disabled={busy}>
+                {busy ? "Вход…" : "Войти"}
               </Button>
               <p className="text-xs text-muted">
-                Демо админ: `admin@today.edu` / `Admin123!`
+                После первой регистрации админа выполните SQL из SUPABASE_SETUP.md,
+                чтобы назначить роль admin.
               </p>
             </div>
           ) : (
@@ -192,30 +195,13 @@ export function LoginForm() {
                   ))}
                 </Select>
               </div>
-              <Button className="w-full" onClick={doRegister}>
-                Зарегистрироваться
+              <Button className="w-full" onClick={doRegister} disabled={busy}>
+                {busy ? "Регистрация…" : "Зарегистрироваться"}
               </Button>
             </div>
           )}
 
           {error ? <p className="text-sm text-burgundy">{error}</p> : null}
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardBody className="space-y-3">
-          <p className="text-sm font-medium text-navy">Быстрый демо-вход</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Button type="button" variant="secondary" onClick={fillDemoStudent}>
-              Заполнить STUDENT
-            </Button>
-            <Button type="button" variant="secondary" onClick={fillDemoAdmin}>
-              Заполнить ADMIN
-            </Button>
-          </div>
-          <p className="text-xs text-muted">
-            После заполнения нажмите «Войти».
-          </p>
         </CardBody>
       </Card>
     </div>

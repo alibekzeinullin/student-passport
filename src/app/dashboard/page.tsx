@@ -9,7 +9,7 @@ export default function DashboardPage() {
 
   return (
     <RequireAuth role="student">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <div className="mx-auto min-w-0 max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         {user?.studentId ? (
           <StudentDashboard studentId={user.studentId} accessMode="student" />
         ) : null}

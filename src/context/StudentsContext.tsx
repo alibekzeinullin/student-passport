@@ -3,19 +3,19 @@
 import {
   createContext,
   useCallback,
-  useEffect,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import { INITIAL_STUDENTS } from "@/lib/mock-data";
-import { normalizeStudentProfile } from "@/lib/student-factory";
+import { useAuth } from "@/context/AuthContext";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import {
-  readStoredStudents,
-  STORAGE_EVENTS,
-  writeStoredStudents,
-} from "@/lib/storage";
+  mapDbStudentToProfile,
+  mapProfileToDbPatch,
+} from "@/lib/supabase/mappers";
+import type { DbStudent } from "@/lib/supabase/database.types";
 import type {
   AcademicActivity,
   Project,
@@ -23,130 +23,207 @@ import type {
   StudentProfile,
 } from "@/lib/types";
 
-function randomToken() {
-  return `tok-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
 interface StudentsContextValue {
   students: StudentProfile[];
+  loading: boolean;
   getStudent: (id: string) => StudentProfile | undefined;
-  getStudentByToken: (token: string) => StudentProfile | undefined;
-  updateStudent: (id: string, patch: Partial<StudentProfile>) => void;
+  fetchStudentByToken: (token: string) => Promise<StudentProfile | null>;
+  updateStudent: (id: string, patch: Partial<StudentProfile>) => Promise<void>;
   updateAcademicActivities: (
     studentId: string,
     academicActivities: AcademicActivity[],
-  ) => void;
-  updateProjects: (studentId: string, projects: Project[]) => void;
-  updateSprintTasks: (studentId: string, sprintTasks: SprintTask[]) => void;
-  regenerateParentToken: (studentId: string) => string;
+  ) => Promise<void>;
+  updateProjects: (studentId: string, projects: Project[]) => Promise<void>;
+  updateSprintTasks: (
+    studentId: string,
+    sprintTasks: SprintTask[],
+  ) => Promise<void>;
+  regenerateParentToken: (studentId: string) => Promise<string>;
+  refreshStudents: () => Promise<void>;
 }
 
 const StudentsContext = createContext<StudentsContextValue | null>(null);
 
 export function StudentsProvider({ children }: { children: ReactNode }) {
-  const [students, setStudents] = useState<StudentProfile[]>(() => {
-    const stored = readStoredStudents();
-    if (stored && stored.length > 0) {
-      return stored.map((item) => normalizeStudentProfile(item));
+  const { user, loading: authLoading } = useAuth();
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refreshStudents = useCallback(async () => {
+    if (!isSupabaseConfigured() || !user) {
+      setStudents([]);
+      setLoading(false);
+      return;
     }
-    return INITIAL_STUDENTS.map((item) => normalizeStudentProfile(item));
-  });
+
+    setLoading(true);
+    const supabase = createClient();
+
+    try {
+      if (user.role === "admin") {
+        const { data, error } = await supabase
+          .from("students")
+          .select("*")
+          .order("last_name", { ascending: true });
+
+        if (error) throw error;
+        setStudents(
+          ((data as DbStudent[]) ?? []).map(mapDbStudentToProfile),
+        );
+      } else if (user.role === "student" && user.studentId) {
+        const { data, error } = await supabase
+          .from("students")
+          .select("*")
+          .eq("id", user.studentId)
+          .maybeSingle();
+
+        if (error) throw error;
+        setStudents(data ? [mapDbStudentToProfile(data as DbStudent)] : []);
+      } else {
+        setStudents([]);
+      }
+    } catch (error) {
+      console.error("Failed to load students", error);
+      setStudents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    writeStoredStudents(students);
-  }, [students]);
-
-  useEffect(() => {
-    const sync = () => {
-      const next = readStoredStudents();
-      if (next) setStudents(next.map((item) => normalizeStudentProfile(item)));
-    };
-    window.addEventListener(STORAGE_EVENTS.studentsChanged, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener(STORAGE_EVENTS.studentsChanged, sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
+    if (authLoading) return;
+    void refreshStudents();
+  }, [authLoading, refreshStudents]);
 
   const getStudent = useCallback(
     (id: string) => students.find((s) => s.id === id),
     [students],
   );
 
-  const getStudentByToken = useCallback(
-    (token: string) => students.find((s) => s.parentAccessToken === token),
-    [students],
-  );
+  const fetchStudentByToken = useCallback(async (token: string) => {
+    if (!isSupabaseConfigured() || !token) return null;
+
+    const supabase = createClient();
+    const { data, error } = await supabase.rpc("get_student_by_parent_token", {
+      p_token: token,
+    });
+
+    if (error) {
+      console.error(error);
+      return null;
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return null;
+
+    const profile = mapDbStudentToProfile(row as DbStudent);
+    setStudents((prev) => {
+      const exists = prev.some((s) => s.id === profile.id);
+      return exists
+        ? prev.map((s) => (s.id === profile.id ? profile : s))
+        : [...prev, profile];
+    });
+    return profile;
+  }, []);
 
   const updateStudent = useCallback(
-    (id: string, patch: Partial<StudentProfile>) => {
+    async (id: string, patch: Partial<StudentProfile>) => {
       setStudents((prev) =>
         prev.map((s) => (s.id === id ? { ...s, ...patch } : s)),
       );
+
+      if (!isSupabaseConfigured()) return;
+
+      const dbPatch = mapProfileToDbPatch(patch);
+      if (Object.keys(dbPatch).length === 0) return;
+
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("students")
+        .update(dbPatch)
+        .eq("id", id);
+
+      if (error) {
+        console.error("Failed to update student", error);
+        await refreshStudents();
+        throw error;
+      }
     },
-    [],
+    [refreshStudents],
   );
 
   const updateAcademicActivities = useCallback(
-    (studentId: string, academicActivities: AcademicActivity[]) => {
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === studentId ? { ...s, academicActivities } : s,
-        ),
-      );
+    async (studentId: string, academicActivities: AcademicActivity[]) => {
+      await updateStudent(studentId, { academicActivities });
     },
-    [],
+    [updateStudent],
   );
 
   const updateProjects = useCallback(
-    (studentId: string, projects: Project[]) => {
-      setStudents((prev) =>
-        prev.map((s) => (s.id === studentId ? { ...s, projects } : s)),
-      );
+    async (studentId: string, projects: Project[]) => {
+      await updateStudent(studentId, { projects });
     },
-    [],
+    [updateStudent],
   );
 
   const updateSprintTasks = useCallback(
-    (studentId: string, sprintTasks: SprintTask[]) => {
+    async (studentId: string, sprintTasks: SprintTask[]) => {
+      await updateStudent(studentId, { sprintTasks });
+    },
+    [updateStudent],
+  );
+
+  const regenerateParentToken = useCallback(
+    async (studentId: string) => {
+      if (!isSupabaseConfigured()) {
+        throw new Error("Supabase не настроен");
+      }
+
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("regenerate_parent_token", {
+        p_student_id: studentId,
+      });
+
+      if (error || !data) {
+        console.error(error);
+        throw error ?? new Error("Не удалось обновить токен");
+      }
+
+      const token = String(data);
       setStudents((prev) =>
-        prev.map((s) => (s.id === studentId ? { ...s, sprintTasks } : s)),
+        prev.map((s) =>
+          s.id === studentId ? { ...s, parentAccessToken: token } : s,
+        ),
       );
+      return token;
     },
     [],
   );
-
-  const regenerateParentToken = useCallback((studentId: string) => {
-    const token = randomToken();
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.id === studentId ? { ...s, parentAccessToken: token } : s,
-      ),
-    );
-    return token;
-  }, []);
 
   const value = useMemo(
     () => ({
       students,
+      loading,
       getStudent,
-      getStudentByToken,
+      fetchStudentByToken,
       updateStudent,
       updateAcademicActivities,
       updateProjects,
       updateSprintTasks,
       regenerateParentToken,
+      refreshStudents,
     }),
     [
       students,
+      loading,
       getStudent,
-      getStudentByToken,
+      fetchStudentByToken,
       updateStudent,
       updateAcademicActivities,
       updateProjects,
       updateSprintTasks,
       regenerateParentToken,
+      refreshStudents,
     ],
   );
 

@@ -93,6 +93,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
       ielts: 7.0,
       satTarget: 1500,
       ieltsTarget: 7.5,
+      cambridgeTest: 18,
+      cambridgeTestTarget: 22,
     },
     sprintTasks: defaultSprints("s1"),
     academicActivities: [
@@ -198,6 +200,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
       ielts: 6.5,
       satTarget: null,
       ieltsTarget: 7.5,
+      cambridgeTest: 17,
+      cambridgeTestTarget: 21,
     },
     sprintTasks: defaultSprints("s2"),
     academicActivities: [
@@ -273,6 +277,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
       ielts: null,
       satTarget: 1450,
       ieltsTarget: null,
+      cambridgeTest: 14,
+      cambridgeTestTarget: 20,
     },
     sprintTasks: defaultSprints("s3"),
     academicActivities: [

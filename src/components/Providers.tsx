@@ -9,9 +9,9 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
       <StudentsProvider>
-        <div className="flex min-h-full flex-col">
+        <div className="flex min-h-full min-w-0 flex-col">
           <AppHeader />
-          <main className="flex-1">{children}</main>
+          <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
         </div>
       </StudentsProvider>
     </AuthProvider>

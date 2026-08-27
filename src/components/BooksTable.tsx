@@ -4,6 +4,7 @@ import type { Book, BookStatus } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
+import { TableScroll } from "@/components/ui/TableScroll";
 
 const STATUSES: BookStatus[] = ["В планах", "Читаю", "Прочитано"];
 
@@ -54,8 +55,9 @@ export function BooksTable({
           ) : null
         }
       />
-      <CardBody className="overflow-x-auto p-0">
-        <table className="min-w-full text-left text-sm">
+      <CardBody className="p-0">
+        <TableScroll>
+        <table className="min-w-[32rem] w-full text-left text-sm">
           <thead className="bg-light-gray/40 text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className="px-5 py-3 font-semibold">Название</th>
@@ -75,8 +77,17 @@ export function BooksTable({
                 </td>
               </tr>
             ) : (
-              books.map((item) => (
-                <tr key={item.id} className="border-t border-light-gray align-top">
+              books.map((item) => {
+                const done = item.status === "Прочитано";
+                return (
+                <tr
+                  key={item.id}
+                  className={`border-t align-top transition-colors ${
+                    done
+                      ? "border-emerald-200 bg-emerald-50"
+                      : "border-light-gray"
+                  }`}
+                >
                   <td className="px-5 py-3 text-navy">
                     {editable ? (
                       <Input
@@ -120,7 +131,13 @@ export function BooksTable({
                         ))}
                       </Select>
                     ) : (
-                      <span className="rounded bg-gold/20 px-2 py-1 text-xs font-medium text-navy">
+                      <span
+                        className={`rounded px-2 py-1 text-xs font-medium ${
+                          done
+                            ? "bg-emerald-600 text-white"
+                            : "bg-gold/20 text-navy"
+                        }`}
+                      >
                         {item.status}
                       </span>
                     )}
@@ -137,10 +154,12 @@ export function BooksTable({
                     </td>
                   ) : null}
                 </tr>
-              ))
+              );
+              })
             )}
           </tbody>
         </table>
+        </TableScroll>
       </CardBody>
     </Card>
   );

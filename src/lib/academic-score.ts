@@ -16,8 +16,8 @@ function latestGpa(student: StudentProfile): number | null {
 function gpaScore(student: StudentProfile): number {
   const gpa = latestGpa(student);
   if (gpa === null) return 0;
-  // 4.0 scale → 100 баллов
-  return clamp((gpa / 4) * 100);
+  // 5.0 scale → 100 баллов
+  return clamp((gpa / 5) * 100);
 }
 
 function academicActivitiesScore(student: StudentProfile): number {
@@ -62,6 +62,18 @@ function booksScore(student: StudentProfile): number {
   return clamp(points);
 }
 
+function testsBonusScore(student: StudentProfile): number {
+  const bonusCandidates = [
+    student.testScores.sat ? clamp((student.testScores.sat / 1600) * 5, 0, 5) : 0,
+    student.testScores.ielts ? clamp((student.testScores.ielts / 9) * 5, 0, 5) : 0,
+    student.testScores.cambridgeTest
+      ? clamp((student.testScores.cambridgeTest / 25) * 5, 0, 5)
+      : 0,
+  ];
+
+  return Math.max(...bonusCandidates, 0);
+}
+
 function skillsScore(student: StudentProfile): number {
   if (student.skills.length === 0) return 0;
   const points = student.skills.reduce((sum, item) => {
@@ -78,15 +90,18 @@ function skillsScore(student: StudentProfile): number {
 
 /**
  * Автоматический балл академических успехов (0–100).
- * Учитывает GPA, академ активность, проекты, книги и навыки.
+ * База: GPA 35%, академ активность 25%, проекты 20%,
+ * навыки 15%, книги 5%. Тесты дают бонус до +5 без штрафа.
  */
 export function calculateAcademicSuccessScore(student: StudentProfile): number {
-  const weighted =
-    gpaScore(student) * 0.3 +
+  const base =
+    gpaScore(student) * 0.35 +
     academicActivitiesScore(student) * 0.25 +
     projectsScore(student) * 0.2 +
-    booksScore(student) * 0.125 +
-    skillsScore(student) * 0.125;
+    skillsScore(student) * 0.15 +
+    booksScore(student) * 0.05;
+
+  const weighted = base + testsBonusScore(student);
 
   return Math.round(clamp(weighted));
 }

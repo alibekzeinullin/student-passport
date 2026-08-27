@@ -12,11 +12,12 @@ export function RequireAuth({
   role?: UserRole;
   children: ReactNode;
 }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
+    if (loading) return;
     if (!user) {
       router.replace("/");
       return;
@@ -30,8 +31,15 @@ export function RequireAuth({
         router.replace("/");
       }
     }
-  }, [user, role, router, pathname]);
+  }, [user, loading, role, router, pathname]);
 
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center text-muted">
+        Загрузка…
+      </div>
+    );
+  }
   if (!user) return null;
   if (role && user.role !== role) return null;
 

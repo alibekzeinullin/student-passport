@@ -14,7 +14,7 @@ export default function AdminStudentPage({
 
   return (
     <RequireAuth role="admin">
-      <div className="mx-auto max-w-6xl space-y-4 px-4 py-8 sm:px-6">
+      <div className="mx-auto min-w-0 max-w-6xl space-y-4 px-4 py-6 sm:px-6 sm:py-8">
         <Link
           href="/admin"
           className="inline-flex text-sm font-medium text-muted underline-offset-2 hover:text-burgundy hover:underline"

@@ -7,19 +7,21 @@ export function Section({
   children,
 }: {
   number: string;
-  title: string;
+  title: ReactNode;
   description?: string;
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-4">
-      <div className="border-l-4 border-burgundy pl-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">
+    <section className="min-w-0 space-y-4">
+      <div className="border-l-4 border-burgundy pl-3 sm:pl-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted sm:tracking-[0.14em]">
           Раздел {number}
         </p>
-        <h2 className="mt-1 text-xl font-semibold text-navy">{title}</h2>
+        <h2 className="mt-1 text-lg font-semibold leading-snug text-navy sm:text-xl">
+          {title}
+        </h2>
         {description ? (
-          <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted">{description}</p>
         ) : null}
       </div>
       {children}

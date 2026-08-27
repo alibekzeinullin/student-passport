@@ -41,4 +41,14 @@ src/
     types.ts
     permissions.ts
     mock-data.ts
+    supabase/            — клиент Supabase
+```
+
+## База данных (Supabase)
+
+Инструкция: `SUPABASE_SETUP.md`. Схема: `supabase/schema.sql`.
+
+```bash
+cp .env.local.example .env.local
+# вставьте Project URL и anon key из Supabase → Settings → API
 ```

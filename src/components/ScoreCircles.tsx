@@ -7,6 +7,8 @@ import {
 } from "@/lib/academic-score";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Input, Label } from "@/components/ui/Field";
+import { TermHint } from "@/components/ui/TermHint";
+import type { TermHintKey } from "@/lib/term-hints";
 
 interface ScoreCirclesProps {
   student: StudentProfile;
@@ -28,9 +30,11 @@ export function ScoreCircles({
         subtitle="100-балльная шкала: посещаемость и задания выставляет ментор; академ успехи считаются автоматически"
       />
       <CardBody>
-        <div className="grid gap-6 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
           <ScoreCircle
             label="Посещаемость"
+            detail="(опоздания и пропуски)"
+            hintTerm="Посещаемость"
             value={student.attendanceScore}
             accent="#7F2231"
             editable={editable}
@@ -42,6 +46,7 @@ export function ScoreCircles({
           />
           <ScoreCircle
             label="Выполнение заданий"
+            hintTerm="Выполнение заданий"
             value={student.assignmentsScore}
             accent="#23334A"
             editable={editable}
@@ -53,9 +58,10 @@ export function ScoreCircles({
           />
           <ScoreCircle
             label="Академ успехи"
+            hintTerm="Академ успехи"
             value={academic}
             accent="#CBB073"
-            hint="GPA · академ активность · проекты · книги · навыки"
+            hint="GPA 35% · активность 25% · проекты 20% · навыки 15% · книги 5% + бонус тестов"
           />
         </div>
       </CardBody>
@@ -70,6 +76,8 @@ function ScoreCircle({
   editable,
   onValueChange,
   hint,
+  detail,
+  hintTerm,
 }: {
   label: string;
   value: number;
@@ -77,6 +85,8 @@ function ScoreCircle({
   editable?: boolean;
   onValueChange?: (value: number) => void;
   hint?: string;
+  detail?: string;
+  hintTerm?: TermHintKey;
 }) {
   const size = 112;
   const stroke = 10;
@@ -86,8 +96,8 @@ function ScoreCircle({
   const offset = circumference - (safe / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center text-center">
-      <div className="relative" style={{ width: size, height: size }}>
+    <div className="flex w-full flex-col items-center text-center">
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
           <circle
             cx={size / 2}
@@ -113,8 +123,18 @@ function ScoreCircle({
           <span className="text-2xl font-semibold text-navy">{safe}</span>
         </div>
       </div>
-      <p className="mt-3 text-sm font-semibold text-navy">{label}</p>
-      {hint ? <p className="mt-1 max-w-[12rem] text-xs text-muted">{hint}</p> : null}
+      <div className="mt-3 flex max-w-full flex-col items-center gap-1 px-1">
+        <p className="flex flex-wrap items-center justify-center gap-1.5 text-sm font-semibold leading-snug text-navy">
+          <span className="break-words">{label}</span>
+          {hintTerm ? <TermHint term={hintTerm} /> : null}
+        </p>
+        {detail ? (
+          <p className="text-xs leading-snug text-muted">{detail}</p>
+        ) : null}
+        {hint ? (
+          <p className="max-w-[14rem] text-xs leading-snug text-muted">{hint}</p>
+        ) : null}
+      </div>
       {editable && onValueChange ? (
         <div className="mt-3 w-full max-w-[9rem]">
           <Label>Балл (0–100)</Label>
