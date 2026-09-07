@@ -3,21 +3,23 @@
 import type { ReactNode } from "react";
 import type {
   ExtracurricularStatus,
+  FutureGoalStatus,
   SoftSkillStage,
   StudentProfile,
   VisionExamTarget,
   VisionExtracurricularGoal,
+  VisionFutureGoal,
   VisionMap,
   VisionProjectGoal,
   VisionProjectStage,
-  VisionQuarterCheckpoint,
   VisionSoftSkillGoal,
 } from "@/lib/types";
 import {
   EXTRACURRICULAR_STATUSES,
+  FUTURE_GOAL_STATUSES,
+  MAX_FUTURE_GOALS,
   MAX_VISION_PROJECTS,
   MAX_VISION_SOFT_SKILLS,
-  QUARTER_STATUSES,
   SOFT_SKILL_STAGE_LABELS,
   SOFT_SKILL_STAGES,
   VISION_PROJECT_STAGES,
@@ -253,16 +255,99 @@ export function VisionMapView({
     });
   };
 
-  const updateQuarter = (
-    id: VisionQuarterCheckpoint["id"],
-    patch: Partial<VisionQuarterCheckpoint>,
+  const updateFutureGoal = (
+    kind: "academic" | "other",
+    id: string,
+    patch: Partial<VisionFutureGoal>,
   ) => {
+    if (kind === "academic") {
+      commit({
+        futureAcademicGoals: vision.futureAcademicGoals.map((item) =>
+          item.id === id ? { ...item, ...patch } : item,
+        ),
+      });
+      return;
+    }
     commit({
-      quarters: vision.quarters.map((item) =>
+      futureOtherGoals: vision.futureOtherGoals.map((item) =>
         item.id === id ? { ...item, ...patch } : item,
       ),
     });
   };
+
+  const renderFutureGoalList = (
+    kind: "academic" | "other",
+    goals: VisionFutureGoal[],
+    title: string,
+  ) => (
+    <Card>
+      <CardBody className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="font-semibold text-navy">{title}</h3>
+          <span className="text-xs text-muted">
+            {goals.filter((g) => g.text.trim()).length}/{MAX_FUTURE_GOALS}
+          </span>
+        </div>
+        <div className="space-y-3">
+          {goals.map((goal, index) => (
+            <div
+              key={goal.id}
+              className="rounded-md border border-light-gray bg-[#fafafa] p-3"
+            >
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Цель {index + 1}
+                </p>
+                <StatusBadge
+                  label={goal.status}
+                  tone={
+                    goal.status === "Done"
+                      ? "done"
+                      : goal.status === "In Progress"
+                        ? "navy"
+                        : "muted"
+                  }
+                />
+              </div>
+              {editable ? (
+                <div className="space-y-2">
+                  <Input
+                    value={goal.text}
+                    onChange={(e) =>
+                      updateFutureGoal(kind, goal.id, { text: e.target.value })
+                    }
+                    placeholder={
+                      kind === "academic"
+                        ? "Например: GPA 4.0 / IELTS 7.5 / олимпиада…"
+                        : "Например: лидерство, проект, волонтёрство…"
+                    }
+                  />
+                  <Select
+                    value={goal.status}
+                    onChange={(e) =>
+                      updateFutureGoal(kind, goal.id, {
+                        status: e.target.value as FutureGoalStatus,
+                      })
+                    }
+                  >
+                    {FUTURE_GOAL_STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              ) : (
+                <p className="text-sm leading-relaxed text-navy">
+                  {goal.text.trim() || "—"}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardBody>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
@@ -859,66 +944,24 @@ export function VisionMapView({
         </Section>
       </ZoneBand>
 
-      {/* Quarterly checkpoints */}
+      {/* Future Review */}
       <ZoneBand tone="other">
         <Section
           number="5"
-          title="Квартальные чекпоинты"
-          description="Milestones Checkpoint — Q1–Q4 review"
+          title="Future Review"
+          description="Цели на год: 5 академических и 5 остальных"
         >
-          <div className="grid gap-3 md:grid-cols-2">
-            {vision.quarters.map((quarter) => (
-              <Card key={quarter.id}>
-                <CardBody className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="font-semibold text-navy">{quarter.label}</h3>
-                    <StatusBadge
-                      label={quarter.status}
-                      tone={
-                        quarter.status === "Done"
-                          ? "done"
-                          : quarter.status === "In progress"
-                            ? "navy"
-                            : "muted"
-                      }
-                    />
-                  </div>
-                  {editable ? (
-                    <>
-                      <FieldBlock label="Status">
-                        <Select
-                          value={quarter.status}
-                          onChange={(e) =>
-                            updateQuarter(quarter.id, {
-                              status: e.target
-                                .value as VisionQuarterCheckpoint["status"],
-                            })
-                          }
-                        >
-                          {QUARTER_STATUSES.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </Select>
-                      </FieldBlock>
-                      <FieldBlock label="Notes">
-                        <Textarea
-                          value={quarter.notes}
-                          onChange={(e) =>
-                            updateQuarter(quarter.id, {
-                              notes: e.target.value,
-                            })
-                          }
-                        />
-                      </FieldBlock>
-                    </>
-                  ) : (
-                    <ReadText value={quarter.notes} />
-                  )}
-                </CardBody>
-              </Card>
-            ))}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {renderFutureGoalList(
+              "academic",
+              vision.futureAcademicGoals,
+              "Академические цели (5)",
+            )}
+            {renderFutureGoalList(
+              "other",
+              vision.futureOtherGoals,
+              "Остальные цели (5)",
+            )}
           </div>
         </Section>
       </ZoneBand>

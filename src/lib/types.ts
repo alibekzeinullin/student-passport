@@ -132,10 +132,7 @@ export type SoftSkillStage = "starting" | "practicing" | "mastered";
 
 export type ExtracurricularStatus = "Planned" | "Active" | "Achieved";
 
-export type QuarterCheckpointStatus =
-  | "Not started"
-  | "In progress"
-  | "Done";
+export type FutureGoalStatus = "Planned" | "In Progress" | "Done";
 
 export interface VisionExamTarget {
   id: string;
@@ -167,11 +164,10 @@ export interface VisionExtracurricularGoal {
   status: ExtracurricularStatus;
 }
 
-export interface VisionQuarterCheckpoint {
-  id: "q1" | "q2" | "q3" | "q4";
-  label: string;
-  status: QuarterCheckpointStatus;
-  notes: string;
+export interface VisionFutureGoal {
+  id: string;
+  text: string;
+  status: FutureGoalStatus;
 }
 
 export interface VisionMap {
@@ -182,7 +178,10 @@ export interface VisionMap {
   projects: VisionProjectGoal[];
   softSkills: VisionSoftSkillGoal[];
   extracurriculars: VisionExtracurricularGoal[];
-  quarters: VisionQuarterCheckpoint[];
+  /** Future Review: до 5 академических целей на год */
+  futureAcademicGoals: VisionFutureGoal[];
+  /** Future Review: до 5 остальных целей на год */
+  futureOtherGoals: VisionFutureGoal[];
 }
 
 export interface StudentProfile {

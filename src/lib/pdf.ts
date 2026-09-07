@@ -552,29 +552,45 @@ function drawVisionMapPdf(
   }
 
   y += 3;
-  y = drawSectionTitle(doc, "6. Quarterly Checkpoints", y);
-  for (const quarter of vision.quarters) {
-    y = ensureSpace(doc, y, 12);
-    doc.setFont(FONT, "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(...NAVY);
+  y = drawSectionTitle(doc, "6. Future Review", y);
+
+  doc.setFont(FONT, "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...NAVY);
+  y = ensureSpace(doc, y, 8);
+  doc.text("Академические цели (5)", MARGIN, y);
+  y += 5;
+  doc.setFont(FONT, "normal");
+  doc.setTextColor(...TEXT);
+  for (const [index, goal] of vision.futureAcademicGoals.entries()) {
+    if (!goal.text.trim()) continue;
     y = drawWrappedText(
       doc,
-      `${quarter.label} — ${quarter.status}`,
+      `${index + 1}. ${goal.text.trim()} [${goal.status}]`,
       MARGIN,
       y,
       contentWidth,
     );
-    doc.setFont(FONT, "normal");
-    doc.setTextColor(...TEXT);
+  }
+
+  y += 3;
+  doc.setFont(FONT, "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...NAVY);
+  y = ensureSpace(doc, y, 8);
+  doc.text("Остальные цели (5)", MARGIN, y);
+  y += 5;
+  doc.setFont(FONT, "normal");
+  doc.setTextColor(...TEXT);
+  for (const [index, goal] of vision.futureOtherGoals.entries()) {
+    if (!goal.text.trim()) continue;
     y = drawWrappedText(
       doc,
-      quarter.notes.trim() || "—",
+      `${index + 1}. ${goal.text.trim()} [${goal.status}]`,
       MARGIN,
       y,
       contentWidth,
     );
-    y += 1;
   }
 
   return y;

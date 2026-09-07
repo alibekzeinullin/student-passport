@@ -14,5 +14,5 @@ export const REPORT_DESCRIPTIONS: Record<ReportType, string> = {
   monthly:
     "Ежемесячный обзор прогресса: посещаемость, soft/hard skills, портфолио, достижения и рефлексия.",
   vision:
-    "Goal Dashboard на учебный год: GPA, проекты, soft skills, extracurriculars и квартальные чекпоинты.",
+    "Goal Dashboard на учебный год: GPA, проекты, soft skills, extracurriculars и Future Review (5+5 целей).",
 };

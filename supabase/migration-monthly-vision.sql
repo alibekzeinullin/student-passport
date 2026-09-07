@@ -13,10 +13,18 @@ alter table public.students
     "projects": [],
     "softSkills": [],
     "extracurriculars": [],
-    "quarters": [
-      {"id":"q1","label":"Q1 Review (Осень)","status":"Not started","notes":""},
-      {"id":"q2","label":"Q2 Review (Зима)","status":"Not started","notes":""},
-      {"id":"q3","label":"Q3 Review (Весна)","status":"Not started","notes":""},
-      {"id":"q4","label":"Q4 Review (Лето / Финал)","status":"Not started","notes":""}
+    "futureAcademicGoals": [
+      {"id":"fac-1","text":"","status":"Planned"},
+      {"id":"fac-2","text":"","status":"Planned"},
+      {"id":"fac-3","text":"","status":"Planned"},
+      {"id":"fac-4","text":"","status":"Planned"},
+      {"id":"fac-5","text":"","status":"Planned"}
+    ],
+    "futureOtherGoals": [
+      {"id":"fot-1","text":"","status":"Planned"},
+      {"id":"fot-2","text":"","status":"Planned"},
+      {"id":"fot-3","text":"","status":"Planned"},
+      {"id":"fot-4","text":"","status":"Planned"},
+      {"id":"fot-5","text":"","status":"Planned"}
     ]
   }'::jsonb;

@@ -1,14 +1,14 @@
 import type {
   ExtracurricularStatus,
+  FutureGoalStatus,
   GpaRecord,
-  QuarterCheckpointStatus,
   SoftSkillStage,
   VisionExamTarget,
   VisionExtracurricularGoal,
+  VisionFutureGoal,
   VisionMap,
   VisionProjectGoal,
   VisionProjectStage,
-  VisionQuarterCheckpoint,
   VisionSoftSkillGoal,
 } from "@/lib/types";
 
@@ -37,14 +37,15 @@ export const EXTRACURRICULAR_STATUSES: ExtracurricularStatus[] = [
   "Achieved",
 ];
 
-export const QUARTER_STATUSES: QuarterCheckpointStatus[] = [
-  "Not started",
-  "In progress",
+export const FUTURE_GOAL_STATUSES: FutureGoalStatus[] = [
+  "Planned",
+  "In Progress",
   "Done",
 ];
 
 export const MAX_VISION_PROJECTS = 3;
 export const MAX_VISION_SOFT_SKILLS = 3;
+export const MAX_FUTURE_GOALS = 5;
 
 function uid(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -53,38 +54,27 @@ function uid(prefix: string) {
 export function defaultAcademicYear(date = new Date()): string {
   const year = date.getFullYear();
   const month = date.getMonth();
-  // academic year typically starts in August/September
   if (month >= 7) return `${year}–${year + 1}`;
   return `${year - 1}–${year}`;
 }
 
-export function createDefaultQuarters(): VisionQuarterCheckpoint[] {
-  return [
-    {
-      id: "q1",
-      label: "Q1 Review (Осень)",
-      status: "Not started",
-      notes: "",
-    },
-    {
-      id: "q2",
-      label: "Q2 Review (Зима)",
-      status: "Not started",
-      notes: "",
-    },
-    {
-      id: "q3",
-      label: "Q3 Review (Весна)",
-      status: "Not started",
-      notes: "",
-    },
-    {
-      id: "q4",
-      label: "Q4 Review (Лето / Финал)",
-      status: "Not started",
-      notes: "",
-    },
-  ];
+export function createEmptyFutureGoal(
+  prefix: string,
+  index: number,
+): VisionFutureGoal {
+  return {
+    id: `${prefix}-${index + 1}`,
+    text: "",
+    status: "Planned",
+  };
+}
+
+export function createDefaultFutureGoals(
+  prefix: "fac" | "fot",
+): VisionFutureGoal[] {
+  return Array.from({ length: MAX_FUTURE_GOALS }, (_, index) =>
+    createEmptyFutureGoal(prefix, index),
+  );
 }
 
 export function createEmptyVisionExamTarget(): VisionExamTarget {
@@ -134,7 +124,8 @@ export function createEmptyVisionMap(): VisionMap {
     projects: [],
     softSkills: [],
     extracurriculars: [],
-    quarters: createDefaultQuarters(),
+    futureAcademicGoals: createDefaultFutureGoals("fac"),
+    futureOtherGoals: createDefaultFutureGoals("fot"),
   };
 }
 
@@ -174,18 +165,35 @@ function normalizeExtraStatus(value: unknown): ExtracurricularStatus {
     : "Planned";
 }
 
-function normalizeQuarterStatus(value: unknown): QuarterCheckpointStatus {
-  return QUARTER_STATUSES.includes(value as QuarterCheckpointStatus)
-    ? (value as QuarterCheckpointStatus)
-    : "Not started";
+function normalizeFutureStatus(value: unknown): FutureGoalStatus {
+  return FUTURE_GOAL_STATUSES.includes(value as FutureGoalStatus)
+    ? (value as FutureGoalStatus)
+    : "Planned";
 }
 
-/** Поддерживает новый формат и старый (longTermVision / milestones). */
+function normalizeFutureGoals(
+  raw: unknown,
+  prefix: "fac" | "fot",
+): VisionFutureGoal[] {
+  const defaults = createDefaultFutureGoals(prefix);
+  const items = asArray<Record<string, unknown>>(raw).slice(0, MAX_FUTURE_GOALS);
+
+  return defaults.map((def, index) => {
+    const found = items[index];
+    if (!found) return def;
+    return {
+      id: typeof found.id === "string" ? found.id : def.id,
+      text: typeof found.text === "string" ? found.text : "",
+      status: normalizeFutureStatus(found.status),
+    };
+  });
+}
+
+/** Поддерживает новый формат и старый (longTermVision / quarters). */
 export function normalizeVisionMap(raw: unknown): VisionMap {
   const empty = createEmptyVisionMap();
   if (!isRecord(raw)) return empty;
 
-  // legacy → yearlyFocus
   const yearlyFocus =
     typeof raw.yearlyFocus === "string"
       ? raw.yearlyFocus
@@ -245,19 +253,6 @@ export function normalizeVisionMap(raw: unknown): VisionMap {
     status: normalizeExtraStatus(item.status),
   }));
 
-  const defaults = createDefaultQuarters();
-  const rawQuarters = asArray<Record<string, unknown>>(raw.quarters);
-  const quarters = defaults.map((def) => {
-    const found = rawQuarters.find((q) => q.id === def.id);
-    if (!found) return def;
-    return {
-      ...def,
-      label: typeof found.label === "string" && found.label ? found.label : def.label,
-      status: normalizeQuarterStatus(found.status),
-      notes: typeof found.notes === "string" ? found.notes : "",
-    };
-  });
-
   return {
     academicYear,
     yearlyFocus,
@@ -266,7 +261,11 @@ export function normalizeVisionMap(raw: unknown): VisionMap {
     projects,
     softSkills,
     extracurriculars,
-    quarters,
+    futureAcademicGoals: normalizeFutureGoals(
+      raw.futureAcademicGoals,
+      "fac",
+    ),
+    futureOtherGoals: normalizeFutureGoals(raw.futureOtherGoals, "fot"),
   };
 }
 
@@ -299,9 +298,10 @@ function extracurricularProgress(status: ExtracurricularStatus): number {
   return 0;
 }
 
-function quarterProgress(status: QuarterCheckpointStatus): number {
-  if (status === "Done") return 100;
-  if (status === "In progress") return 50;
+function futureGoalProgress(goal: VisionFutureGoal): number | null {
+  if (!goal.text.trim()) return null;
+  if (goal.status === "Done") return 100;
+  if (goal.status === "In Progress") return 50;
   return 0;
 }
 
@@ -338,10 +338,16 @@ export function calculateYearlyProgress(
     );
   }
 
-  if (vision.quarters.length > 0) {
+  const futureScores = [
+    ...vision.futureAcademicGoals,
+    ...vision.futureOtherGoals,
+  ]
+    .map(futureGoalProgress)
+    .filter((value): value is number => value !== null);
+
+  if (futureScores.length > 0) {
     parts.push(
-      vision.quarters.reduce((sum, q) => sum + quarterProgress(q.status), 0) /
-        vision.quarters.length,
+      futureScores.reduce((sum, value) => sum + value, 0) / futureScores.length,
     );
   }
 
