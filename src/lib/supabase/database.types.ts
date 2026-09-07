@@ -47,6 +47,8 @@ export interface DbStudent {
   skills: unknown[];
   growth_zones: unknown[];
   monthly_focuses: unknown[];
+  monthly_progress_reviews?: unknown[] | null;
+  vision_map?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

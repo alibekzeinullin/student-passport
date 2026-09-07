@@ -36,6 +36,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 3. Вставьте весь SQL и нажмите **Run**
 4. Должно пройти без ошибок (зелёная галочка)
 
+Если проект уже был создан раньше, дополнительно выполните:
+- `supabase/migration-monthly-vision.sql` (Monthly Progress Review и Vision Map)
+- `supabase/migration-delete-student.sql` (удаление учеников админом)
+
 ## Шаг 5. Auth настройки (рекомендуется для локальной разработки)
 
 1. **Authentication** → **Providers** → Email — включён

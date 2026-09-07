@@ -102,6 +102,89 @@ export interface GrowthZone {
   text: string;
 }
 
+export interface MonthlyProgressReview {
+  id: string;
+  /** Например: «Сентябрь 2026» */
+  monthYear: string;
+  individualSessionsAttended: number | null;
+  groupSessionsAttended: number | null;
+  homeworkCompletion: number;
+  personalFocus: string;
+  personalProgressNotes: string;
+  academicStatus: string;
+  problemSubjectsProgress: string;
+  academicSkills: string;
+  mainProjectProgress: string;
+  parallelActivities: string;
+  highlights: string;
+  growthAreas: string;
+  mentorFeedback: string;
+  studentReflection: string;
+}
+
+export type VisionProjectStage =
+  | "Idea"
+  | "In Progress"
+  | "Testing"
+  | "Completed";
+
+export type SoftSkillStage = "starting" | "practicing" | "mastered";
+
+export type ExtracurricularStatus = "Planned" | "Active" | "Achieved";
+
+export type QuarterCheckpointStatus =
+  | "Not started"
+  | "In progress"
+  | "Done";
+
+export interface VisionExamTarget {
+  id: string;
+  name: string;
+  targetScore: string;
+  deadline: string;
+}
+
+export interface VisionProjectGoal {
+  id: string;
+  title: string;
+  description: string;
+  stage: VisionProjectStage;
+  progress: number;
+  deliverable: string;
+}
+
+export interface VisionSoftSkillGoal {
+  id: string;
+  name: string;
+  stage: SoftSkillStage;
+  rating: number;
+}
+
+export interface VisionExtracurricularGoal {
+  id: string;
+  goal: string;
+  plannedDate: string;
+  status: ExtracurricularStatus;
+}
+
+export interface VisionQuarterCheckpoint {
+  id: "q1" | "q2" | "q3" | "q4";
+  label: string;
+  status: QuarterCheckpointStatus;
+  notes: string;
+}
+
+export interface VisionMap {
+  academicYear: string;
+  yearlyFocus: string;
+  targetGpa: number | null;
+  examTargets: VisionExamTarget[];
+  projects: VisionProjectGoal[];
+  softSkills: VisionSoftSkillGoal[];
+  extracurriculars: VisionExtracurricularGoal[];
+  quarters: VisionQuarterCheckpoint[];
+}
+
 export interface StudentProfile {
   id: string;
   firstName: string;
@@ -125,6 +208,8 @@ export interface StudentProfile {
   skills: Skill[];
   growthZones: GrowthZone[];
   monthlyFocuses: MonthlyFocus[];
+  monthlyProgressReviews: MonthlyProgressReview[];
+  visionMap: VisionMap;
 }
 
 export interface AuthUser {
@@ -169,6 +254,8 @@ export interface DashboardPermissions {
   canEditSprintMeta: boolean;
   canToggleSprintCompletion: boolean;
   canEditSprintArtifacts: boolean;
+  canEditMonthlyProgress: boolean;
+  canEditVisionMap: boolean;
   canDownloadPdf: boolean;
   canGenerateParentLink: boolean;
   isReadOnly: boolean;

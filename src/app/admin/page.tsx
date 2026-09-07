@@ -3,27 +3,155 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { RequireAuth } from "@/components/RequireAuth";
+import { useAuth } from "@/context/AuthContext";
 import { useStudents } from "@/context/StudentsContext";
+import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Label, Select } from "@/components/ui/Field";
 import { TableScroll } from "@/components/ui/TableScroll";
 
 const ALL = "all";
 
+type SortKey = "name" | "class" | "school" | "gpa" | "sat";
+type SortDir = "asc" | "desc";
+
+function compareText(a: string, b: string) {
+  return a.localeCompare(b, "ru", { sensitivity: "base", numeric: true });
+}
+
+function SortHeader({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: SortDir;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 font-semibold uppercase tracking-wide text-muted hover:text-navy"
+    >
+      {label}
+      <span className="text-[10px]" aria-hidden>
+        {active ? (dir === "asc" ? "▲" : "▼") : "◇"}
+      </span>
+    </button>
+  );
+}
+
 export default function AdminPage() {
-  const { students, loading } = useStudents();
+  const { user } = useAuth();
+  const { students, loading, deleteStudent } = useStudents();
   const [classFilter, setClassFilter] = useState<string>(ALL);
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   const classes = useMemo(
-    () => [...new Set(students.map((s) => s.className))].sort(),
+    () => [...new Set(students.map((s) => s.className))].sort(compareText),
     [students],
   );
 
   const filtered = useMemo(() => {
-    return students.filter(
+    const list = students.filter(
       (s) => classFilter === ALL || s.className === classFilter,
     );
-  }, [students, classFilter]);
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      switch (sortKey) {
+        case "class":
+          return (
+            dir * compareText(a.className, b.className) ||
+            dir *
+              compareText(
+                `${a.lastName} ${a.firstName}`,
+                `${b.lastName} ${b.firstName}`,
+              )
+          );
+        case "school":
+          return (
+            dir * compareText(a.school, b.school) ||
+            dir *
+              compareText(
+                `${a.lastName} ${a.firstName}`,
+                `${b.lastName} ${b.firstName}`,
+              )
+          );
+        case "gpa": {
+          const ag = a.gpa.start ?? -1;
+          const bg = b.gpa.start ?? -1;
+          return dir * (ag - bg);
+        }
+        case "sat": {
+          const as = a.testScores.sat ?? -1;
+          const bs = b.testScores.sat ?? -1;
+          return dir * (as - bs);
+        }
+        case "name":
+        default:
+          return (
+            dir *
+            compareText(
+              `${a.lastName} ${a.firstName}`,
+              `${b.lastName} ${b.firstName}`,
+            )
+          );
+      }
+    });
+  }, [students, classFilter, sortKey, sortDir]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir("asc");
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    if (user?.studentId && user.studentId === id) {
+      setError(
+        "Это профиль, привязанный к вашему админ-аккаунту. Сначала отвяжите его в SQL, иначе удаление снимет и ваш вход.",
+      );
+      return;
+    }
+
+    const ok = window.confirm(
+      `Удалить профиль «${name}»?\n\nБудут удалены данные паспорта и аккаунт ученика. Это нельзя отменить.`,
+    );
+    if (!ok) return;
+
+    setError("");
+    setDeletingId(id);
+    try {
+      await deleteStudent(id);
+    } catch (err) {
+      console.error(err);
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "";
+      if (message.toLowerCase().includes("admin")) {
+        setError(
+          "Нельзя удалить профиль, привязанный к админу. Сначала отвяжите student_id у своего профиля.",
+        );
+      } else {
+        setError(
+          "Не удалось удалить профиль. Выполните supabase/migration-delete-student.sql в SQL Editor и попробуйте снова.",
+        );
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <RequireAuth role="admin">
@@ -34,29 +162,63 @@ export default function AdminPage() {
           </p>
           <h2 className="text-2xl font-semibold text-navy">Все ученики</h2>
           <p className="mt-1 text-sm text-muted">
-            Фильтрация по классам. Откройте профиль для редактирования.
+            Фильтр по классу, сортировка по колонкам, удаление профилей.
+            Админ-аккаунт при удалении учеников не затрагивается.
           </p>
         </div>
 
+        {error ? (
+          <div className="rounded-lg border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
+            {error}
+          </div>
+        ) : null}
+
         <Card>
           <CardHeader
-            title="Фильтры"
+            title="Фильтры и сортировка"
             subtitle={`Показано ${filtered.length} из ${students.length}`}
           />
           <CardBody>
-            <div className="max-w-sm">
-              <Label>Класс</Label>
-              <Select
-                value={classFilter}
-                onChange={(e) => setClassFilter(e.target.value)}
-              >
-                <option value={ALL}>Все классы</option>
-                {classes.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </Select>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label>Класс</Label>
+                <Select
+                  value={classFilter}
+                  onChange={(e) => setClassFilter(e.target.value)}
+                >
+                  <option value={ALL}>Все классы</option>
+                  {classes.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label>Сортировка</Label>
+                <Select
+                  value={`${sortKey}:${sortDir}`}
+                  onChange={(e) => {
+                    const [key, dir] = e.target.value.split(":") as [
+                      SortKey,
+                      SortDir,
+                    ];
+                    setSortKey(key);
+                    setSortDir(dir);
+                  }}
+                >
+                  <option value="name:asc">Имя А → Я</option>
+                  <option value="name:desc">Имя Я → А</option>
+                  <option value="class:asc">Класс А → Я</option>
+                  <option value="class:desc">Класс Я → А</option>
+                  <option value="school:asc">Школа А → Я</option>
+                  <option value="school:desc">Школа Я → А</option>
+                  <option value="gpa:desc">GPA по убыванию</option>
+                  <option value="gpa:asc">GPA по возрастанию</option>
+                  <option value="sat:desc">SAT по убыванию</option>
+                  <option value="sat:asc">SAT по возрастанию</option>
+                </Select>
+              </div>
             </div>
           </CardBody>
         </Card>
@@ -74,46 +236,114 @@ export default function AdminPage() {
               </p>
             ) : (
               <TableScroll>
-              <table className="min-w-[36rem] w-full text-left text-sm">
-                <thead className="bg-light-gray/40 text-xs uppercase tracking-wide text-muted">
-                  <tr>
-                    <th className="px-3 py-3 font-semibold sm:px-5">Ученик</th>
-                    <th className="px-3 py-3 font-semibold sm:px-5">Класс</th>
-                    <th className="px-3 py-3 font-semibold sm:px-5">GPA (старт)</th>
-                    <th className="px-3 py-3 font-semibold sm:px-5">SAT</th>
-                    <th className="px-3 py-3 font-semibold sm:px-5" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((student) => (
-                    <tr
-                      key={student.id}
-                      className="border-t border-light-gray hover:bg-gold/10"
-                    >
-                      <td className="px-3 py-3 font-medium text-navy sm:px-5">
-                        {student.lastName} {student.firstName}
-                      </td>
-                      <td className="px-3 py-3 text-navy/80 sm:px-5">
-                        {student.className}
-                      </td>
-                      <td className="px-3 py-3 text-navy/80 sm:px-5">
-                        {student.gpa.start?.toFixed(2) ?? "—"}
-                      </td>
-                      <td className="px-3 py-3 text-navy/80 sm:px-5">
-                        {student.testScores.sat ?? "—"}
-                      </td>
-                      <td className="px-3 py-3 text-right sm:px-5">
-                        <Link
-                          href={`/admin/students/${student.id}`}
-                          className="text-sm font-medium text-burgundy underline-offset-2 hover:underline"
-                        >
-                          Открыть
-                        </Link>
-                      </td>
+                <table className="min-w-[44rem] w-full text-left text-sm">
+                  <thead className="bg-light-gray/40 text-xs tracking-wide text-muted">
+                    <tr>
+                      <th className="px-3 py-3 sm:px-5">
+                        <SortHeader
+                          label="Ученик"
+                          active={sortKey === "name"}
+                          dir={sortDir}
+                          onClick={() => toggleSort("name")}
+                        />
+                      </th>
+                      <th className="px-3 py-3 sm:px-5">
+                        <SortHeader
+                          label="Класс"
+                          active={sortKey === "class"}
+                          dir={sortDir}
+                          onClick={() => toggleSort("class")}
+                        />
+                      </th>
+                      <th className="px-3 py-3 sm:px-5">
+                        <SortHeader
+                          label="Школа"
+                          active={sortKey === "school"}
+                          dir={sortDir}
+                          onClick={() => toggleSort("school")}
+                        />
+                      </th>
+                      <th className="px-3 py-3 sm:px-5">
+                        <SortHeader
+                          label="GPA"
+                          active={sortKey === "gpa"}
+                          dir={sortDir}
+                          onClick={() => toggleSort("gpa")}
+                        />
+                      </th>
+                      <th className="px-3 py-3 sm:px-5">
+                        <SortHeader
+                          label="SAT"
+                          active={sortKey === "sat"}
+                          dir={sortDir}
+                          onClick={() => toggleSort("sat")}
+                        />
+                      </th>
+                      <th className="px-3 py-3 sm:px-5" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filtered.map((student) => {
+                      const fullName =
+                        `${student.lastName} ${student.firstName}`.trim();
+                      const isOwnLinked =
+                        Boolean(user?.studentId) &&
+                        user?.studentId === student.id;
+                      return (
+                        <tr
+                          key={student.id}
+                          className="border-t border-light-gray hover:bg-gold/10"
+                        >
+                          <td className="px-3 py-3 font-medium text-navy sm:px-5">
+                            {fullName}
+                            {isOwnLinked ? (
+                              <span className="mt-1 block text-xs font-normal text-burgundy">
+                                связан с вашим админ-аккаунтом
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-3 text-navy/80 sm:px-5">
+                            {student.className}
+                          </td>
+                          <td className="px-3 py-3 text-navy/80 sm:px-5">
+                            {student.school || "—"}
+                          </td>
+                          <td className="px-3 py-3 text-navy/80 sm:px-5">
+                            {student.gpa.start?.toFixed(2) ?? "—"}
+                          </td>
+                          <td className="px-3 py-3 text-navy/80 sm:px-5">
+                            {student.testScores.sat ?? "—"}
+                          </td>
+                          <td className="px-3 py-3 sm:px-5">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              <Link
+                                href={`/admin/students/${student.id}`}
+                                className="text-sm font-medium text-burgundy underline-offset-2 hover:underline"
+                              >
+                                Открыть
+                              </Link>
+                              <Button
+                                type="button"
+                                variant="danger"
+                                className="!px-2.5 !py-1.5 text-xs"
+                                disabled={
+                                  deletingId === student.id || isOwnLinked
+                                }
+                                onClick={() =>
+                                  void handleDelete(student.id, fullName)
+                                }
+                              >
+                                {deletingId === student.id
+                                  ? "Удаление…"
+                                  : "Удалить"}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </TableScroll>
             )}
           </CardBody>

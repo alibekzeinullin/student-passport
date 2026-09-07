@@ -4,7 +4,6 @@ import type { AccessMode, StudentProfile } from "@/lib/types";
 import { getDashboardPermissions } from "@/lib/permissions";
 import { useStudents } from "@/context/StudentsContext";
 import { ProfileHeader } from "@/components/ProfileHeader";
-import { MentorSummaryBlock } from "@/components/MentorSummaryBlock";
 import { ScoreCircles } from "@/components/ScoreCircles";
 import { GpaTable } from "@/components/GpaTable";
 import { TestScoresCard } from "@/components/TestScoresCard";
@@ -15,7 +14,6 @@ import { BooksTable } from "@/components/BooksTable";
 import { SkillsTable } from "@/components/SkillsTable";
 import { GrowthZonesBlock } from "@/components/GrowthZonesBlock";
 import Link from "next/link";
-import { MonthlyFocuses } from "@/components/MonthlyFocuses";
 import { ParentAccessLinkButton } from "@/components/ParentAccessLinkButton";
 import { Section } from "@/components/ui/Section";
 import { ZoneBand } from "@/components/ui/ZoneBand";
@@ -89,24 +87,31 @@ export function StudentDashboard({
             {accessMode === "admin" ? (
               <>
                 <Link
-                  href={`/admin/students/${studentId}/short`}
+                  href={`/admin/students/${studentId}/profile`}
                   className="text-center text-sm font-medium text-burgundy underline-offset-2 hover:underline sm:text-right"
                 >
-                  Краткосрочный отчёт →
+                  Student Profile →
                 </Link>
                 <Link
-                  href={`/admin/students/${studentId}/long`}
+                  href={`/admin/students/${studentId}/monthly`}
                   className="text-center text-sm font-medium text-burgundy underline-offset-2 hover:underline sm:text-right"
                 >
-                  Долгосрочный отчёт →
+                  Monthly Progress Review →
+                </Link>
+                <Link
+                  href={`/admin/students/${studentId}/vision`}
+                  className="text-center text-sm font-medium text-burgundy underline-offset-2 hover:underline sm:text-right"
+                >
+                  Vision Map →
                 </Link>
               </>
             ) : null}
-            {perms.canGenerateParentLink ? (
-              <ParentAccessLinkButton studentId={studentId} />
-            ) : null}
           </div>
         </div>
+
+        {perms.canGenerateParentLink ? (
+          <ParentAccessLinkButton studentId={studentId} />
+        ) : null}
       </div>
 
       <ZoneBand tone="other">
@@ -117,16 +122,6 @@ export function StudentDashboard({
           onChange={
             perms.canEditHeader || perms.canEditMentorNote
               ? patchStudent
-              : undefined
-          }
-        />
-
-        <MentorSummaryBlock
-          summary={student.mentorSummary}
-          editable={perms.canEditMentorSummary}
-          onChange={
-            perms.canEditMentorSummary
-              ? (mentorSummary) => patchStudent({ mentorSummary })
               : undefined
           }
         />
@@ -180,24 +175,8 @@ export function StudentDashboard({
       <ZoneBand tone="other">
         <Section
           number="2"
-          title="Личные ежемесячные фокусы"
-          description="Индивидуальные приоритеты ученика на каждый месяц"
-        >
-          <MonthlyFocuses
-            focuses={student.monthlyFocuses}
-            editable={perms.canEditFocuses}
-            onChange={
-              perms.canEditFocuses
-                ? (monthlyFocuses) => patchStudent({ monthlyFocuses })
-                : undefined
-            }
-          />
-        </Section>
-
-        <Section
-          number="3"
           title="Спринты по групповой работе"
-          description="Задачи группового спринта и артефакты (Notion, Docs, Drive)"
+          description="Общие спринты программы. Список тем может меняться."
         >
           <SprintTasksTable
             tasks={student.sprintTasks}
@@ -217,7 +196,7 @@ export function StudentDashboard({
 
       <ZoneBand tone="growth">
         <Section
-          number="4"
+          number="3"
           title={
             <TermLabel term="Extracurricular">Внеучебная деятельность</TermLabel>
           }
@@ -234,7 +213,11 @@ export function StudentDashboard({
           />
         </Section>
 
-        <Section number="5" title="Книги" description="Книги к прочтению">
+        <Section
+          number="4"
+          title="Книги"
+          description="Рекомендации программы и личный список чтения"
+        >
           <BooksTable
             books={student.books}
             editable={perms.canEditBooks}
@@ -246,7 +229,7 @@ export function StudentDashboard({
           />
         </Section>
 
-        <Section number="6" title="Навыки" description="Навыки для освоения">
+        <Section number="5" title="Навыки" description="Навыки для освоения">
           <SkillsTable
             skills={student.skills}
             editable={perms.canEditSkills}
@@ -261,7 +244,7 @@ export function StudentDashboard({
 
       <ZoneBand tone="other">
         <Section
-          number="7"
+          number="6"
           title="Зоны роста"
           description="Что нужно улучшить — заполняет ментор"
         >

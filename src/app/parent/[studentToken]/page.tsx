@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useStudents } from "@/context/StudentsContext";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
-import { REPORT_DESCRIPTIONS, REPORT_LABELS } from "@/lib/report-types";
+import {
+  REPORT_DESCRIPTIONS,
+  REPORT_LABELS,
+  REPORT_TYPES,
+} from "@/lib/report-types";
 import type { StudentProfile } from "@/lib/types";
 
 export default function ParentHubPage({
@@ -60,6 +64,10 @@ export default function ParentHubPage({
 
   return (
     <div className="mx-auto min-w-0 max-w-3xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8">
+      <div className="rounded-lg border border-gold/50 bg-gold/15 px-4 py-3 text-center text-sm text-navy">
+        Режим родителя / гостя — только просмотр. Редактирование недоступно.
+      </div>
+
       <div className="text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-burgundy">
           Родитель / Гость
@@ -68,12 +76,13 @@ export default function ParentHubPage({
           {student.lastName} {student.firstName}
         </h2>
         <p className="mt-2 text-sm text-muted">
-          Выберите отчёт: краткосрочный — для ежемесячных обновлений, долгосрочный — полный паспорт.
+          Откройте любой раздел: полный паспорт, ежемесячный обзор или карту целей
+          на год.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {(["short", "long"] as const).map((type) => (
+      <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
+        {REPORT_TYPES.map((type) => (
           <Link key={type} href={`${base}/${type}`} className="group block">
             <Card className="h-full transition group-hover:border-burgundy/40 group-hover:shadow-md">
               <CardBody className="space-y-3">

@@ -6,6 +6,7 @@ import type {
   GpaRecord,
   MentorSummary,
   MonthlyFocus,
+  MonthlyProgressReview,
   Project,
   Skill,
   SprintTask,
@@ -14,6 +15,8 @@ import type {
 } from "@/lib/types";
 import type { DbStudent } from "@/lib/supabase/database.types";
 import { ensureDefaultSkills } from "@/lib/default-skills";
+import { ensureDefaultSprintTasks } from "@/lib/default-sprints";
+import { normalizeVisionMap } from "@/lib/vision-map";
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -23,6 +26,10 @@ export function mapDbStudentToProfile(row: DbStudent): StudentProfile {
   const skills = ensureDefaultSkills(
     row.id,
     asArray<Skill>(row.skills),
+  );
+  const sprintTasks = ensureDefaultSprintTasks(
+    row.id,
+    asArray<SprintTask>(row.sprint_tasks),
   );
 
   return {
@@ -56,13 +63,17 @@ export function mapDbStudentToProfile(row: DbStudent): StudentProfile {
       cambridgeTest: row.test_scores?.cambridgeTest ?? null,
       cambridgeTestTarget: row.test_scores?.cambridgeTestTarget ?? null,
     },
-    sprintTasks: asArray<SprintTask>(row.sprint_tasks),
+    sprintTasks,
     academicActivities: asArray<AcademicActivity>(row.academic_activities),
     projects: asArray<Project>(row.projects),
     books: asArray<Book>(row.books),
     skills,
     growthZones: asArray<GrowthZone>(row.growth_zones),
     monthlyFocuses: asArray<MonthlyFocus>(row.monthly_focuses),
+    monthlyProgressReviews: asArray<MonthlyProgressReview>(
+      row.monthly_progress_reviews,
+    ),
+    visionMap: normalizeVisionMap(row.vision_map),
   };
 }
 
@@ -107,6 +118,12 @@ export function mapProfileToDbPatch(
   if (patch.growthZones !== undefined) db.growth_zones = patch.growthZones;
   if (patch.monthlyFocuses !== undefined) {
     db.monthly_focuses = patch.monthlyFocuses;
+  }
+  if (patch.monthlyProgressReviews !== undefined) {
+    db.monthly_progress_reviews = patch.monthlyProgressReviews;
+  }
+  if (patch.visionMap !== undefined) {
+    db.vision_map = normalizeVisionMap(patch.visionMap) as unknown as DbStudent["vision_map"];
   }
 
   return db;

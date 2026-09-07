@@ -1,4 +1,9 @@
 import { createDefaultSkills, ensureDefaultSkills } from "./default-skills";
+import {
+  createDefaultSprintTasks,
+  ensureDefaultSprintTasks,
+} from "./default-sprints";
+import { createEmptyVisionMap, normalizeVisionMap } from "./vision-map";
 import type { StudentProfile, StudentRegistrationInput } from "./types";
 
 function randomToken() {
@@ -51,13 +56,15 @@ export function buildStudentFromRegistration(
       cambridgeTest: null,
       cambridgeTestTarget: null,
     },
-    sprintTasks: [],
+    sprintTasks: createDefaultSprintTasks(id),
     academicActivities: [],
     projects: [],
     books: [],
     skills: createDefaultSkills(id),
     growthZones: [],
     monthlyFocuses: [],
+    monthlyProgressReviews: [],
+    visionMap: createEmptyVisionMap(),
   };
 }
 
@@ -98,13 +105,15 @@ export function normalizeStudentProfile(
       cambridgeTest: input.testScores?.cambridgeTest ?? null,
       cambridgeTestTarget: input.testScores?.cambridgeTestTarget ?? null,
     },
-    sprintTasks: input.sprintTasks ?? [],
+    sprintTasks: ensureDefaultSprintTasks(id, input.sprintTasks ?? []),
     academicActivities: input.academicActivities ?? [],
     projects: input.projects ?? [],
     books: input.books ?? [],
     skills: ensureDefaultSkills(id, input.skills ?? []),
     growthZones: input.growthZones ?? [],
     monthlyFocuses: input.monthlyFocuses ?? [],
+    monthlyProgressReviews: input.monthlyProgressReviews ?? [],
+    visionMap: normalizeVisionMap(input.visionMap ?? createEmptyVisionMap()),
     parentAccessToken: input.parentAccessToken ?? randomToken(),
     mentorNote: input.mentorNote ?? "",
     attendanceScore:

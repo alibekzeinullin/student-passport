@@ -39,6 +39,7 @@ interface StudentsContextValue {
     sprintTasks: SprintTask[],
   ) => Promise<void>;
   regenerateParentToken: (studentId: string) => Promise<string>;
+  deleteStudent: (studentId: string) => Promise<void>;
   refreshStudents: () => Promise<void>;
 }
 
@@ -200,6 +201,37 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const deleteStudent = useCallback(
+    async (studentId: string) => {
+      if (!isSupabaseConfigured()) {
+        throw new Error("Supabase не настроен");
+      }
+
+      const previous = students;
+      setStudents((prev) => prev.filter((s) => s.id !== studentId));
+
+      const supabase = createClient();
+      const { error: rpcError } = await supabase.rpc("delete_student_as_admin", {
+        p_student_id: studentId,
+      });
+
+      if (!rpcError) return;
+
+      // Fallback: прямое удаление строки, если RPC ещё не применён в БД
+      const { error } = await supabase
+        .from("students")
+        .delete()
+        .eq("id", studentId);
+
+      if (error) {
+        console.error("Failed to delete student", rpcError ?? error);
+        setStudents(previous);
+        throw error;
+      }
+    },
+    [students],
+  );
+
   const value = useMemo(
     () => ({
       students,
@@ -211,6 +243,7 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
       updateProjects,
       updateSprintTasks,
       regenerateParentToken,
+      deleteStudent,
       refreshStudents,
     }),
     [
@@ -223,6 +256,7 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
       updateProjects,
       updateSprintTasks,
       regenerateParentToken,
+      deleteStudent,
       refreshStudents,
     ],
   );

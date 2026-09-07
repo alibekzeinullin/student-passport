@@ -1,4 +1,6 @@
 import { createDefaultSkills } from "./default-skills";
+import { createDefaultSprintTasks } from "./default-sprints";
+import { createEmptyVisionMap } from "./vision-map";
 import type { AuthAccount, AuthUser, StudentProfile } from "./types";
 
 /** Демо-токены для входа родителя: /parent/[token] */
@@ -41,26 +43,7 @@ export const DEMO_AUTH_ACCOUNTS: AuthAccount[] = [
   },
 ];
 
-const defaultSprints = (prefix: string) => [
-  {
-    id: `${prefix}-sp1`,
-    sprintLabel: "Спринт 1 — Август",
-    title: "Собрать портфолио достижений в Notion",
-    completed: true,
-    artifactNotion: "https://notion.so/demo-portfolio",
-    artifactDocs: "",
-    artifactDrive: "",
-  },
-  {
-    id: `${prefix}-sp2`,
-    sprintLabel: "Спринт 2 — Сентябрь",
-    title: "Подготовить draft personal statement",
-    completed: false,
-    artifactNotion: "",
-    artifactDocs: "",
-    artifactDrive: "",
-  },
-];
+const defaultSprints = (prefix: string) => createDefaultSprintTasks(prefix);
 
 export const INITIAL_STUDENTS: StudentProfile[] = [
   {
@@ -170,6 +153,129 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
           "Закрыть пробелы по GPA и собрать план олимпиад на семестр.",
       },
     ],
+    monthlyProgressReviews: [
+      {
+        id: "mpr1",
+        monthYear: "Август 2026",
+        individualSessionsAttended: 2,
+        groupSessionsAttended: 2,
+        homeworkCompletion: 90,
+        personalFocus: "Тайм-менеджмент и самодисциплина",
+        personalProgressNotes:
+          "Стабильнее планирует неделю, реже срывает дедлайны по домашним заданиям.",
+        academicStatus: "GPA стабилен, нагрузка по IB manageable.",
+        problemSubjectsProgress:
+          "Math HL — усилил практику; English — нужно больше reading stamina.",
+        academicSkills: "Эссе, исследовательские навыки",
+        mainProjectProgress:
+          "EduMentor Platform: собрал MVP онбординга и первую когорту пользователей.",
+        parallelActivities: "Climate Data Club доклад, хакатон AI for Education",
+        highlights: "Финал республиканской олимпиады; 2 место на хакатоне.",
+        growthAreas: "SAT Reading regularity; глубина одного флагманского проекта.",
+        mentorFeedback:
+          "Сильный месяц. Держать фокус на качестве personal statement.",
+        studentReflection:
+          "Чувствую прогресс в организации времени, хочу больше уверенности в writing.",
+      },
+    ],
+    visionMap: {
+      academicYear: "2026–2027",
+      yearlyFocus:
+        "Стать сильнее в academics и собрать флагманский EdTech-проект к mid-year.",
+      targetGpa: 4.0,
+      examTargets: [
+        {
+          id: "exam1",
+          name: "SAT",
+          targetScore: "1500",
+          deadline: "Март 2027",
+        },
+        {
+          id: "exam2",
+          name: "IELTS",
+          targetScore: "7.5",
+          deadline: "Январь 2027",
+        },
+      ],
+      projects: [
+        {
+          id: "vp1",
+          title: "EduMentor Platform",
+          description: "Платформа менторства для старшеклассников.",
+          stage: "In Progress",
+          progress: 45,
+          deliverable: "MVP + 50 пользователей",
+        },
+        {
+          id: "vp2",
+          title: "Climate Data Club",
+          description: "Исследование качества воздуха в Алматы.",
+          stage: "Testing",
+          progress: 70,
+          deliverable: "Доклад + презентация для школ",
+        },
+      ],
+      softSkills: [
+        {
+          id: "vs1",
+          name: "Публичные выступления",
+          stage: "practicing",
+          rating: 3,
+        },
+        {
+          id: "vs2",
+          name: "Тайм-менеджмент",
+          stage: "practicing",
+          rating: 4,
+        },
+        {
+          id: "vs3",
+          name: "Нетворкинг",
+          stage: "starting",
+          rating: 2,
+        },
+      ],
+      extracurriculars: [
+        {
+          id: "ve1",
+          goal: "Республиканская олимпиада по математике",
+          plannedDate: "Осень 2026",
+          status: "Active",
+        },
+        {
+          id: "ve2",
+          goal: "Хакатон AI for Education",
+          plannedDate: "Август 2026",
+          status: "Achieved",
+        },
+      ],
+      quarters: [
+        {
+          id: "q1",
+          label: "Q1 Review (Осень)",
+          status: "In progress",
+          notes: "Фокус на GPA и MVP EduMentor.",
+        },
+        {
+          id: "q2",
+          label: "Q2 Review (Зима)",
+          status: "Not started",
+          notes: "",
+        },
+        {
+          id: "q3",
+          label: "Q3 Review (Весна)",
+          status: "Not started",
+          notes: "",
+        },
+        {
+          id: "q4",
+          label: "Q4 Review (Лето / Финал)",
+          status: "Not started",
+          notes: "",
+        },
+      ],
+    },
   },
   {
     id: "s2",
@@ -247,6 +353,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
         description: "IELTS writing practice и подготовка к Chemistry Challenge.",
       },
     ],
+    monthlyProgressReviews: [],
+    visionMap: createEmptyVisionMap(),
   },
   {
     id: "s3",
@@ -324,5 +432,7 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
         description: "USACO Silver prep и еженедельный чек по спринту.",
       },
     ],
+    monthlyProgressReviews: [],
+    visionMap: createEmptyVisionMap(),
   },
 ];

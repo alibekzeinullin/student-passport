@@ -63,12 +63,16 @@ export function ParentReportPage({
     <ReportPageShell
       student={student}
       reportType={reportType}
-      shortHref={`${base}/short`}
-      longHref={`${base}/long`}
+      basePath={base}
       backHref={base}
       backLabel="← Выбор отчёта"
+      readOnly
     >
-      <StudentReportView student={student} reportType={reportType} />
+      <StudentReportView
+        student={student}
+        reportType={reportType}
+        editable={false}
+      />
     </ReportPageShell>
   );
 }

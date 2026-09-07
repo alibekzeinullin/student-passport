@@ -4,35 +4,41 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { StudentProfile } from "@/lib/types";
 import type { ReportType } from "@/lib/report-types";
-import { REPORT_DESCRIPTIONS, REPORT_LABELS } from "@/lib/report-types";
+import {
+  REPORT_DESCRIPTIONS,
+  REPORT_LABELS,
+  REPORT_TYPES,
+} from "@/lib/report-types";
 import { PdfDownloadButton } from "@/components/PdfDownloadButton";
 
 interface ReportPageShellProps {
   student: StudentProfile;
   reportType: ReportType;
-  shortHref: string;
-  longHref: string;
+  basePath: string;
   backHref?: string;
   backLabel?: string;
+  readOnly?: boolean;
   children: ReactNode;
 }
 
 export function ReportPageShell({
   student,
   reportType,
-  shortHref,
-  longHref,
+  basePath,
   backHref,
   backLabel,
+  readOnly = false,
   children,
 }: ReportPageShellProps) {
-  const tabs: { type: ReportType; href: string }[] = [
-    { type: "short", href: shortHref },
-    { type: "long", href: longHref },
-  ];
-
   return (
     <div className="min-w-0 space-y-5">
+      {readOnly ? (
+        <div className="rounded-lg border border-gold/50 bg-gold/15 px-4 py-3 text-sm text-navy">
+          Режим родителя: все разделы доступны только для просмотра. Изменения
+          недоступны.
+        </div>
+      ) : null}
+
       {backHref ? (
         <Link
           href={backHref}
@@ -62,17 +68,17 @@ export function ReportPageShell({
       </div>
 
       <div className="flex flex-col gap-2 rounded-lg border border-light-gray bg-card p-1 sm:flex-row sm:flex-wrap">
-        {tabs.map((tab) => (
+        {REPORT_TYPES.map((type) => (
           <Link
-            key={tab.type}
-            href={tab.href}
+            key={type}
+            href={`${basePath}/${type}`}
             className={`rounded-md px-3 py-2 text-center text-sm font-medium leading-snug transition sm:px-4 sm:py-2 sm:text-left ${
-              tab.type === reportType
+              type === reportType
                 ? "bg-navy text-white"
                 : "text-navy hover:bg-light-gray/40"
             }`}
           >
-            {REPORT_LABELS[tab.type]}
+            {REPORT_LABELS[type]}
           </Link>
         ))}
       </div>

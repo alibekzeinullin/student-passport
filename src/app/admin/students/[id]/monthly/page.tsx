@@ -3,11 +3,11 @@
 import { use } from "react";
 import { AdminReportPage } from "@/components/AdminReportPage";
 
-export default function AdminShortReportPage({
+export default function AdminStudentMonthlyReportPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  return <AdminReportPage studentId={id} reportType="short" />;
+  return <AdminReportPage studentId={id} reportType="monthly" />;
 }

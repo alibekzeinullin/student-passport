@@ -1,6 +1,13 @@
 import type { StudentProfile } from "./types";
 import { calculateAcademicSuccessScore } from "./academic-score";
 import type { ReportType } from "./report-types";
+import { REPORT_LABELS } from "./report-types";
+import {
+  SOFT_SKILL_STAGE_LABELS,
+  calculateYearlyProgress,
+  getCurrentGpa,
+  normalizeVisionMap,
+} from "./vision-map";
 
 const NAVY: [number, number, number] = [35, 51, 74];
 const BURGUNDY: [number, number, number] = [127, 34, 49];
@@ -77,13 +84,7 @@ function drawHeader(doc: JsPdf, pageWidth: number, reportType: ReportType) {
 
   doc.setFont(FONT, "normal");
   doc.setFontSize(9);
-  doc.text(
-    reportType === "short"
-      ? "Краткосрочный отчёт для родителей"
-      : "Долгосрочный отчёт для родителей",
-    MARGIN,
-    23,
-  );
+  doc.text(REPORT_LABELS[reportType], MARGIN, 23);
 }
 
 function drawFooter(doc: JsPdf) {
@@ -145,7 +146,7 @@ function drawWrappedText(
 
 export async function downloadStudentPdf(
   student: StudentProfile,
-  reportType: ReportType = "long",
+  reportType: ReportType = "profile",
 ) {
   const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -190,38 +191,22 @@ export async function downloadStudentPdf(
     contentWidth,
   );
 
-  if (
-    student.mentorSummary.monthlyComment?.trim() ||
-    student.mentorSummary.nextMonthFocus?.trim()
-  ) {
-    y += 4;
-    doc.setFont(FONT, "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(...NAVY);
-    y = ensureSpace(doc, y, 8);
-    doc.text("Комментарии месяца от ментора", MARGIN, y);
-    y += 5;
-    doc.setFont(FONT, "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(...TEXT);
-    if (student.mentorSummary.monthlyComment?.trim()) {
-      y = drawWrappedText(
-        doc,
-        `Комментарий: ${student.mentorSummary.monthlyComment}`,
-        MARGIN,
-        y,
-        contentWidth,
-      );
-    }
-    if (student.mentorSummary.nextMonthFocus?.trim()) {
-      y = drawWrappedText(
-        doc,
-        `Фокус на месяц: ${student.mentorSummary.nextMonthFocus}`,
-        MARGIN,
-        y,
-        contentWidth,
-      );
-    }
+  if (reportType === "monthly") {
+    y = drawMonthlyProgressPdf(doc, student, y, contentWidth, valueCol);
+    drawFooter(doc);
+    const safeLast = student.lastName.replace(/\s+/g, "-");
+    const safeFirst = student.firstName.replace(/\s+/g, "-");
+    doc.save(`passport-${reportType}-${safeLast}-${safeFirst}.pdf`);
+    return;
+  }
+
+  if (reportType === "vision") {
+    y = drawVisionMapPdf(doc, student, y, contentWidth);
+    drawFooter(doc);
+    const safeLast = student.lastName.replace(/\s+/g, "-");
+    const safeFirst = student.firstName.replace(/\s+/g, "-");
+    doc.save(`passport-${reportType}-${safeLast}-${safeFirst}.pdf`);
+    return;
   }
 
   y += 4;
@@ -254,68 +239,345 @@ export async function downloadStudentPdf(
     valueCol,
   );
 
-  if (reportType === "short") {
-    y += 4;
-    y = drawSectionTitle(doc, "1. Личные ежемесячные фокусы", y);
-    y = drawMonthlyFocusesPdf(doc, student, y, contentWidth);
-
-    y += 4;
-    y = drawSectionTitle(doc, "2. Спринты по групповой работе", y);
-    y = drawSprintsPdf(doc, student, y, contentWidth);
-  } else {
-    if (student.mentorNote?.trim()) {
-      y += 3;
-      doc.setFont(FONT, "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(...NAVY);
-      y = ensureSpace(doc, y, 8);
-      doc.text("Обратная связь от ментора", MARGIN, y);
-      y += 5;
-      doc.setFont(FONT, "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(...TEXT);
-      y = drawWrappedText(doc, student.mentorNote, MARGIN, y, contentWidth);
-    }
-
+  if (student.mentorNote?.trim()) {
     y += 3;
-    doc.setDrawColor(...LINE);
-    doc.setLineWidth(0.3);
-    doc.line(MARGIN, y, pageWidth - MARGIN, y);
-    y += 10;
-
-    y = drawSectionTitle(doc, "1. Академическая динамика", y);
-    y = drawAcademicPdf(doc, student, y, contentWidth, valueCol);
-
-    y += 4;
-    y = drawSectionTitle(doc, "2. Личные ежемесячные фокусы", y);
-    y = drawMonthlyFocusesPdf(doc, student, y, contentWidth);
-
-    y += 4;
-    y = drawSectionTitle(doc, "3. Спринты по групповой работе", y);
-    y = drawSprintsPdf(doc, student, y, contentWidth);
-
-    y += 4;
-    y = drawSectionTitle(doc, "4. Внеучебная деятельность", y);
-    y = drawProjectsPdf(doc, student, y, contentWidth);
-
-    y += 4;
-    y = drawSectionTitle(doc, "5. Книги к прочтению", y);
-    y = drawBooksPdf(doc, student, y, contentWidth);
-
-    y += 4;
-    y = drawSectionTitle(doc, "6. Навыки к освоению", y);
-    y = drawSkillsPdf(doc, student, y, contentWidth);
-
-    y += 4;
-    y = drawSectionTitle(doc, "7. Зоны роста", y);
-    y = drawGrowthZonesPdf(doc, student, y, contentWidth);
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...NAVY);
+    y = ensureSpace(doc, y, 8);
+    doc.text("Обратная связь от ментора", MARGIN, y);
+    y += 5;
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...TEXT);
+    y = drawWrappedText(doc, student.mentorNote, MARGIN, y, contentWidth);
   }
+
+  y += 3;
+  doc.setDrawColor(...LINE);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, y, pageWidth - MARGIN, y);
+  y += 10;
+
+  y = drawSectionTitle(doc, "1. Академическая динамика", y);
+  y = drawAcademicPdf(doc, student, y, contentWidth, valueCol);
+
+  y += 4;
+  y = drawSectionTitle(doc, "2. Спринты по групповой работе", y);
+  y = drawSprintsPdf(doc, student, y, contentWidth);
+
+  y += 4;
+  y = drawSectionTitle(doc, "3. Внеучебная деятельность", y);
+  y = drawProjectsPdf(doc, student, y, contentWidth);
+
+  y += 4;
+  y = drawSectionTitle(doc, "4. Книги к прочтению", y);
+  y = drawBooksPdf(doc, student, y, contentWidth);
+
+  y += 4;
+  y = drawSectionTitle(doc, "5. Навыки к освоению", y);
+  y = drawSkillsPdf(doc, student, y, contentWidth);
+
+  y += 4;
+  y = drawSectionTitle(doc, "6. Зоны роста", y);
+  y = drawGrowthZonesPdf(doc, student, y, contentWidth);
 
   drawFooter(doc);
 
   const safeLast = student.lastName.replace(/\s+/g, "-");
   const safeFirst = student.firstName.replace(/\s+/g, "-");
   doc.save(`passport-${reportType}-${safeLast}-${safeFirst}.pdf`);
+}
+
+function drawLabeledBlock(
+  doc: JsPdf,
+  label: string,
+  value: string,
+  y: number,
+  contentWidth: number,
+): number {
+  y = ensureSpace(doc, y, 10);
+  doc.setFont(FONT, "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(...NAVY);
+  doc.text(label, MARGIN, y);
+  y += 4;
+  doc.setFont(FONT, "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...TEXT);
+  return drawWrappedText(doc, value.trim() || "—", MARGIN, y, contentWidth);
+}
+
+function drawMonthlyProgressPdf(
+  doc: JsPdf,
+  student: StudentProfile,
+  y: number,
+  contentWidth: number,
+  valueCol: number,
+): number {
+  const review = student.monthlyProgressReviews?.[0];
+  if (!review) {
+    y += 6;
+    doc.setFont(FONT, "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...MUTED);
+    return drawWrappedText(
+      doc,
+      "Monthly Progress Review ещё не заполнен.",
+      MARGIN,
+      y,
+      contentWidth,
+    );
+  }
+
+  y += 4;
+  y = drawSectionTitle(doc, `1. ${review.monthYear || "Основная информация"}`, y);
+  y = drawKeyValueRow(
+    doc,
+    "Индивидуальные",
+    review.individualSessionsAttended === null
+      ? "—"
+      : `${review.individualSessionsAttended} из 2`,
+    y,
+    valueCol,
+  );
+  y = drawKeyValueRow(
+    doc,
+    "Групповые",
+    review.groupSessionsAttended === null
+      ? "—"
+      : `${review.groupSessionsAttended} из 2`,
+    y,
+    valueCol,
+  );
+  y = drawKeyValueRow(
+    doc,
+    "Homework",
+    `${review.homeworkCompletion}%`,
+    y,
+    valueCol,
+  );
+
+  y += 3;
+  y = drawSectionTitle(doc, "2. Личное развитие", y);
+  y = drawLabeledBlock(doc, "Фокус месяца", review.personalFocus, y, contentWidth);
+  y = drawLabeledBlock(
+    doc,
+    "Прогресс и заметки",
+    review.personalProgressNotes,
+    y,
+    contentWidth,
+  );
+
+  y += 3;
+  y = drawSectionTitle(doc, "3. Академический фокус", y);
+  y = drawLabeledBlock(doc, "Статус уроков", review.academicStatus, y, contentWidth);
+  y = drawLabeledBlock(
+    doc,
+    "Проблемные предметы",
+    review.problemSubjectsProgress,
+    y,
+    contentWidth,
+  );
+  y = drawLabeledBlock(
+    doc,
+    "Академические навыки",
+    review.academicSkills,
+    y,
+    contentWidth,
+  );
+
+  y += 3;
+  y = drawSectionTitle(doc, "4. Портфолио", y);
+  y = drawLabeledBlock(
+    doc,
+    "Основной проект",
+    review.mainProjectProgress,
+    y,
+    contentWidth,
+  );
+  y = drawLabeledBlock(
+    doc,
+    "Параллельные активности",
+    review.parallelActivities,
+    y,
+    contentWidth,
+  );
+
+  y += 3;
+  y = drawSectionTitle(doc, "5. Highlights", y);
+  y = drawLabeledBlock(doc, "Достижения", review.highlights, y, contentWidth);
+
+  y += 3;
+  y = drawSectionTitle(doc, "6. Growth Areas", y);
+  y = drawLabeledBlock(doc, "Точки роста", review.growthAreas, y, contentWidth);
+
+  y += 3;
+  y = drawSectionTitle(doc, "7. Feedback & Reflection", y);
+  y = drawLabeledBlock(
+    doc,
+    "Обратная связь ментора",
+    review.mentorFeedback,
+    y,
+    contentWidth,
+  );
+  y = drawLabeledBlock(
+    doc,
+    "Рефлексия ученика",
+    review.studentReflection,
+    y,
+    contentWidth,
+  );
+
+  return y;
+}
+
+function drawVisionMapPdf(
+  doc: JsPdf,
+  student: StudentProfile,
+  y: number,
+  contentWidth: number,
+): number {
+  const vision = normalizeVisionMap(student.visionMap);
+  const currentGpa = getCurrentGpa(student.gpa);
+  const yearlyPct = calculateYearlyProgress(vision, currentGpa);
+  const valueCol = MARGIN + 58;
+
+  y += 4;
+  y = drawSectionTitle(doc, "1. Academic Year & Focus", y);
+  y = drawKeyValueRow(doc, "Учебный год", vision.academicYear || "—", y, valueCol);
+  y = drawLabeledBlock(doc, "Yearly Focus", vision.yearlyFocus, y, contentWidth);
+  y = drawKeyValueRow(
+    doc,
+    "Year Progress",
+    `${yearlyPct}%`,
+    y,
+    valueCol,
+  );
+
+  y += 3;
+  y = drawSectionTitle(doc, "2. Academic Goals", y);
+  y = drawKeyValueRow(
+    doc,
+    "Target GPA",
+    vision.targetGpa === null ? "—" : String(vision.targetGpa),
+    y,
+    valueCol,
+  );
+  y = drawKeyValueRow(
+    doc,
+    "Current GPA",
+    currentGpa === null ? "—" : currentGpa.toFixed(2),
+    y,
+    valueCol,
+  );
+  if (vision.examTargets.length === 0) {
+    y = drawWrappedText(doc, "Экзамены: —", MARGIN, y, contentWidth);
+  } else {
+    for (const exam of vision.examTargets) {
+      y = ensureSpace(doc, y, 10);
+      y = drawWrappedText(
+        doc,
+        `• ${exam.name || "Exam"} — target ${exam.targetScore || "—"}, deadline ${exam.deadline || "—"}`,
+        MARGIN,
+        y,
+        contentWidth,
+      );
+    }
+  }
+
+  y += 3;
+  y = drawSectionTitle(doc, "3. Projects & Portfolio", y);
+  if (vision.projects.length === 0) {
+    y = drawWrappedText(doc, "—", MARGIN, y, contentWidth);
+  } else {
+    for (const project of vision.projects) {
+      y = ensureSpace(doc, y, 16);
+      doc.setFont(FONT, "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...NAVY);
+      y = drawWrappedText(
+        doc,
+        `${project.title || "Проект"} [${project.stage}] — ${project.progress}%`,
+        MARGIN,
+        y,
+        contentWidth,
+      );
+      doc.setFont(FONT, "normal");
+      doc.setTextColor(...TEXT);
+      if (project.description.trim()) {
+        y = drawWrappedText(doc, project.description, MARGIN, y, contentWidth);
+      }
+      y = drawWrappedText(
+        doc,
+        `Deliverable: ${project.deliverable.trim() || "—"}`,
+        MARGIN,
+        y,
+        contentWidth,
+      );
+      y += 2;
+    }
+  }
+
+  y += 3;
+  y = drawSectionTitle(doc, "4. Soft Skills", y);
+  if (vision.softSkills.length === 0) {
+    y = drawWrappedText(doc, "—", MARGIN, y, contentWidth);
+  } else {
+    for (const skill of vision.softSkills) {
+      y = drawWrappedText(
+        doc,
+        `• ${skill.name || "Навык"} — ${SOFT_SKILL_STAGE_LABELS[skill.stage]}, ★ ${skill.rating}/5`,
+        MARGIN,
+        y,
+        contentWidth,
+      );
+    }
+  }
+
+  y += 3;
+  y = drawSectionTitle(doc, "5. Extracurricular & Milestones", y);
+  if (vision.extracurriculars.length === 0) {
+    y = drawWrappedText(doc, "—", MARGIN, y, contentWidth);
+  } else {
+    for (const item of vision.extracurriculars) {
+      y = drawWrappedText(
+        doc,
+        `• ${item.goal || "Цель"} — ${item.plannedDate || "—"} [${item.status}]`,
+        MARGIN,
+        y,
+        contentWidth,
+      );
+    }
+  }
+
+  y += 3;
+  y = drawSectionTitle(doc, "6. Quarterly Checkpoints", y);
+  for (const quarter of vision.quarters) {
+    y = ensureSpace(doc, y, 12);
+    doc.setFont(FONT, "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...NAVY);
+    y = drawWrappedText(
+      doc,
+      `${quarter.label} — ${quarter.status}`,
+      MARGIN,
+      y,
+      contentWidth,
+    );
+    doc.setFont(FONT, "normal");
+    doc.setTextColor(...TEXT);
+    y = drawWrappedText(
+      doc,
+      quarter.notes.trim() || "—",
+      MARGIN,
+      y,
+      contentWidth,
+    );
+    y += 1;
+  }
+
+  return y;
 }
 
 function drawAcademicPdf(

@@ -50,7 +50,7 @@ export function SprintTasksTable({
     <Card>
       <CardHeader
         title="Спринты по групповой работе"
-        subtitle="Задачи группового спринта: ученик отмечает выполнение и прикрепляет ссылки на артефакты"
+        subtitle="Общие спринты программы для всех учеников. Список может меняться — ментор обновляет темы по ходу года."
         action={
           canEditMeta ? (
             <Button type="button" variant="secondary" onClick={addTask}>

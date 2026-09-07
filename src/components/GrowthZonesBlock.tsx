@@ -2,7 +2,7 @@
 
 import type { GrowthZone } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { Card, CardBody } from "@/components/ui/Card";
 import { Textarea } from "@/components/ui/Field";
 
 interface GrowthZonesBlockProps {
@@ -39,18 +39,15 @@ export function GrowthZonesBlock({
 
   return (
     <Card>
-      <CardHeader
-        title="Зоны роста"
-        subtitle="Что нужно улучшить — заполняет ментор"
-        action={
-          editable ? (
+      <CardBody className="space-y-4">
+        {editable ? (
+          <div className="flex justify-end">
             <Button type="button" variant="secondary" onClick={addZone}>
               Добавить
             </Button>
-          ) : null
-        }
-      />
-      <CardBody className="space-y-4">
+          </div>
+        ) : null}
+
         {zones.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted">
             Ментор пока не указал зоны роста

@@ -23,6 +23,8 @@ export function getDashboardPermissions(
     canEditSprintMeta: isAdmin,
     canToggleSprintCompletion: isAdmin || isStudent,
     canEditSprintArtifacts: isAdmin || isStudent,
+    canEditMonthlyProgress: isAdmin,
+    canEditVisionMap: isAdmin,
     canDownloadPdf: isAdmin || isParent,
     canGenerateParentLink: isAdmin,
     isReadOnly: isParent,

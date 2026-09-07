@@ -1,10 +1,30 @@
 "use client";
 
+import { useState } from "react";
 import { useStudents } from "@/context/StudentsContext";
 import { RequireAuth } from "@/components/RequireAuth";
 import { ReportPageShell } from "@/components/ReportPageShell";
 import { StudentReportView } from "@/components/StudentReportView";
 import type { ReportType } from "@/lib/report-types";
+import type { StudentProfile } from "@/lib/types";
+
+function formatSaveError(error: unknown): string {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String((error as { message: unknown }).message)
+      : String(error ?? "Неизвестная ошибка");
+
+  if (
+    message.includes("monthly_progress_reviews") ||
+    message.includes("vision_map") ||
+    message.toLowerCase().includes("column") ||
+    message.toLowerCase().includes("schema cache")
+  ) {
+    return "В Supabase ещё нет новых колонок. Откройте SQL Editor и выполните файл supabase/migration-monthly-vision.sql, затем обновите страницу.";
+  }
+
+  return `Не удалось сохранить: ${message}`;
+}
 
 export function AdminReportPage({
   studentId,
@@ -13,8 +33,19 @@ export function AdminReportPage({
   studentId: string;
   reportType: ReportType;
 }) {
-  const { getStudent, loading } = useStudents();
+  const { getStudent, loading, updateStudent } = useStudents();
   const student = getStudent(studentId);
+  const [saveError, setSaveError] = useState("");
+
+  const handleChange = async (patch: Partial<StudentProfile>) => {
+    setSaveError("");
+    try {
+      await updateStudent(studentId, patch);
+    } catch (error) {
+      console.error(error);
+      setSaveError(formatSaveError(error));
+    }
+  };
 
   return (
     <RequireAuth role="admin">
@@ -28,16 +59,29 @@ export function AdminReportPage({
             Профиль ученика не найден.
           </div>
         ) : (
-          <ReportPageShell
-            student={student}
-            reportType={reportType}
-            shortHref={`/admin/students/${studentId}/short`}
-            longHref={`/admin/students/${studentId}/long`}
-            backHref={`/admin/students/${studentId}`}
-            backLabel="← К редактированию профиля"
-          >
-            <StudentReportView student={student} reportType={reportType} />
-          </ReportPageShell>
+          <>
+            {saveError ? (
+              <div className="rounded-lg border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
+                {saveError}
+              </div>
+            ) : null}
+            <ReportPageShell
+              student={student}
+              reportType={reportType}
+              basePath={`/admin/students/${studentId}`}
+              backHref={`/admin/students/${studentId}`}
+              backLabel="← К редактированию профиля"
+            >
+              <StudentReportView
+                student={student}
+                reportType={reportType}
+                editable
+                onChange={(patch) => {
+                  void handleChange(patch);
+                }}
+              />
+            </ReportPageShell>
+          </>
         )}
       </div>
     </RequireAuth>
