@@ -27,13 +27,13 @@ export function ScoreCircles({
     <Card>
       <CardHeader
         title="Индикаторы прогресса"
-        subtitle="100-балльная шкала: посещаемость и задания выставляет ментор; академ успехи считаются автоматически"
+        subtitle="100-балльная шкала, считается автоматически: посещаемость и задания — из журнала встреч, академ успехи — из паспорта"
       />
       <CardBody>
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
           <ScoreCircle
             label="Посещаемость"
-            detail="(опоздания и пропуски)"
+            detail="был — 100%, опоздал — 50%, не пришёл — 0%"
             hintTerm="Посещаемость"
             value={student.attendanceScore}
             accent="#7F2231"
@@ -47,6 +47,7 @@ export function ScoreCircles({
           <ScoreCircle
             label="Выполнение заданий"
             hintTerm="Выполнение заданий"
+            detail="средняя оценка домашек × 10"
             value={student.assignmentsScore}
             accent="#23334A"
             editable={editable}

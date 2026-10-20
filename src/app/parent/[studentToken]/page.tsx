@@ -11,6 +11,7 @@ import {
   REPORT_TYPES,
 } from "@/lib/report-types";
 import type { StudentProfile } from "@/lib/types";
+import { MeetingsJournal } from "@/components/MeetingsJournal";
 
 export default function ParentHubPage({
   params,
@@ -100,6 +101,12 @@ export default function ParentHubPage({
           </Link>
         ))}
       </div>
+
+      <MeetingsJournal
+        studentId={student.id}
+        mode="parent"
+        parentToken={studentToken}
+      />
     </div>
   );
 }

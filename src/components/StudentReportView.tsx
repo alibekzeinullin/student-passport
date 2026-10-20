@@ -62,11 +62,7 @@ export function StudentReportView({
           canEditMentorNote={editable}
           onChange={editable ? patch : undefined}
         />
-        <ScoreCircles
-          student={student}
-          editable={editable}
-          onChange={editable ? patch : undefined}
-        />
+        <ScoreCircles student={student} />
       </ZoneBand>
 
       <ZoneBand tone="academic">

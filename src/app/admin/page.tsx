@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Label, Select } from "@/components/ui/Field";
 import { TableScroll } from "@/components/ui/TableScroll";
+import {
+  buildMeetingsCsv,
+  downloadTextFile,
+  fetchMeetingsWithNotes,
+  isMeetingsTableMissing,
+  todayIso,
+} from "@/lib/meetings";
 
 const ALL = "all";
 
@@ -52,6 +59,35 @@ export default function AdminPage() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportMeetings = async () => {
+    setError("");
+    setExporting(true);
+    try {
+      const meetings = await fetchMeetingsWithNotes();
+      if (meetings.length === 0) {
+        setError("Встреч пока нет — выгружать нечего.");
+        return;
+      }
+      const names = new Map(
+        students.map((s) => [s.id, `${s.lastName} ${s.firstName}`.trim()]),
+      );
+      downloadTextFile(
+        `встречи_все_ученики_${todayIso()}.csv`,
+        buildMeetingsCsv(meetings, names),
+      );
+    } catch (err) {
+      console.error(err);
+      setError(
+        isMeetingsTableMissing(err)
+          ? "Журнал встреч ещё не подключён: выполните supabase/migration-meetings.sql в Supabase → SQL Editor."
+          : "Не удалось выгрузить встречи. Попробуйте ещё раз.",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const classes = useMemo(
     () => [...new Set(students.map((s) => s.className))].sort(compareText),
@@ -156,15 +192,26 @@ export default function AdminPage() {
   return (
     <RequireAuth role="admin">
       <div className="mx-auto min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-burgundy">
-            Реестр TODAY Scholars
-          </p>
-          <h2 className="text-2xl font-semibold text-navy">Все ученики</h2>
-          <p className="mt-1 text-sm text-muted">
-            Фильтр по классу, сортировка по колонкам, удаление профилей.
-            Админ-аккаунт при удалении учеников не затрагивается.
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-burgundy">
+              Реестр TODAY Scholars
+            </p>
+            <h2 className="text-2xl font-semibold text-navy">Все ученики</h2>
+            <p className="mt-1 text-sm text-muted">
+              Фильтр по классу, сортировка по колонкам, удаление профилей.
+              Админ-аккаунт при удалении учеников не затрагивается.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void handleExportMeetings()}
+            disabled={exporting || students.length === 0}
+            className="w-full shrink-0 sm:w-auto"
+          >
+            {exporting ? "Готовлю файл…" : "Выгрузить все встречи в Excel"}
+          </Button>
         </div>
 
         {error ? (

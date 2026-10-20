@@ -13,6 +13,7 @@ import { ProjectsGrid } from "@/components/ProjectsGrid";
 import { BooksTable } from "@/components/BooksTable";
 import { SkillsTable } from "@/components/SkillsTable";
 import { GrowthZonesBlock } from "@/components/GrowthZonesBlock";
+import { MeetingsJournal } from "@/components/MeetingsJournal";
 import Link from "next/link";
 import { ParentAccessLinkButton } from "@/components/ParentAccessLinkButton";
 import { Section } from "@/components/ui/Section";
@@ -35,6 +36,7 @@ export function StudentDashboard({
     updateAcademicActivities,
     updateProjects,
     updateSprintTasks,
+    refreshStudents,
   } = useStudents();
   const student = getStudent(studentId);
   const perms = getDashboardPermissions(accessMode);
@@ -126,12 +128,21 @@ export function StudentDashboard({
           }
         />
 
-        <ScoreCircles
-          student={student}
-          editable={perms.canEditScores}
-          onChange={perms.canEditScores ? patchStudent : undefined}
-        />
+        <ScoreCircles student={student} />
       </ZoneBand>
+
+      {accessMode !== "parent" ? (
+        <ZoneBand tone="other">
+          <MeetingsJournal
+            studentId={studentId}
+            mode={accessMode === "admin" ? "admin" : "student"}
+            studentName={`${student.lastName} ${student.firstName}`.trim()}
+            onScoresChanged={() => {
+              void refreshStudents();
+            }}
+          />
+        </ZoneBand>
+      ) : null}
 
       <ZoneBand tone="academic">
         <Section
