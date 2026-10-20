@@ -39,6 +39,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 Если проект уже был создан раньше, дополнительно выполните:
 - `supabase/migration-monthly-vision.sql` (Monthly Progress Review и Vision Map)
 - `supabase/migration-delete-student.sql` (удаление учеников админом)
+- `supabase/migration-security.sql` (**обязательно**: права доступа — ученик не может стать админом и менять поля ментора)
 
 ## Шаг 5. Auth настройки (рекомендуется для локальной разработки)
 

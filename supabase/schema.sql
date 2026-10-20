@@ -150,7 +150,9 @@ security definer
 set search_path = public
 as $$
 declare
-  v_role text := coalesce(new.raw_user_meta_data->>'role', 'student');
+  -- Роль НЕ берётся из raw_user_meta_data: эти данные присылает сам пользователь.
+  -- Админа назначают вручную (см. раздел 8 ниже).
+  v_role text := 'student';
   v_full_name text := coalesce(new.raw_user_meta_data->>'full_name', '');
   v_first_name text := coalesce(new.raw_user_meta_data->>'first_name', split_part(v_full_name, ' ', 1));
   v_last_name text := coalesce(new.raw_user_meta_data->>'last_name', '');
@@ -201,12 +203,14 @@ on public.profiles for select
 to authenticated
 using (id = auth.uid() or public.is_admin());
 
+-- Менять profiles (в т.ч. role) может только админ
 drop policy if exists "profiles_update_own_or_admin" on public.profiles;
-create policy "profiles_update_own_or_admin"
+drop policy if exists "profiles_update_admin" on public.profiles;
+create policy "profiles_update_admin"
 on public.profiles for update
 to authenticated
-using (id = auth.uid() or public.is_admin())
-with check (id = auth.uid() or public.is_admin());
+using (public.is_admin())
+with check (public.is_admin());
 
 drop policy if exists "students_select_own_or_admin" on public.students;
 create policy "students_select_own_or_admin"
@@ -241,6 +245,55 @@ create policy "students_delete_admin"
 on public.students for delete
 to authenticated
 using (public.is_admin());
+
+-- Ученик может менять в своей карточке только свои разделы (см. migration-security.sql)
+create or replace function public.enforce_student_update_rights()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  -- Колонки, которые ученик может менять в своей карточке
+  v_allowed text[] := array[
+    'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks', 'updated_at'
+  ];
+  v_old_sprints jsonb;
+  v_new_sprints jsonb;
+begin
+  -- Админ — без ограничений.
+  -- auth.uid() пустой — это SQL Editor / service role, тоже без ограничений.
+  if auth.uid() is null or public.is_admin() then
+    return new;
+  end if;
+
+  if (to_jsonb(new) - v_allowed) is distinct from (to_jsonb(old) - v_allowed) then
+    raise exception 'Недостаточно прав: это поле может менять только ментор'
+      using errcode = '42501';
+  end if;
+
+  -- Спринты: ученик не может добавлять/удалять спринты и менять их название.
+  select coalesce(jsonb_agg(jsonb_build_array(e->'id', e->'sprintLabel', e->'title') order by ord), '[]'::jsonb)
+    into v_old_sprints
+    from jsonb_array_elements(coalesce(old.sprint_tasks, '[]'::jsonb)) with ordinality as t(e, ord);
+
+  select coalesce(jsonb_agg(jsonb_build_array(e->'id', e->'sprintLabel', e->'title') order by ord), '[]'::jsonb)
+    into v_new_sprints
+    from jsonb_array_elements(coalesce(new.sprint_tasks, '[]'::jsonb)) with ordinality as t(e, ord);
+
+  if v_old_sprints is distinct from v_new_sprints then
+    raise exception 'Недостаточно прав: список и названия спринтов меняет только ментор'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists students_enforce_update_rights on public.students;
+create trigger students_enforce_update_rights
+before update on public.students
+for each row execute function public.enforce_student_update_rights();
 
 -- Удаление ученика админом: профиль + auth.user (не трогает admin)
 create or replace function public.delete_student_as_admin(p_student_id uuid)
