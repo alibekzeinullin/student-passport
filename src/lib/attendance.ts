@@ -284,3 +284,40 @@ export function attendancePercent(states: CellState[]): number | null {
   const sum = marked.reduce((acc, s) => acc + (s === "present" ? 100 : s === "late" ? 50 : 0), 0);
   return Math.round(sum / marked.length);
 }
+
+// ---------- График встреч ----------
+
+/**
+ * Индивидуальные встречи — раз в две недели (у каждого ученика через неделю).
+ * Групповые до недели 5–11 октября 2026 тоже шли раз в две недели (в те недели,
+ * когда у ученика не было индивидуальной), с 10 октября — каждую неделю.
+ */
+export const GROUP_WEEKLY_FROM = "2026-10-05";
+
+export function isGroupWeekly(monday: string): boolean {
+  return monday >= GROUP_WEEKLY_FROM;
+}
+
+export type IndividualDue = "scheduled" | "due" | "off" | "overdue" | "new";
+
+/** Нужна ли ученику индивидуальная на этой неделе (по графику раз в 2 недели). */
+export function individualDue(
+  meetings: AttendanceMeeting[],
+  studentId: string,
+  monday: string,
+): IndividualDue {
+  if (findCell(meetings, studentId, monday, "individual")) return "scheduled";
+  let last: string | null = null;
+  for (const m of meetings) {
+    if (m.studentId === studentId && m.format === "individual" && m.meetingDate < monday) {
+      if (!last || m.meetingDate > last) last = m.meetingDate;
+    }
+  }
+  if (!last) return "new";
+  const weeks = Math.round(
+    (parseIso(monday).getTime() - parseIso(mondayOf(last)).getTime()) / (7 * 86400000),
+  );
+  if (weeks <= 1) return "off";
+  if (weeks === 2) return "due";
+  return "overdue";
+}

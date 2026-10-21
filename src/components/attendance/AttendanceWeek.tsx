@@ -11,7 +11,9 @@ import {
   defaultDateInWeek,
   fetchAttendance,
   findCell,
+  individualDue,
   insertMeetings,
+  isGroupWeekly,
   mondayOf,
   moveGroupSession,
   newSessionKey,
@@ -108,7 +110,16 @@ export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
 
   // --- Сводка ---
   const indStates = students.map((s) => cellState(findCell(meetings, s.id, monday, "individual")));
-  const grpStates = students.map((s) => cellState(findCell(meetings, s.id, monday, "group")));
+  const groupWeekly = isGroupWeekly(monday);
+  // До 10 октября групповая была раз в 2 недели: в неделю без индивидуальной
+  const groupExpected = groupWeekly
+    ? students
+    : students.filter(
+        (s, i) =>
+          indStates[i] === "none" || cellState(findCell(meetings, s.id, monday, "group")) !== "none",
+      );
+  const groupOthers = students.filter((s) => !groupExpected.includes(s));
+  const grpStates = groupExpected.map((s) => cellState(findCell(meetings, s.id, monday, "group")));
   const came = (list: CellState[]) => list.filter((x) => x === "present" || x === "late").length;
   const scheduled = (list: CellState[]) => list.filter((x) => x !== "none").length;
   const indScheduled = scheduled(indStates);
@@ -152,7 +163,7 @@ export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
     const key = groupKey ?? newSessionKey();
     void run("grp-all", async () => {
       const toInsert: { studentId: string; date: string; format: "group"; attendance: Attendance; sessionKey: string | null }[] = [];
-      for (const s of students) {
+      for (const s of groupExpected) {
         const existing = findCell(meetings, s.id, monday, "group");
         if (!existing) {
           toInsert.push({ studentId: s.id, date: groupDate, format: "group", attendance: "present", sessionKey: key });
@@ -214,7 +225,7 @@ export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
       <div className="grid gap-3 sm:grid-cols-3">
         <Kpi label="Индивидуальные" value={came(indStates)} total={indScheduled} color="bg-burgundy" />
         <Kpi
-          label={`Групповая · ${weekdayLabel(groupDate)}`}
+          label={`Групповая · ${weekdayLabel(groupDate)}${groupWeekly ? "" : " · раз в 2 нед."}`}
           value={came(grpStates)}
           total={grpScheduled}
           color="bg-navy-soft"
@@ -261,7 +272,8 @@ export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
                     </Link>
                     <p className="text-xs text-muted">
                       {s.className}
-                      {existing ? ` · ${weekdayLabel(existing.meetingDate)}` : " · не назначена"}
+                      {existing ? ` · ${weekdayLabel(existing.meetingDate)}` : ""}
+                      {!existing ? <DueTag due={individualDue(meetings, s.id, monday)} /> : null}
                     </p>
                   </div>
                   <div className="flex gap-1" aria-label="История за прошлые недели">
@@ -311,6 +323,11 @@ export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="text-lg font-medium text-navy">Групповая встреча</h3>
+              <p className="mt-0.5 text-xs text-muted">
+                {groupWeekly
+                  ? "каждую неделю (с 10 октября)"
+                  : "раз в 2 недели — у тех, у кого на этой неделе нет индивидуальной"}
+              </p>
               <label className="mt-2 flex items-center gap-2 text-sm text-muted">
                 Дата
                 <input
@@ -332,7 +349,7 @@ export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
             </div>
             <button
               type="button"
-              disabled={busy === "grp-all" || students.length === 0}
+              disabled={busy === "grp-all" || groupExpected.length === 0}
               onClick={allCame}
               className="rounded-full border border-gold/50 px-4 py-2 text-sm text-gold transition hover:bg-gold/10 disabled:opacity-50"
             >
@@ -343,7 +360,7 @@ export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
             Нажатие: пришёл → не пришёл → снять отметку.
           </p>
           <div className="flex flex-wrap gap-2">
-            {students.map((s, i) => {
+            {groupExpected.map((s, i) => {
               const st = grpStates[i];
               const on = st === "present" || st === "late";
               const off = st === "absent";
@@ -368,6 +385,11 @@ export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
               );
             })}
           </div>
+          {groupOthers.length > 0 ? (
+            <p className="mt-3 text-xs text-muted">
+              На этой неделе у них индивидуальная: {groupOthers.map((s) => `${s.lastName} ${s.firstName.charAt(0)}.`).join(", ")}
+            </p>
+          ) : null}
           <p className="mt-4 rounded-2xl bg-navy-soft/10 px-4 py-3 text-xs leading-relaxed text-muted">
             Групповая встреча записывается в журнал каждого ученика с форматом «Групповая» и учитывается в посещаемости.
           </p>
@@ -401,4 +423,16 @@ function Kpi({
       </div>
     </div>
   );
+}
+
+function DueTag({ due }: { due: ReturnType<typeof individualDue> }) {
+  if (due === "scheduled") return null;
+  const map = {
+    due: ["по графику на этой неделе", "text-gold"],
+    overdue: ["давно не было — пора", "text-burgundy"],
+    off: ["по графику через неделю", "text-muted"],
+    new: ["ещё не было индивидуальных", "text-muted"],
+  } as const;
+  const [text, cls] = map[due];
+  return <span className={cls}> · {text}</span>;
 }

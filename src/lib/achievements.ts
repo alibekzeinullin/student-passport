@@ -69,8 +69,8 @@ export function computeBadges(
 
   return [
     { id: "first", title: "Первая встреча", hint: "Прийти на первую встречу", earned: attended >= 1, icon: "spark" },
-    { id: "streak4", title: "4 недели подряд", hint: "4 встречи без пропусков", earned: streak >= 4, icon: "flame" },
-    { id: "streak10", title: "10 недель подряд", hint: "10 встреч без пропусков", earned: streak >= 10, icon: "flame" },
+    { id: "streak4", title: "4 встречи подряд", hint: "4 встречи без пропусков", earned: streak >= 4, icon: "flame" },
+    { id: "streak10", title: "10 встреч подряд", hint: "10 встреч без пропусков", earned: streak >= 10, icon: "flame" },
     { id: "punctual", title: "Месяц без опозданий", hint: "4 встречи подряд вовремя", earned: noLateMonth, icon: "check" },
     { id: "homework", title: "Домашка на 9+", hint: "3 домашки подряд на 9 и выше", earned: strongHomework, icon: "star" },
     { id: "firstApp", title: "Первая заявка", hint: "Подать заявку на олимпиаду или конкурс", earned: competitions >= 1, icon: "target" },

@@ -69,7 +69,8 @@ function buildAlerts(
       push("nomeet", "low", "Ещё нет ни одной встречи в журнале");
     } else {
       const since = daysSince(own[0].meetingDate);
-      if (since > 10) push("stale", "medium", `Не было встречи ${formatDaysLeft(since)}`);
+      // Индивидуальные — раз в 2 недели, групповые с 10 октября — еженедельно
+      if (since > 15) push("stale", "medium", `Не было встречи ${formatDaysLeft(since)}`);
     }
 
     const ratings = own.map(homeworkRating).filter((v): v is number => v !== null).slice(0, 2);

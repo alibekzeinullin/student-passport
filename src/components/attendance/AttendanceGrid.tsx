@@ -12,6 +12,7 @@ import {
   defaultDateInWeek,
   fetchAttendance,
   findCell,
+  GROUP_WEEKLY_FROM,
   mondayOf,
   newSessionKey,
   nextState,
@@ -214,6 +215,11 @@ export function AttendanceGrid({ students }: { students: StudentProfile[] }) {
               {weeks.map((wk) => (
                 <th key={wk} scope="col" colSpan={formats.length} className="px-1 py-3 text-center font-normal">
                   <span className="whitespace-nowrap text-navy">{weekLabel(wk)}</span>
+                  {wk === GROUP_WEEKLY_FROM ? (
+                    <span className="mt-0.5 block whitespace-nowrap text-[10px] text-gold" title="С этой недели групповые встречи каждую неделю, до неё — раз в 2 недели">
+                      груп. еженедельно →
+                    </span>
+                  ) : null}
                   {formats.length > 1 ? (
                     <span className="mt-1 flex justify-center gap-1.5 text-[10px] text-white/40">
                       <span className="w-8">инд</span>
