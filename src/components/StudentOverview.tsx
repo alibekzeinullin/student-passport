@@ -109,9 +109,9 @@ export function StudentOverview({
 
   const items: OverviewItem[] = useMemo(() => {
     const list: OverviewItem[] = [...deadlines];
-    const latest = [...meetings].sort((a, b) =>
-      b.meetingDate.localeCompare(a.meetingDate),
-    )[0];
+    const latest = [...meetings]
+      .filter((m) => m.format === "individual")
+      .sort((a, b) => b.meetingDate.localeCompare(a.meetingDate))[0];
     if (latest?.homework.trim()) {
       const due = addDaysIso(latest.meetingDate, 7);
       if (daysLeft(due) >= -1) {

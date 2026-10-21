@@ -124,7 +124,7 @@ export function MeetingsJournal({
       : null;
   }, [meetings]);
 
-  const latest = meetings[0];
+  const latest = meetings.find((m) => m.format === "individual");
   const currentHomework = latest?.homework.trim() ? latest : undefined;
 
   const handleSaved = async () => {
@@ -568,8 +568,8 @@ function MeetingForm({
               }
             >
               <option value="individual">{FORMAT_LABELS.individual}</option>
-              <option value="group" disabled>
-                {FORMAT_LABELS.group} (скоро)
+              <option value="group">
+                {FORMAT_LABELS.group}
               </option>
             </Select>
           </div>

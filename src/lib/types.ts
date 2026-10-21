@@ -226,6 +226,8 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   studentId?: string;
+  /** Временный пароль от ментора — попросить сменить при входе */
+  mustChangePassword?: boolean;
 }
 
 export interface AuthAccount {

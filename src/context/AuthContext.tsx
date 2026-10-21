@@ -11,6 +11,7 @@ import {
 } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { splitFullName } from "@/lib/supabase/mappers";
+import { loginToEmail } from "@/lib/accounts";
 import type { DbProfile } from "@/lib/supabase/database.types";
 import type {
   AuthUser,
@@ -65,6 +66,7 @@ async function loadAuthUser(): Promise<AuthUser | null> {
     email: user.email ?? "",
     role: typed.role,
     studentId: typed.student_id ?? undefined,
+    mustChangePassword: Boolean(user.user_metadata?.must_change_password),
   };
 }
 
@@ -117,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedEmail = loginToEmail(email);
       if (!normalizedEmail || !password) {
         return { ok: false, error: "Введите email и пароль" };
       }
@@ -134,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return {
             ok: false,
             error:
-              "Неверный email/пароль, или email ещё не подтверждён. В Supabase: Authentication → Providers → Email → выключите Confirm email, затем войдите снова.",
+              "Неверный логин или пароль. Если забыли пароль — попросите ментора сбросить его.",
           };
         }
         if (msg.includes("email not confirmed")) {

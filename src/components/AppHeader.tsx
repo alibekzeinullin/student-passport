@@ -58,9 +58,19 @@ export function AppHeader() {
         ) : user ? (
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <nav aria-label="Разделы" className="flex items-center gap-5 text-sm">
-              <NavLink href={homeHref} active={pathname === homeHref || (user.role === "admin" && pathname.startsWith("/admin"))}>
+              <NavLink href={homeHref} active={pathname === homeHref || (user.role === "admin" && pathname.startsWith("/admin") && !pathname.startsWith("/admin/attendance") && !pathname.startsWith("/admin/accounts"))}>
                 {user.role === "admin" ? "Ученики" : "Кабинет"}
               </NavLink>
+              {user.role === "admin" ? (
+                <>
+                  <NavLink href="/admin/attendance" active={pathname.startsWith("/admin/attendance")}>
+                    Посещаемость
+                  </NavLink>
+                  <NavLink href="/admin/accounts" active={pathname.startsWith("/admin/accounts")}>
+                    Аккаунты
+                  </NavLink>
+                </>
+              ) : null}
               <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
                 Возможности
               </NavLink>

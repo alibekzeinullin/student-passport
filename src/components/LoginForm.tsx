@@ -99,14 +99,16 @@ export function LoginForm() {
           {mode === "login" ? (
             <div className="space-y-3">
               <div>
-                <Label>Email</Label>
+                <Label>Логин или email</Label>
                 <Input
-                  type="email"
+                  type="text"
+                  autoComplete="username"
+                  autoCapitalize="none"
                   value={loginForm.email}
                   onChange={(e) =>
                     setLoginForm((p) => ({ ...p, email: e.target.value }))
                   }
-                  placeholder="you@email.com"
+                  placeholder="aylin.duysenova или you@email.com"
                 />
               </div>
               <div>

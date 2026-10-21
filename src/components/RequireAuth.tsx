@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import type { UserRole } from "@/lib/types";
+import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 
 export function RequireAuth({
   role,
@@ -42,6 +43,7 @@ export function RequireAuth({
   }
   if (!user) return null;
   if (role && user.role !== role) return null;
+  if (user.mustChangePassword) return <ForcePasswordChange />;
 
   return <>{children}</>;
 }

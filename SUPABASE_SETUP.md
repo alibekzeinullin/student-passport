@@ -44,6 +44,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 - `supabase/migration-security.sql` (**обязательно**: права доступа — ученик не может стать админом и менять поля ментора)
 - `supabase/migration-meetings.sql` (журнал встреч; выполнять после migration-security.sql)
 - `supabase/migration-platform.sql` (дедлайны, GPA по четвертям, лента возможностей; выполнять после migration-meetings.sql)
+- `supabase/migration-pause.sql` (ученики на паузе)
+- `supabase/migration-attendance.sql` (таблица посещаемости и групповые встречи)
 
 ## Шаг 5. Auth настройки (рекомендуется для локальной разработки)
 
@@ -76,3 +78,11 @@ npm run dev
 ---
 
 Когда шаги 1–4 готовы — напишите «готово», и я подключу регистрацию/логин и сохранение профилей к Supabase (вместо localStorage).
+
+## Аккаунты учеников (необязательно)
+
+Чтобы ментор мог создавать аккаунты и сбрасывать пароли на странице «Аккаунты»:
+
+1. Supabase → Project Settings → API → скопируйте ключ `service_role` (secret).
+2. Vercel → Settings → Environment Variables → `SUPABASE_SERVICE_ROLE_KEY` = этот ключ.
+3. Redeploy. Ключ используется только на сервере (`src/lib/supabase/admin.ts`) и не попадает в браузер.
