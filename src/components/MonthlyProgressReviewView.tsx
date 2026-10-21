@@ -107,7 +107,7 @@ export function MonthlyProgressReviewView({
           <Label>Месяц обзора</Label>
           {reviews.length > 1 || editable ? (
             <select
-              className="w-full min-w-0 rounded-md border border-light-gray bg-white px-3 py-2.5 text-base text-navy outline-none transition focus:border-navy focus:ring-2 focus:ring-gold/40 sm:max-w-xs sm:py-2 sm:text-sm"
+              className="w-full min-w-0 rounded-xl border border-white/10 bg-field px-3 py-2.5 text-base text-navy outline-none transition focus:border-gold/60 focus:ring-2 focus:ring-gold/25 sm:max-w-xs sm:py-2 sm:text-sm"
               value={selected.id}
               onChange={(e) => setSelectedId(e.target.value)}
             >

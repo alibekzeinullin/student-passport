@@ -32,10 +32,14 @@ export function ProfileHeader({
   onChange,
 }: ProfileHeaderProps) {
   return (
-    <div className="overflow-hidden rounded-lg border border-light-gray bg-card shadow-sm">
-      <div className="bg-navy px-4 py-4 text-white sm:px-6 sm:py-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center self-start rounded-full border-2 border-gold/70 bg-burgundy/30 text-xl font-semibold tracking-wide sm:h-20 sm:w-20 sm:text-2xl">
+    <div className="sp-glass overflow-hidden rounded-3xl border">
+      <div className="relative px-5 py-6 sm:px-8 sm:py-8">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-burgundy-deep/40 blur-3xl"
+        />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
+          <div className="flex size-16 shrink-0 items-center justify-center self-start rounded-full border-[1.5px] border-gold/80 bg-gold/10 text-xl font-light tracking-wide text-gold sm:size-20 sm:text-2xl">
             {student.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -49,23 +53,24 @@ export function ProfileHeader({
           </div>
 
           <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-semibold leading-snug tracking-tight sm:text-2xl">
-              {student.lastName} {student.firstName}
+            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium uppercase tracking-[0.16em] text-gold sm:text-xs">
+              <span className="sp-pulse inline-block size-2 rounded-full bg-gold" aria-hidden />
+              {[student.className, student.school].filter(Boolean).join(" · ") || "Ученик"}
+            </p>
+            <h2 className="mt-2 text-3xl font-light leading-[1.05] tracking-tight text-navy sm:text-5xl">
+              {student.firstName}{" "}
+              <span className="font-semibold">{student.lastName}</span>
             </h2>
-            <div className="mt-2 space-y-1 text-sm text-gold">
-              <p className="break-words">{student.className}</p>
-              <p className="break-words">{student.school}</p>
-              <p className="inline-flex flex-wrap items-center gap-1.5 break-words">
-                <span>{student.educationSystem}</span>
-                <TermHint term={student.educationSystem as TermHintKey} />
-              </p>
-            </div>
+            <p className="mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-muted">
+              <span>{student.educationSystem}</span>
+              <TermHint term={student.educationSystem as TermHintKey} />
+            </p>
           </div>
         </div>
       </div>
 
       {editable && onChange ? (
-        <div className="grid gap-4 border-t border-light-gray px-5 py-4 sm:grid-cols-2 lg:grid-cols-3 sm:px-6">
+        <div className="grid gap-4 border-t border-white/[0.07] px-5 py-5 sm:grid-cols-2 lg:grid-cols-3 sm:px-8">
           <div>
             <Label>Имя</Label>
             <Input

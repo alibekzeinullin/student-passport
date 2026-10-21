@@ -66,10 +66,10 @@ export function MonthlyFocuses({
             return (
               <div
                 key={focus.id}
-                className={`rounded-md border p-4 transition-colors ${
+                className={`rounded-xl border p-4 transition-colors ${
                   achieved
-                    ? "border-emerald-300 bg-emerald-50"
-                    : "border-light-gray bg-[#fafafa]"
+                    ? "border-emerald-400/30 bg-emerald-400/[0.07]"
+                    : "border-light-gray bg-white/[0.03]"
                 }`}
               >
                 {editable ? (

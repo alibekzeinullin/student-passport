@@ -49,34 +49,63 @@
 }
 
 :root {
-  --burgundy: #7f2231;
-  --navy: #23334a;
+  color-scheme: dark;
+
+  /* Фирменные цвета TODAY Scholars */
+  --brand-burgundy: #7f2231;
+  --brand-navy: #23334a;
+  --brand-gold: #cbb073;
+
+  /* Тёмная тема: «navy» в классах = основной цвет текста (светлый) */
+  --navy: #eef1f5;
+  --navy-deep: #23334a;
+  --navy-soft: #8fa6c8;
+  --burgundy: #e06b80;
+  --burgundy-deep: #7f2231;
   --gold: #cbb073;
-  --light-gray: #d1d1d1;
-  --background: #ececec;
-  --foreground: #23334a;
-  --card: #ffffff;
-  --muted: #5c6675;
-  --border: #d1d1d1;
-  --font-sofia: "Sofia Pro", "Helvetica Neue", Arial, sans-serif;
+  --gold-ink: #1a2433;
+  --light-gray: #344157;
+  --background: #121b29;
+  --foreground: #eef1f5;
+  --card: rgba(255, 255, 255, 0.04);
+  --surface: #1a2536;
+  --field: #111a27;
+  --muted: #a3afc0;
+  --border: #2c384c;
+  --font-sofia: "Sofia Pro", "Onest Variable", "Helvetica Neue", Arial, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-burgundy: var(--burgundy);
+  --color-burgundy-deep: var(--burgundy-deep);
   --color-navy: var(--navy);
+  --color-navy-deep: var(--navy-deep);
+  --color-navy-soft: var(--navy-soft);
   --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
   --color-light-gray: var(--light-gray);
   --color-muted: var(--muted);
   --color-card: var(--card);
+  --color-surface: var(--surface);
+  --color-field: var(--field);
   --color-border: var(--border);
   --font-sans: var(--font-sofia);
   --font-display: var(--font-sofia);
 }
 
+html {
+  background-color: var(--background);
+}
+
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image:
+    radial-gradient(900px 520px at 88% -8%, rgba(127, 34, 49, 0.38), transparent 62%),
+    radial-gradient(760px 460px at -4% 18%, rgba(35, 51, 74, 0.95), transparent 70%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
   color: var(--foreground);
   font-family: var(--font-sofia);
   overflow-x: hidden;
@@ -84,11 +113,75 @@ body {
   text-size-adjust: 100%;
 }
 
-h1,
-h2,
-h3 {
-  font-family: var(--font-sofia);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+::selection {
+  background: rgba(203, 176, 115, 0.35);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6f7c8f;
+}
+
+/* Плавное появление блоков */
+@keyframes sp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sp-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.sp-rise {
+  animation: sp-rise 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.sp-pulse {
+  animation: sp-pulse 2s ease-in-out infinite;
+}
+
+.sp-glass {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(6px);
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.sp-glass:hover {
+  border-color: rgba(203, 176, 115, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-rise,
+  .sp-pulse {
+    animation: none;
+  }
+  .sp-glass {
+    transition: none;
+  }
+}
+
+@layer base {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-sofia);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
 }

@@ -191,13 +191,13 @@ export default function AdminPage() {
 
   return (
     <RequireAuth role="admin">
-      <div className="mx-auto min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+      <div className="sp-rise mx-auto min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-burgundy">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-gold">
               Реестр TODAY Scholars
             </p>
-            <h2 className="text-2xl font-semibold text-navy">Все ученики</h2>
+            <h2 className="mt-1 text-3xl font-light tracking-tight text-navy sm:text-4xl">Все ученики</h2>
             <p className="mt-1 text-sm text-muted">
               Фильтр по классу, сортировка по колонкам, удаление профилей.
               Админ-аккаунт при удалении учеников не затрагивается.
@@ -215,7 +215,7 @@ export default function AdminPage() {
         </div>
 
         {error ? (
-          <div className="rounded-lg border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
+          <div className="rounded-2xl border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
             {error}
           </div>
         ) : null}

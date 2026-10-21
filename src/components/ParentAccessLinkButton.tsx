@@ -72,7 +72,7 @@ export function ParentAccessLinkButton({ studentId }: { studentId: string }) {
         </div>
 
         {link ? (
-          <p className="break-all rounded-md border border-light-gray bg-[#fafafa] px-3 py-2 text-xs text-navy">
+          <p className="break-all rounded-xl border border-light-gray bg-white/[0.03] px-3 py-2 text-xs text-navy">
             {link}
           </p>
         ) : (

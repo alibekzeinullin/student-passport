@@ -51,17 +51,17 @@ export function AdminReportPage({
     <RequireAuth role="admin">
       <div className="mx-auto min-w-0 max-w-6xl space-y-4 px-4 py-6 sm:px-6 sm:py-8">
         {loading && !student ? (
-          <div className="rounded-lg border border-light-gray bg-card p-8 text-center text-muted">
+          <div className="rounded-2xl border border-light-gray bg-card p-8 text-center text-muted">
             Загрузка отчёта…
           </div>
         ) : !student ? (
-          <div className="rounded-lg border border-light-gray bg-card p-8 text-center text-muted">
+          <div className="rounded-2xl border border-light-gray bg-card p-8 text-center text-muted">
             Профиль ученика не найден.
           </div>
         ) : (
           <>
             {saveError ? (
-              <div className="rounded-lg border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
+              <div className="rounded-2xl border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
                 {saveError}
               </div>
             ) : null}

@@ -66,7 +66,7 @@ export function TermHint({ term }: { term: TermHintKey }) {
         onClick={() => {
           if (!supportsHover) setOpen((prev) => !prev);
         }}
-        className="inline-flex size-5 items-center justify-center rounded-full border border-navy/25 bg-white text-[10px] font-bold leading-none text-navy/70 transition hover:border-burgundy hover:bg-burgundy hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+        className="inline-flex size-5 items-center justify-center rounded-full border border-white/20 bg-white/5 text-[10px] font-bold leading-none text-navy/70 transition hover:border-gold hover:bg-gold hover:text-gold-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
       >
         ?
       </button>
@@ -74,12 +74,12 @@ export function TermHint({ term }: { term: TermHintKey }) {
         <span
           role="tooltip"
           style={getTooltipStyle()}
-          className="fixed z-[9999] rounded-md border border-navy/15 bg-navy px-3 py-2 text-left text-[11px] font-normal normal-case leading-snug tracking-normal text-white shadow-xl"
+          className="fixed z-[9999] rounded-md border border-white/10 bg-[#1f2c40] px-3 py-2 text-left text-[11px] font-normal normal-case leading-snug tracking-normal text-white shadow-xl"
         >
           {text}
           <span
             aria-hidden
-            className="absolute left-1/2 top-full -mt-px -translate-x-1/2 border-4 border-transparent border-t-navy"
+            className="absolute left-1/2 top-full -mt-px -translate-x-1/2 border-4 border-transparent border-t-[#1f2c40]"
           />
         </span>
       ) : null}

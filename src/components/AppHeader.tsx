@@ -29,37 +29,42 @@ export function AppHeader() {
     : "/";
 
   return (
-    <header className="border-b border-gold/40 bg-navy text-white">
+    <header className="border-b border-white/[0.07] bg-[#121b29]/70 text-navy backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
         <div className="min-w-0">
-          <Link href={isParentGuest ? "/" : homeHref} className="block min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-gold sm:text-xs sm:tracking-[0.18em]">
-              TODAY Scholars
-            </p>
-            <h1 className="text-base font-semibold leading-snug tracking-tight sm:text-xl">
-              <span className="sm:hidden">Digital Passport</span>
-              <span className="hidden sm:inline">
-                Digital Passport TODAY Scholars
+          <Link
+            href={isParentGuest ? "/" : homeHref}
+            className="flex min-w-0 items-center gap-3"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-gold text-sm font-semibold text-gold">
+              TS
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium tracking-[0.12em] sm:text-[15px]">
+                TODAY SCHOLARS
               </span>
-            </h1>
+              <span className="block text-xs font-light text-muted sm:text-sm">
+                Digital Passport
+              </span>
+            </span>
           </Link>
         </div>
 
         {isParentGuest ? (
-          <p className="shrink-0 text-[11px] text-light-gray sm:text-xs">
+          <p className="shrink-0 text-[11px] text-muted sm:text-xs">
             Родитель · просмотр
           </p>
         ) : user ? (
           <div className="flex items-center gap-3">
             <div className="hidden min-w-0 text-right sm:block">
               <p className="text-sm font-medium">{user.name}</p>
-              <p className="text-xs text-light-gray">
+              <p className="text-xs text-muted">
                 {ROLE_LABELS[user.role] ?? user.role}
               </p>
             </div>
             <Button
               variant="secondary"
-              className="ml-auto shrink-0 border-gold/60 bg-white/95 sm:ml-0"
+              className="ml-auto shrink-0 sm:ml-0"
               onClick={handleLogout}
             >
               Выйти

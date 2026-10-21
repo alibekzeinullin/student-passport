@@ -13,11 +13,12 @@ export function Section({
 }) {
   return (
     <section className="min-w-0 space-y-4">
-      <div className="border-l-4 border-burgundy pl-3 sm:pl-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted sm:tracking-[0.14em]">
+      <div className="px-1">
+        <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-gold">
+          <span className="inline-block size-1.5 rounded-full bg-gold" aria-hidden />
           Раздел {number}
         </p>
-        <h2 className="mt-1 text-lg font-semibold leading-snug text-navy sm:text-xl">
+        <h2 className="mt-1.5 text-xl font-medium leading-snug tracking-tight text-navy sm:text-2xl">
           {title}
         </h2>
         {description ? (

@@ -5,152 +5,137 @@ import {
   calculateAcademicSuccessScore,
   clampScore,
 } from "@/lib/academic-score";
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { Input, Label } from "@/components/ui/Field";
 import { TermHint } from "@/components/ui/TermHint";
 import type { TermHintKey } from "@/lib/term-hints";
+import { useCountUp } from "@/lib/use-count-up";
 
 interface ScoreCirclesProps {
   student: StudentProfile;
-  editable?: boolean;
-  onChange?: (patch: Partial<StudentProfile>) => void;
 }
 
-export function ScoreCircles({
-  student,
-  editable = false,
-  onChange,
-}: ScoreCirclesProps) {
+/**
+ * Индикаторы прогресса. Посещаемость и задания считаются базой из журнала
+ * встреч, академ успехи — из паспорта. Кольца заполняются с анимацией.
+ */
+export function ScoreCircles({ student }: ScoreCirclesProps) {
   const academic = calculateAcademicSuccessScore(student);
+  const progress = useCountUp(1800, 250);
 
   return (
-    <Card>
-      <CardHeader
-        title="Индикаторы прогресса"
-        subtitle="100-балльная шкала, считается автоматически: посещаемость и задания — из журнала встреч, академ успехи — из паспорта"
-      />
-      <CardBody>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
-          <ScoreCircle
-            label="Посещаемость"
-            detail="был — 100%, опоздал — 50%, не пришёл — 0%"
-            hintTerm="Посещаемость"
-            value={student.attendanceScore}
-            accent="#7F2231"
-            editable={editable}
-            onValueChange={
-              editable && onChange
-                ? (value) => onChange({ attendanceScore: clampScore(value) })
-                : undefined
-            }
-          />
-          <ScoreCircle
-            label="Выполнение заданий"
-            hintTerm="Выполнение заданий"
-            detail="средняя оценка домашек × 10"
-            value={student.assignmentsScore}
-            accent="#23334A"
-            editable={editable}
-            onValueChange={
-              editable && onChange
-                ? (value) => onChange({ assignmentsScore: clampScore(value) })
-                : undefined
-            }
-          />
-          <ScoreCircle
-            label="Академ успехи"
-            hintTerm="Академ успехи"
-            value={academic}
-            accent="#CBB073"
-            hint="GPA 35% · активность 25% · проекты 20% · навыки 15% · книги 5% + бонус тестов"
-          />
-        </div>
-      </CardBody>
-    </Card>
+    <section className="sp-glass rounded-3xl border px-4 py-6 sm:px-8 sm:py-8">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+        <h3 className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
+          Индикаторы прогресса
+        </h3>
+        <p className="text-xs text-muted">
+          считаются автоматически · шкала 0–100
+        </p>
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-6">
+        <ScoreRing
+          label="Посещаемость"
+          detail="был 100% · опоздал 50% · не пришёл 0%"
+          hintTerm="Посещаемость"
+          value={student.attendanceScore}
+          color="var(--burgundy)"
+          glow="rgba(224,107,128,.55)"
+          progress={progress}
+        />
+        <ScoreRing
+          label="Выполнение заданий"
+          detail="средняя оценка домашек × 10"
+          hintTerm="Выполнение заданий"
+          value={student.assignmentsScore}
+          color="var(--navy-soft)"
+          glow="rgba(143,166,200,.5)"
+          progress={progress}
+        />
+        <ScoreRing
+          label="Академ успехи"
+          detail="GPA 35% · активность 25% · проекты 20% · навыки 15% · книги 5%"
+          hintTerm="Академ успехи"
+          value={academic}
+          color="var(--gold)"
+          glow="rgba(203,176,115,.55)"
+          progress={progress}
+        />
+      </div>
+    </section>
   );
 }
 
-function ScoreCircle({
+function ScoreRing({
   label,
   value,
-  accent,
-  editable,
-  onValueChange,
-  hint,
+  color,
+  glow,
   detail,
   hintTerm,
+  progress,
 }: {
   label: string;
   value: number;
-  accent: string;
-  editable?: boolean;
-  onValueChange?: (value: number) => void;
-  hint?: string;
+  color: string;
+  glow: string;
   detail?: string;
   hintTerm?: TermHintKey;
+  progress: number;
 }) {
-  const size = 112;
-  const stroke = 10;
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
   const safe = clampScore(value);
-  const offset = circumference - (safe / 100) * circumference;
+  const shown = safe * progress;
 
   return (
     <div className="flex w-full flex-col items-center text-center">
-      <div className="relative shrink-0" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="-rotate-90">
+      <div className="relative size-36 shrink-0 sm:size-40">
+        <svg
+          viewBox="0 0 120 120"
+          className="size-full -rotate-90 overflow-visible"
+          aria-hidden
+        >
           <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
+            cx="60"
+            cy="60"
+            r="52"
+            pathLength={100}
             fill="none"
-            stroke="#D1D1D1"
-            strokeWidth={stroke}
+            stroke="rgba(255,255,255,.07)"
+            strokeWidth={6}
           />
           <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
+            cx="60"
+            cy="60"
+            r="52"
+            pathLength={100}
             fill="none"
-            stroke={accent}
-            strokeWidth={stroke}
+            stroke={color}
+            strokeWidth={6}
             strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
+            strokeDasharray={100}
+            strokeDashoffset={100 - shown}
+            style={{ filter: `drop-shadow(0 0 6px ${glow})` }}
           />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-2xl font-semibold text-navy">{safe}</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-4xl font-light leading-none tracking-tight text-navy sm:text-[44px]">
+            {Math.round(shown)}
+          </span>
+          <span className="mt-1 text-[11px] text-muted">из 100</span>
         </div>
       </div>
-      <div className="mt-3 flex max-w-full flex-col items-center gap-1 px-1">
-        <p className="flex flex-wrap items-center justify-center gap-1.5 text-sm font-semibold leading-snug text-navy">
+      <div className="mt-4 flex max-w-full flex-col items-center gap-1 px-1">
+        <p className="flex flex-wrap items-center justify-center gap-1.5 text-base font-medium leading-snug text-navy">
           <span className="break-words">{label}</span>
           {hintTerm ? <TermHint term={hintTerm} /> : null}
         </p>
         {detail ? (
-          <p className="text-xs leading-snug text-muted">{detail}</p>
-        ) : null}
-        {hint ? (
-          <p className="max-w-[14rem] text-xs leading-snug text-muted">{hint}</p>
+          <p className="max-w-[16rem] text-xs leading-snug text-muted">
+            {detail}
+          </p>
         ) : null}
       </div>
-      {editable && onValueChange ? (
-        <div className="mt-3 w-full max-w-[9rem]">
-          <Label>Балл (0–100)</Label>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            value={safe}
-            onChange={(e) => {
-              const raw = e.target.value;
-              onValueChange(raw === "" ? 0 : Number.parseFloat(raw));
-            }}
-          />
-        </div>
-      ) : null}
+      <span className="sr-only">
+        {label}: {safe} из 100
+      </span>
     </div>
   );
 }

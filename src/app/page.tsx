@@ -34,13 +34,9 @@ export default function HomePage() {
     <div className="relative isolate overflow-hidden">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_#e4d8b8_0%,_#ececec_45%,_#d1d1d1_100%)]"
+        className="pointer-events-none absolute left-1/2 top-24 -z-10 size-[520px] -translate-x-1/2 rounded-full bg-gold/10 blur-[120px]"
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-48 bg-[linear-gradient(180deg,rgba(127,34,49,0.08),transparent)]"
-      />
-      <div className="mx-auto flex min-h-[calc(100vh-73px)] max-w-6xl items-center px-4 py-10 sm:px-6 sm:py-16">
+      <div className="sp-rise mx-auto flex min-h-[calc(100vh-73px)] max-w-6xl items-center px-4 py-10 sm:px-6 sm:py-16">
         <LoginForm />
       </div>
     </div>

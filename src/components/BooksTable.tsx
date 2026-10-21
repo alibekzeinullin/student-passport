@@ -77,7 +77,7 @@ export function BooksTable({
             {RECOMMENDED_BOOKS.map((book) => (
               <li
                 key={`${book.title}-${book.author}`}
-                className="flex flex-col gap-2 rounded-md border border-light-gray/80 bg-[#fafafa] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-xl border border-light-gray/80 bg-white/[0.03] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
               >
                 <p className="min-w-0 text-sm text-navy">
                   <span className="font-medium">«{book.title}»</span>
@@ -140,7 +140,7 @@ export function BooksTable({
                         key={item.id}
                         className={`border-t align-top transition-colors ${
                           done
-                            ? "border-emerald-200 bg-emerald-50"
+                            ? "border-emerald-400/30 bg-emerald-400/[0.07]"
                             : "border-light-gray"
                         }`}
                       >

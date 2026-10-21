@@ -56,7 +56,7 @@ export function GrowthZonesBlock({
           zones.map((zone, index) => (
             <div
               key={zone.id}
-              className="rounded-md border border-light-gray bg-[#fafafa] p-4"
+              className="rounded-xl border border-light-gray bg-white/[0.03] p-4"
             >
               {editable && onChange ? (
                 <div className="space-y-3">

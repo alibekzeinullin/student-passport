@@ -64,16 +64,16 @@ export default function ParentHubPage({
   const base = `/parent/${studentToken}`;
 
   return (
-    <div className="mx-auto min-w-0 max-w-3xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8">
-      <div className="rounded-lg border border-gold/50 bg-gold/15 px-4 py-3 text-center text-sm text-navy">
+    <div className="sp-rise mx-auto min-w-0 max-w-3xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8">
+      <div className="rounded-full border border-gold/30 bg-gold/10 px-4 py-2.5 text-center text-sm text-navy">
         Режим родителя / гостя — только просмотр. Редактирование недоступно.
       </div>
 
       <div className="text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-burgundy">
+        <p className="text-xs font-medium uppercase tracking-[0.16em] text-gold">
           Родитель / Гость
         </p>
-        <h2 className="mt-2 text-2xl font-semibold text-navy">
+        <h2 className="mt-2 text-3xl font-light tracking-tight text-navy sm:text-4xl">
           {student.lastName} {student.firstName}
         </h2>
         <p className="mt-2 text-sm text-muted">

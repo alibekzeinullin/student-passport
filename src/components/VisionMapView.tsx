@@ -60,7 +60,7 @@ function ProgressBar({ value, tone = "navy" }: { value: number; tone?: "navy" | 
       ? "bg-burgundy"
       : tone === "gold"
         ? "bg-gold"
-        : "bg-navy";
+        : "bg-navy-soft";
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-xs font-medium text-muted">
@@ -89,11 +89,11 @@ function StatusBadge({
     navy: "bg-navy/10 text-navy",
     burgundy: "bg-burgundy/10 text-burgundy",
     gold: "bg-gold/30 text-navy",
-    done: "bg-emerald-50 text-emerald-800",
+    done: "bg-emerald-400/15 text-emerald-300",
   };
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold tracking-wide ${styles[tone]}`}
+      className={`inline-flex items-center rounded-xl px-2 py-0.5 text-xs font-semibold tracking-wide ${styles[tone]}`}
     >
       {label}
     </span>
@@ -292,7 +292,7 @@ export function VisionMapView({
           {goals.map((goal, index) => (
             <div
               key={goal.id}
-              className="rounded-md border border-light-gray bg-[#fafafa] p-3"
+              className="rounded-xl border border-light-gray bg-white/[0.03] p-3"
             >
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -372,7 +372,7 @@ export function VisionMapView({
                     </p>
                   )}
                 </FieldBlock>
-                <div className="rounded-md bg-navy/5 px-3 py-2">
+                <div className="rounded-xl bg-navy/5 px-3 py-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                     Goal Dashboard
                   </p>

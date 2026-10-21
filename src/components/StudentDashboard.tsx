@@ -43,7 +43,7 @@ export function StudentDashboard({
 
   if (loading && !student) {
     return (
-      <div className="rounded-lg border border-light-gray bg-card p-8 text-center text-muted">
+      <div className="rounded-2xl border border-light-gray bg-card p-8 text-center text-muted">
         Загрузка профиля…
       </div>
     );
@@ -51,7 +51,7 @@ export function StudentDashboard({
 
   if (!student) {
     return (
-      <div className="rounded-lg border border-light-gray bg-card p-8 text-center text-muted">
+      <div className="rounded-2xl border border-light-gray bg-card p-8 text-center text-muted">
         Профиль ученика не найден.
       </div>
     );
@@ -70,14 +70,11 @@ export function StudentDashboard({
   return (
     <div className="min-w-0 space-y-6 sm:space-y-8">
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-burgundy sm:tracking-[0.14em]">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-gold">
               {titleByMode[accessMode]}
             </p>
-            <h2 className="text-xl font-semibold leading-snug text-navy sm:text-2xl">
-              {student.lastName} {student.firstName}
-            </h2>
             {accessMode === "parent" ? (
               <p className="mt-1 text-sm text-muted">
                 Режим родителя / гостя — изменения недоступны
@@ -85,30 +82,31 @@ export function StudentDashboard({
             ) : null}
           </div>
 
-          <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-            {accessMode === "admin" ? (
-              <>
-                <Link
-                  href={`/admin/students/${studentId}/profile`}
-                  className="text-center text-sm font-medium text-burgundy underline-offset-2 hover:underline sm:text-right"
-                >
-                  Student Profile →
-                </Link>
-                <Link
-                  href={`/admin/students/${studentId}/monthly`}
-                  className="text-center text-sm font-medium text-burgundy underline-offset-2 hover:underline sm:text-right"
-                >
-                  Monthly Progress Review →
-                </Link>
-                <Link
-                  href={`/admin/students/${studentId}/vision`}
-                  className="text-center text-sm font-medium text-burgundy underline-offset-2 hover:underline sm:text-right"
-                >
-                  Vision Map →
-                </Link>
-              </>
-            ) : null}
-          </div>
+          {accessMode === "admin" ? (
+            <nav
+              aria-label="Отчёты ученика"
+              className="flex flex-wrap gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1 sm:rounded-full"
+            >
+              <Link
+                href={`/admin/students/${studentId}/profile`}
+                className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
+              >
+                Student Profile
+              </Link>
+              <Link
+                href={`/admin/students/${studentId}/monthly`}
+                className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
+              >
+                Monthly Review
+              </Link>
+              <Link
+                href={`/admin/students/${studentId}/vision`}
+                className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
+              >
+                Vision Map
+              </Link>
+            </nav>
+          ) : null}
         </div>
 
         {perms.canGenerateParentLink ? (

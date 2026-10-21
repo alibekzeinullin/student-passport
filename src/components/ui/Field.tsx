@@ -6,7 +6,7 @@ import type {
 } from "react";
 
 const fieldClass =
-  "w-full min-w-0 rounded-md border border-light-gray bg-white px-3 py-2.5 text-base text-navy outline-none transition focus:border-navy focus:ring-2 focus:ring-gold/40 sm:py-2 sm:text-sm";
+  "w-full min-w-0 rounded-xl border border-white/10 bg-field px-3 py-2.5 text-base text-navy outline-none transition focus:border-gold/60 focus:ring-2 focus:ring-gold/25 sm:py-2 sm:text-sm";
 
 function cx(...parts: Array<string | undefined>) {
   return parts.filter(Boolean).join(" ");
@@ -45,7 +45,7 @@ export function Label({
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted"
+      className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.12em] text-muted"
     >
       {children}
     </label>

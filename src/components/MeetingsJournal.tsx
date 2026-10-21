@@ -178,7 +178,7 @@ export function MeetingsJournal({
       />
       <CardBody className="space-y-4">
         {error ? (
-          <div className="rounded-lg border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
+          <div className="rounded-2xl border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
             {error}
           </div>
         ) : null}
@@ -195,14 +195,14 @@ export function MeetingsJournal({
             />
 
             {!isAdmin && currentHomework ? (
-              <div className="rounded-lg border border-gold/60 bg-gold/15 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-burgundy">
+              <div className="rounded-2xl border border-burgundy/30 bg-gradient-to-br from-burgundy-deep to-[#5a1622] px-5 py-4">
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#f0d9a8]">
                   Текущее домашнее задание
                 </p>
-                <p className="mt-1 whitespace-pre-line text-sm text-navy">
+                <p className="mt-2 whitespace-pre-line text-lg font-medium leading-snug text-white">
                   {currentHomework.homework}
                 </p>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-2 text-xs text-[#e9c9cf]">
                   с встречи {formatMeetingDate(currentHomework.meetingDate)}
                 </p>
               </div>
@@ -219,7 +219,7 @@ export function MeetingsJournal({
             ) : null}
 
             {meetings.length === 0 && editingId !== "new" ? (
-              <p className="rounded-lg border border-dashed border-light-gray px-4 py-8 text-center text-sm text-muted">
+              <p className="rounded-2xl border border-dashed border-light-gray px-4 py-8 text-center text-sm text-muted">
                 {isAdmin
                   ? "Встреч пока нет. Нажмите «+ Новая встреча», чтобы записать первую."
                   : "Ментор пока не записал ни одной встречи."}
@@ -304,10 +304,10 @@ function StatsRow({
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-lg border border-light-gray bg-white px-3 py-2"
+          className="rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3"
         >
           <p className="text-xs text-muted">{item.label}</p>
-          <p className="text-lg font-semibold text-navy">{item.value}</p>
+          <p className="mt-0.5 text-2xl font-light tracking-tight text-navy">{item.value}</p>
         </div>
       ))}
     </div>
@@ -317,9 +317,9 @@ function StatsRow({
 // ---------- Карточка встречи (просмотр) ----------
 
 const ATTENDANCE_STYLES: Record<Attendance, string> = {
-  present: "bg-emerald-50 text-emerald-800 border-emerald-200",
-  late: "bg-amber-50 text-amber-800 border-amber-200",
-  absent: "bg-burgundy/5 text-burgundy border-burgundy/30",
+  present: "bg-emerald-400/10 text-emerald-300 border-emerald-400/30",
+  late: "bg-amber-400/10 text-amber-300 border-amber-400/30",
+  absent: "bg-burgundy/10 text-burgundy border-burgundy/40",
 };
 
 function MeetingCard({
@@ -339,7 +339,7 @@ function MeetingCard({
   const self = reflectionAverage(meeting.notes);
 
   return (
-    <div className="rounded-lg border border-light-gray bg-white">
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] transition hover:border-gold/30">
       <button
         type="button"
         onClick={onToggle}
@@ -399,7 +399,7 @@ function MeetingCard({
             <Detail label="Домашнее задание" text={meeting.homework} />
           ) : null}
           {showMentorNotes && self !== null ? (
-            <div className="rounded-md bg-navy/5 px-3 py-2">
+            <div className="rounded-xl bg-navy/5 px-3 py-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                 Самооценка 🔒
               </p>
@@ -543,7 +543,7 @@ function MeetingForm({
   };
 
   return (
-    <div className="space-y-5 rounded-lg border-2 border-navy/20 bg-white p-4">
+    <div className="sp-rise space-y-5 rounded-2xl border border-gold/30 bg-[#162030] p-4 sm:p-5">
       <p className="font-semibold text-navy">
         {initial ? "Редактирование встречи" : "Новая встреча"}
       </p>
@@ -584,7 +584,7 @@ function MeetingForm({
                 onClick={() =>
                   patch({ attendance: meeting.attendance === key ? null : key })
                 }
-                className={`rounded-md border px-2 py-2 text-sm font-medium transition ${
+                className={`rounded-xl border px-2 py-2 text-sm font-medium transition ${
                   meeting.attendance === key
                     ? ATTENDANCE_STYLES[key] + " ring-2 ring-offset-1 ring-current"
                     : "border-light-gray text-navy hover:bg-light-gray/40"
@@ -672,7 +672,7 @@ function MeetingForm({
       </FormBlock>
 
       {error ? (
-        <div className="rounded-lg border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
+        <div className="rounded-2xl border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">
           {error}
         </div>
       ) : null}
@@ -717,7 +717,7 @@ function FormBlock({
 }) {
   return (
     <fieldset
-      className={`space-y-3 rounded-lg border p-3 ${
+      className={`space-y-3 rounded-2xl border p-3 ${
         privateNote ? "border-navy/20 bg-navy/[0.03]" : "border-light-gray"
       }`}
     >
@@ -762,10 +762,10 @@ function RatingPicker({
             key={n}
             type="button"
             onClick={() => onChange(value === n ? null : n)}
-            className={`h-9 rounded-md border text-sm font-medium transition ${
+            className={`h-9 rounded-xl border text-sm font-medium transition ${
               value !== null && n <= value
-                ? "border-burgundy bg-burgundy text-white"
-                : "border-light-gray bg-white text-navy hover:bg-light-gray/40"
+                ? "border-gold bg-gold text-gold-ink"
+                : "border-white/10 bg-white/[0.03] text-navy hover:bg-white/10"
             }`}
             aria-label={`${label}: ${n}`}
             aria-pressed={value === n}

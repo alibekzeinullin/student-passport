@@ -62,10 +62,10 @@ export function LoginForm() {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
       <div className="text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-burgundy">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-gold">
           TODAY Scholars
         </p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight text-navy">
+        <h2 className="mt-3 text-3xl font-light tracking-tight text-navy sm:text-4xl">
           Digital Passport TODAY Scholars
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
@@ -73,13 +73,13 @@ export function LoginForm() {
         </p>
       </div>
 
-      <Card className="border-gold/50">
+      <Card>
         <CardBody className="space-y-4">
-          <div className="grid grid-cols-2 rounded-md border border-light-gray p-1">
+          <div className="grid grid-cols-2 rounded-full border border-white/10 bg-white/[0.03] p-1">
             <button
               type="button"
-              className={`rounded px-3 py-2 text-sm font-medium ${
-                mode === "login" ? "bg-navy text-white" : "text-navy"
+              className={`rounded-full px-3 py-2 text-sm font-medium transition ${
+                mode === "login" ? "bg-gold text-gold-ink" : "text-muted hover:text-navy"
               }`}
               onClick={() => setMode("login")}
             >
@@ -87,8 +87,8 @@ export function LoginForm() {
             </button>
             <button
               type="button"
-              className={`rounded px-3 py-2 text-sm font-medium ${
-                mode === "register" ? "bg-burgundy text-white" : "text-navy"
+              className={`rounded-full px-3 py-2 text-sm font-medium transition ${
+                mode === "register" ? "bg-gold text-gold-ink" : "text-muted hover:text-navy"
               }`}
               onClick={() => setMode("register")}
             >

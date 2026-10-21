@@ -56,7 +56,7 @@ export function TestScoresCard({
         {editable && onChange ? (
           <div className="grid gap-4 lg:grid-cols-3">
             {groups.map((group) => (
-              <div key={group.title} className="rounded-md border border-light-gray p-3">
+              <div key={group.title} className="rounded-xl border border-light-gray p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                   {group.title}
                 </p>
@@ -106,7 +106,7 @@ export function TestScoresCard({
         ) : (
           <div className="grid gap-4 lg:grid-cols-3">
             {groups.map((group) => (
-              <div key={group.title} className="rounded-md border border-light-gray p-3">
+              <div key={group.title} className="rounded-xl border border-light-gray p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">
                   {group.title}
                 </p>

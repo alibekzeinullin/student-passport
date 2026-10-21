@@ -83,7 +83,7 @@ export function ProjectsGrid({
                   className={`border-b px-5 py-3 text-white ${
                     done
                       ? "border-emerald-400/40 bg-emerald-700"
-                      : "border-gold/40 bg-navy"
+                      : "border-gold/20 bg-navy-deep"
                   }`}
                 >
                   {editable ? (
@@ -94,7 +94,7 @@ export function ProjectsGrid({
                         onChange={(e) =>
                           updateProject(project.id, { title: e.target.value })
                         }
-                        className="border-light-gray bg-white text-navy"
+                        className="border-white/10 bg-field text-navy"
                       />
                       <Input
                         value={project.role}
@@ -102,7 +102,7 @@ export function ProjectsGrid({
                         onChange={(e) =>
                           updateProject(project.id, { role: e.target.value })
                         }
-                        className="border-light-gray bg-white text-navy"
+                        className="border-white/10 bg-field text-navy"
                       />
                     </div>
                   ) : (
@@ -119,7 +119,7 @@ export function ProjectsGrid({
                   )}
                 </div>
                 <CardBody
-                  className={`space-y-3 ${done ? "bg-emerald-50/80" : ""}`}
+                  className={`space-y-3 ${done ? "bg-emerald-400/[0.05]" : ""}`}
                 >
                   {editable ? (
                     <>

@@ -8,7 +8,7 @@ interface CardProps {
 export function Card({ children, className = "" }: CardProps) {
   return (
     <div
-      className={`min-w-0 overflow-hidden rounded-lg border border-light-gray bg-card shadow-sm ${className}`}
+      className={`sp-glass min-w-0 overflow-hidden rounded-2xl border ${className}`}
     >
       {children}
     </div>
@@ -25,9 +25,9 @@ export function CardHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-b border-light-gray px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:py-4">
+    <div className="flex flex-col gap-3 border-b border-white/[0.07] px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6 sm:py-5">
       <div className="min-w-0 flex-1">
-        <h3 className="text-base font-semibold leading-snug text-navy">{title}</h3>
+        <h3 className="text-base font-medium leading-snug tracking-wide text-navy sm:text-lg">{title}</h3>
         {subtitle ? (
           <p className="mt-1 text-sm leading-relaxed text-muted">{subtitle}</p>
         ) : null}
@@ -44,5 +44,5 @@ export function CardBody({
   children: ReactNode;
   className?: string;
 }) {
-  return <div className={`px-4 py-3 sm:px-5 sm:py-4 ${className}`}>{children}</div>;
+  return <div className={`px-4 py-4 sm:px-6 sm:py-5 ${className}`}>{children}</div>;
 }
