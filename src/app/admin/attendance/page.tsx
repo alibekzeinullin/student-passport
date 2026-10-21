@@ -6,12 +6,13 @@ import { useStudents } from "@/context/StudentsContext";
 import { AttendanceWeek } from "@/components/attendance/AttendanceWeek";
 import { AttendanceGrid } from "@/components/attendance/AttendanceGrid";
 import { AttendanceImport } from "@/components/attendance/AttendanceImport";
+import { AttendancePlan } from "@/components/attendance/AttendancePlan";
 
-type View = "week" | "grid" | "import";
+type View = "plan" | "week" | "grid" | "import";
 
 export default function AttendancePage() {
   const { students, loading } = useStudents();
-  const [view, setView] = useState<View>("week");
+  const [view, setView] = useState<View>("plan");
   const [showPaused, setShowPaused] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -45,7 +46,8 @@ export default function AttendancePage() {
           >
             {(
               [
-                ["week", "Неделя"],
+                ["plan", "План и приглашения"],
+                ["week", "Отметки недели"],
                 ["grid", "Вся таблица"],
                 ["import", "Импорт из Google Sheets"],
               ] as const
@@ -77,7 +79,9 @@ export default function AttendancePage() {
           />
         ) : (
           <>
-            {view === "week" ? (
+            {view === "plan" ? (
+              <AttendancePlan key={`p-${refreshKey}`} students={list} />
+            ) : view === "week" ? (
               <AttendanceWeek key={`w-${refreshKey}`} students={list} />
             ) : (
               <AttendanceGrid key={`g-${refreshKey}`} students={list} />

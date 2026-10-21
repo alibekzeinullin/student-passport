@@ -25,6 +25,7 @@ import {
   type CellState,
 } from "@/lib/attendance";
 import { DOT_CLASS } from "@/components/attendance/cell-styles";
+import { hasIndividualThisWeek, studentParity } from "@/lib/schedule";
 
 const HISTORY_WEEKS = 6;
 
@@ -273,7 +274,15 @@ export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
                     <p className="text-xs text-muted">
                       {s.className}
                       {existing ? ` · ${weekdayLabel(existing.meetingDate)}` : ""}
-                      {!existing ? <DueTag due={individualDue(meetings, s.id, monday)} /> : null}
+                      {!existing ? (
+                        <DueTag
+                          due={(() => {
+                            const { parity } = studentParity(s, meetings);
+                            if (parity === null) return individualDue(meetings, s.id, monday);
+                            return hasIndividualThisWeek(parity, monday) ? "due" : "off";
+                          })()}
+                        />
+                      ) : null}
                     </p>
                   </div>
                   <div className="flex gap-1" aria-label="История за прошлые недели">

@@ -56,6 +56,7 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     termSystem: "quarters",
     status: "active",
     pausedAt: null,
+    indParity: null,
     email: "student@today.edu",
     parentAccessToken: "tok-alibek-parent-2026",
     mentorNote:
@@ -318,6 +319,7 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     termSystem: "quarters",
     status: "active",
     pausedAt: null,
+    indParity: null,
     email: "madina@today.edu",
     parentAccessToken: "tok-madina-parent-2026",
     mentorNote:
@@ -400,6 +402,7 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     termSystem: "quarters",
     status: "active",
     pausedAt: null,
+    indParity: null,
     email: "daniyar@today.edu",
     parentAccessToken: "tok-daniyar-parent-2026",
     mentorNote:

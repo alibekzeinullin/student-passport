@@ -85,7 +85,7 @@ export function AttendanceImport({ onImported }: { onImported: () => void }) {
         }
         rows.push({
           studentId: id,
-          date: m.format === "group" ? addDays(m.monday, 2) : m.monday,
+          date: m.format === "group" ? addDays(m.monday, 5) : m.monday,
           format: m.format,
           attendance: m.attendance,
           monday: m.monday,

@@ -46,6 +46,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 - `supabase/migration-platform.sql` (дедлайны, GPA по четвертям, лента возможностей; выполнять после migration-meetings.sql)
 - `supabase/migration-pause.sql` (ученики на паузе)
 - `supabase/migration-attendance.sql` (таблица посещаемости и групповые встречи)
+- `supabase/migration-schedule.sql` (график встреч и отметки приглашений)
 
 ## Шаг 5. Auth настройки (рекомендуется для локальной разработки)
 

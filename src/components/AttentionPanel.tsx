@@ -13,6 +13,8 @@ import {
   type Deadline,
 } from "@/lib/deadlines";
 import { currentMonthYearLabel } from "@/lib/monthly-progress";
+import { mondayOf, todayLocalIso } from "@/lib/attendance";
+import { fetchInvites, hasIndividualThisWeek, inviteKey, studentParity, type Invite } from "@/lib/schedule";
 
 type Severity = "high" | "medium" | "low";
 
@@ -43,7 +45,10 @@ function buildAlerts(
   students: StudentProfile[],
   meetings: Meeting[],
   deadlines: Deadline[],
+  invites: Invite[] | null,
 ): Alert[] {
+  const thisMonday = mondayOf(todayLocalIso());
+  const invited = new Set((invites ?? []).map((i) => inviteKey(i.studentId, i.weekMonday, i.format)));
   const now = new Date();
   const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonth = normalizeMonth(currentMonthYearLabel(prevMonthDate));
@@ -84,6 +89,18 @@ function buildAlerts(
         push(`over-${d.id}`, "high", `Просрочен дедлайн: ${d.title}`);
       } else if (left <= 3) {
         push(`hot-${d.id}`, "high", `${left === 0 ? "Сегодня" : `Через ${formatDaysLeft(left)}`}: ${d.title} — ещё не подал`);
+      }
+    }
+
+    if (invites) {
+      const { parity } = studentParity(s, meetings);
+      const metThisWeek = own.some((m) => m.format === "individual" && mondayOf(m.meetingDate) === thisMonday);
+      if (
+        hasIndividualThisWeek(parity, thisMonday) &&
+        !metThisWeek &&
+        !invited.has(inviteKey(s.id, thisMonday, "individual"))
+      ) {
+        push("invite", "medium", "Индивидуальная на этой неделе — приглашение не отмечено");
       }
     }
 
@@ -133,15 +150,18 @@ function groupUpcoming(students: StudentProfile[], deadlines: Deadline[]): Deadl
 export function AttentionPanel({ students }: { students: StudentProfile[] }) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [invites, setInvites] = useState<Invite[] | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.allSettled([fetchAllMeetings(), fetchDeadlines()]).then(([m, d]) => {
+    const monday = mondayOf(todayLocalIso());
+    void Promise.allSettled([fetchAllMeetings(), fetchDeadlines(), fetchInvites(monday, monday)]).then(([m, d, inv]) => {
       if (cancelled) return;
       if (m.status === "fulfilled") setMeetings(m.value);
       if (d.status === "fulfilled") setDeadlines(d.value);
+      if (inv.status === "fulfilled") setInvites(inv.value);
       setLoaded(true);
     });
     return () => {
@@ -149,7 +169,7 @@ export function AttentionPanel({ students }: { students: StudentProfile[] }) {
     };
   }, []);
 
-  const alerts = useMemo(() => buildAlerts(students, meetings, deadlines), [students, meetings, deadlines]);
+  const alerts = useMemo(() => buildAlerts(students, meetings, deadlines, invites), [students, meetings, deadlines, invites]);
   const groups = useMemo(() => groupUpcoming(students, deadlines), [students, deadlines]);
   const high = alerts.filter((a) => a.severity === "high").length;
   const visible = showAll ? alerts : alerts.slice(0, 8);

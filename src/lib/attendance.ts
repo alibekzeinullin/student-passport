@@ -183,10 +183,12 @@ export function nextState(state: CellState): CellState {
 
 /** Дата по умолчанию для новой встречи в неделе: сегодня, если неделя текущая. */
 export function defaultDateInWeek(monday: string, format: MeetingFormat): string {
+  // Групповая — всегда суббота
+  if (format === "group") return addDays(monday, 5);
   const today = todayLocalIso();
   if (today >= monday && today <= addDays(monday, 6)) return today;
-  // Прошедшие недели: индивидуальная — понедельник, групповая — среда
-  return format === "group" ? addDays(monday, 2) : monday;
+  // Прошедшие недели: индивидуальная — понедельник
+  return monday;
 }
 
 /**
