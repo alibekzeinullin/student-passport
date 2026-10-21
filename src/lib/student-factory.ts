@@ -33,6 +33,7 @@ export function buildStudentFromRegistration(
     className: input.className,
     school: input.school,
     educationSystem: input.educationSystem,
+    termSystem: "quarters",
     email: input.email.toLowerCase(),
     parentAccessToken: randomToken(),
     mentorNote: "",

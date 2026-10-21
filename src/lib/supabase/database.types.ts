@@ -16,6 +16,7 @@ export interface DbStudent {
   class_name: string;
   school: string;
   education_system: string;
+  term_system?: string | null;
   email: string;
   avatar_url: string | null;
   parent_access_token: string;

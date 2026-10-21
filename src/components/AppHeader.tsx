@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 
@@ -55,7 +56,16 @@ export function AppHeader() {
             Родитель · просмотр
           </p>
         ) : user ? (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <nav aria-label="Разделы" className="flex items-center gap-5 text-sm">
+              <NavLink href={homeHref} active={pathname === homeHref || (user.role === "admin" && pathname.startsWith("/admin"))}>
+                {user.role === "admin" ? "Ученики" : "Кабинет"}
+              </NavLink>
+              <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
+                Возможности
+              </NavLink>
+            </nav>
+            <div className="flex items-center gap-3">
             <div className="hidden min-w-0 text-right sm:block">
               <p className="text-sm font-medium">{user.name}</p>
               <p className="text-xs text-muted">
@@ -69,9 +79,34 @@ export function AppHeader() {
             >
               Выйти
             </Button>
+            </div>
           </div>
         ) : null}
       </div>
     </header>
+  );
+}
+
+function NavLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`border-b-2 py-1.5 transition ${
+        active
+          ? "border-gold text-navy"
+          : "border-transparent text-muted hover:text-navy"
+      }`}
+    >
+      {children}
+    </Link>
   );
 }

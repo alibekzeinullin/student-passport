@@ -2,6 +2,7 @@ import type {
   AcademicActivity,
   Book,
   EducationSystem,
+  TermSystem,
   GrowthZone,
   GpaRecord,
   MentorSummary,
@@ -39,6 +40,7 @@ export function mapDbStudentToProfile(row: DbStudent): StudentProfile {
     className: row.class_name ?? "",
     school: row.school ?? "",
     educationSystem: (row.education_system as EducationSystem) || "Национальная",
+    termSystem: (row.term_system as TermSystem) || "quarters",
     avatarUrl: row.avatar_url ?? undefined,
     email: row.email ?? "",
     parentAccessToken: row.parent_access_token,
@@ -89,6 +91,7 @@ export function mapProfileToDbPatch(
   if (patch.educationSystem !== undefined) {
     db.education_system = patch.educationSystem;
   }
+  if (patch.termSystem !== undefined) db.term_system = patch.termSystem;
   if (patch.email !== undefined) db.email = patch.email;
   if (patch.avatarUrl !== undefined) db.avatar_url = patch.avatarUrl ?? null;
   if (patch.parentAccessToken !== undefined) {

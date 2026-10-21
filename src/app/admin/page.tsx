@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Label, Select } from "@/components/ui/Field";
 import { TableScroll } from "@/components/ui/TableScroll";
+import { AttentionPanel } from "@/components/AttentionPanel";
 import {
   buildMeetingsCsv,
   downloadTextFile,
@@ -213,6 +214,10 @@ export default function AdminPage() {
             {exporting ? "Готовлю файл…" : "Выгрузить все встречи в Excel"}
           </Button>
         </div>
+
+        {!loading && students.length > 0 ? (
+          <AttentionPanel students={students} />
+        ) : null}
 
         {error ? (
           <div className="rounded-2xl border border-burgundy/30 bg-burgundy/5 px-4 py-3 text-sm text-burgundy">

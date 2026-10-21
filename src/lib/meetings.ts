@@ -409,3 +409,12 @@ export function downloadTextFile(filename: string, content: string) {
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+/** Ментор: встречи всех учеников (без плана и самооценки). */
+export async function fetchAllMeetings(): Promise<Meeting[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.from("meetings").select(MEETING_COLUMNS);
+  if (error) throw error;
+  return sortMeetings(((data as DbMeeting[]) ?? []).map(mapMeeting));
+}

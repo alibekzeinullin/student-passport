@@ -12,6 +12,8 @@ import {
 } from "@/lib/report-types";
 import type { StudentProfile } from "@/lib/types";
 import { MeetingsJournal } from "@/components/MeetingsJournal";
+import { StudentOverview } from "@/components/StudentOverview";
+import { TermGradesChart } from "@/components/TermGradesChart";
 
 export default function ParentHubPage({
   params,
@@ -64,7 +66,7 @@ export default function ParentHubPage({
   const base = `/parent/${studentToken}`;
 
   return (
-    <div className="sp-rise mx-auto min-w-0 max-w-3xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8">
+    <div className="sp-rise mx-auto min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:space-y-8 sm:px-6 sm:py-8">
       <div className="rounded-full border border-gold/30 bg-gold/10 px-4 py-2.5 text-center text-sm text-navy">
         Режим родителя / гостя — только просмотр. Редактирование недоступно.
       </div>
@@ -81,6 +83,10 @@ export default function ParentHubPage({
           на год.
         </p>
       </div>
+
+      <StudentOverview student={student} mode="parent" parentToken={studentToken} />
+
+      <TermGradesChart student={student} mode="parent" parentToken={studentToken} />
 
       <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
         {REPORT_TYPES.map((type) => (

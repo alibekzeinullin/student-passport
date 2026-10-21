@@ -53,6 +53,7 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     className: "11A",
     school: "НИШ ФМН Алматы",
     educationSystem: "IB",
+    termSystem: "quarters",
     email: "student@today.edu",
     parentAccessToken: "tok-alibek-parent-2026",
     mentorNote:
@@ -312,6 +313,7 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     className: "10B",
     school: "Haileybury Almaty",
     educationSystem: "A-Level",
+    termSystem: "quarters",
     email: "madina@today.edu",
     parentAccessToken: "tok-madina-parent-2026",
     mentorNote:
@@ -391,6 +393,7 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     className: "11C",
     school: "Spectra School",
     educationSystem: "AP",
+    termSystem: "quarters",
     email: "daniyar@today.edu",
     parentAccessToken: "tok-daniyar-parent-2026",
     mentorNote:

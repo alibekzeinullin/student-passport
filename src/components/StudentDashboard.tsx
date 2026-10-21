@@ -14,6 +14,8 @@ import { BooksTable } from "@/components/BooksTable";
 import { SkillsTable } from "@/components/SkillsTable";
 import { GrowthZonesBlock } from "@/components/GrowthZonesBlock";
 import { MeetingsJournal } from "@/components/MeetingsJournal";
+import { StudentOverview } from "@/components/StudentOverview";
+import { TermGradesChart } from "@/components/TermGradesChart";
 import Link from "next/link";
 import { ParentAccessLinkButton } from "@/components/ParentAccessLinkButton";
 import { Section } from "@/components/ui/Section";
@@ -114,6 +116,13 @@ export function StudentDashboard({
         ) : null}
       </div>
 
+      {accessMode !== "parent" ? (
+        <StudentOverview
+          student={student}
+          mode={accessMode === "admin" ? "admin" : "student"}
+        />
+      ) : null}
+
       <ZoneBand tone="other">
         <ProfileHeader
           student={student}
@@ -149,6 +158,15 @@ export function StudentDashboard({
           description="GPA, SAT/IELTS и академическая активность"
         >
           <div className="space-y-4">
+            <TermGradesChart
+              student={student}
+              mode={accessMode}
+              onTermSystemChange={
+                perms.canEditGpa
+                  ? (termSystem) => patchStudent({ termSystem })
+                  : undefined
+              }
+            />
             <GpaTable
               gpa={student.gpa}
               editable={perms.canEditGpa}

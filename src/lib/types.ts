@@ -4,6 +4,9 @@ export type AccessMode = "student" | "admin" | "parent";
 
 export type EducationSystem = "IB" | "AP" | "A-Level" | "Национальная";
 
+/** Как делится учебный год в школе ученика */
+export type TermSystem = "quarters" | "trimesters" | "semesters";
+
 export type AcademicActivityStatus =
   | "В планах"
   | "Подана"
@@ -191,6 +194,7 @@ export interface StudentProfile {
   className: string;
   school: string;
   educationSystem: EducationSystem;
+  termSystem: TermSystem;
   avatarUrl?: string;
   email: string;
   parentAccessToken: string;
