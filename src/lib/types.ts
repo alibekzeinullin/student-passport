@@ -7,6 +7,9 @@ export type EducationSystem = "IB" | "AP" | "A-Level" | "Национальна�
 /** Как делится учебный год в школе ученика */
 export type TermSystem = "quarters" | "trimesters" | "semesters";
 
+/** Активный ученик или приостановил обучение */
+export type StudentStatus = "active" | "paused";
+
 export type AcademicActivityStatus =
   | "В планах"
   | "Подана"
@@ -195,6 +198,8 @@ export interface StudentProfile {
   school: string;
   educationSystem: EducationSystem;
   termSystem: TermSystem;
+  status: StudentStatus;
+  pausedAt: string | null;
   avatarUrl?: string;
   email: string;
   parentAccessToken: string;

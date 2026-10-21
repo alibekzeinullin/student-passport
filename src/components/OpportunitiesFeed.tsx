@@ -236,7 +236,7 @@ function OpportunityCard({
   added: Deadline[];
   isAdmin: boolean;
   studentId?: string;
-  students: { id: string; firstName: string; lastName: string; className: string }[];
+  students: { id: string; firstName: string; lastName: string; className: string; status?: string }[];
   onAdded: () => Promise<void>;
 }) {
   const [picking, setPicking] = useState(false);
@@ -384,7 +384,7 @@ function AddToDeadlines({
   item: Opportunity;
   isAdmin: boolean;
   studentId?: string;
-  students: { id: string; firstName: string; lastName: string; className: string }[];
+  students: { id: string; firstName: string; lastName: string; className: string; status?: string }[];
   alreadyIds: Set<string>;
   onDone: () => Promise<void>;
 }) {
@@ -392,7 +392,9 @@ function AddToDeadlines({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const candidates = students.filter((s) => !alreadyIds.has(s.id));
+  const candidates = students.filter(
+    (s) => !alreadyIds.has(s.id) && s.status !== "paused",
+  );
 
   const toggle = (id: string) =>
     setSelected((prev) => {

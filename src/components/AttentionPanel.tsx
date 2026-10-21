@@ -116,7 +116,7 @@ function groupUpcoming(students: StudentProfile[], deadlines: Deadline[]): Deadl
   const nameById = new Map(students.map((s) => [s.id, `${s.lastName} ${s.firstName}`.trim()]));
   const groups = new Map<string, DeadlineGroup>();
   for (const d of deadlines) {
-    if (daysLeft(d.dueDate) < 0) continue;
+    if (daysLeft(d.dueDate) < 0 || !nameById.has(d.studentId)) continue;
     const key = d.groupKey ?? d.opportunityId ?? `${d.title}|${d.dueDate}`;
     const g =
       groups.get(key) ??

@@ -54,6 +54,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     school: "НИШ ФМН Алматы",
     educationSystem: "IB",
     termSystem: "quarters",
+    status: "active",
+    pausedAt: null,
     email: "student@today.edu",
     parentAccessToken: "tok-alibek-parent-2026",
     mentorNote:
@@ -314,6 +316,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     school: "Haileybury Almaty",
     educationSystem: "A-Level",
     termSystem: "quarters",
+    status: "active",
+    pausedAt: null,
     email: "madina@today.edu",
     parentAccessToken: "tok-madina-parent-2026",
     mentorNote:
@@ -394,6 +398,8 @@ export const INITIAL_STUDENTS: StudentProfile[] = [
     school: "Spectra School",
     educationSystem: "AP",
     termSystem: "quarters",
+    status: "active",
+    pausedAt: null,
     email: "daniyar@today.edu",
     parentAccessToken: "tok-daniyar-parent-2026",
     mentorNote:

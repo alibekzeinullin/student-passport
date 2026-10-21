@@ -34,6 +34,8 @@ export function buildStudentFromRegistration(
     school: input.school,
     educationSystem: input.educationSystem,
     termSystem: "quarters",
+    status: "active",
+    pausedAt: null,
     email: input.email.toLowerCase(),
     parentAccessToken: randomToken(),
     mentorNote: "",

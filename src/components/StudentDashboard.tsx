@@ -111,6 +111,25 @@ export function StudentDashboard({
           ) : null}
         </div>
 
+        {accessMode === "admin" && student.status === "paused" ? (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-navy sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Ученик на паузе
+              {student.pausedAt
+                ? ` с ${new Date(student.pausedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}`
+                : ""}
+              . Он скрыт из реестра и «Что требует внимания», данные сохранены.
+            </span>
+            <button
+              type="button"
+              onClick={() => patchStudent({ status: "active", pausedAt: null })}
+              className="self-start rounded-full border border-gold/50 px-4 py-1.5 text-gold transition hover:bg-gold/10 sm:self-auto"
+            >
+              Вернуть в активные
+            </button>
+          </div>
+        ) : null}
+
         {perms.canGenerateParentLink ? (
           <ParentAccessLinkButton studentId={studentId} />
         ) : null}

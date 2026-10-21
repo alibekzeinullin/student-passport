@@ -54,8 +54,47 @@ function SortHeader({
 
 export default function AdminPage() {
   const { user } = useAuth();
-  const { students, loading, deleteStudent } = useStudents();
+  const { students, loading, deleteStudent, updateStudent } = useStudents();
   const [classFilter, setClassFilter] = useState<string>(ALL);
+  const [statusFilter, setStatusFilter] = useState<"active" | "paused" | "all">("active");
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const activeStudents = useMemo(
+    () => students.filter((s) => s.status !== "paused"),
+    [students],
+  );
+  const pausedCount = students.length - activeStudents.length;
+
+  const togglePause = async (id: string, name: string, paused: boolean) => {
+    if (
+      !paused &&
+      !window.confirm(
+        `Поставить «${name}» на паузу?\n\nУченик скроется из реестра, «Что требует внимания» и выбора учеников. Все данные сохранятся — вернуть можно в любой момент.`,
+      )
+    ) {
+      return;
+    }
+    setError("");
+    setTogglingId(id);
+    try {
+      await updateStudent(id, {
+        status: paused ? "active" : "paused",
+        pausedAt: paused ? null : new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error(err);
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: unknown }).message)
+          : "";
+      setError(
+        message.includes("status")
+          ? "Статус «на паузе» ещё не подключён: выполните supabase/migration-pause.sql в Supabase → SQL Editor."
+          : "Не удалось изменить статус ученика.",
+      );
+    } finally {
+      setTogglingId(null);
+    }
+  };
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -97,7 +136,10 @@ export default function AdminPage() {
 
   const filtered = useMemo(() => {
     const list = students.filter(
-      (s) => classFilter === ALL || s.className === classFilter,
+      (s) =>
+        (classFilter === ALL || s.className === classFilter) &&
+        (statusFilter === "all" ||
+          (statusFilter === "paused") === (s.status === "paused")),
     );
 
     const dir = sortDir === "asc" ? 1 : -1;
@@ -142,7 +184,7 @@ export default function AdminPage() {
           );
       }
     });
-  }, [students, classFilter, sortKey, sortDir]);
+  }, [students, classFilter, statusFilter, sortKey, sortDir]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -216,7 +258,7 @@ export default function AdminPage() {
         </div>
 
         {!loading && students.length > 0 ? (
-          <AttentionPanel students={students} />
+          <AttentionPanel students={activeStudents} />
         ) : null}
 
         {error ? (
@@ -229,6 +271,35 @@ export default function AdminPage() {
           <CardHeader
             title="Фильтры и сортировка"
             subtitle={`Показано ${filtered.length} из ${students.length}`}
+            action={
+              <div
+                role="group"
+                aria-label="Статус учеников"
+                className="flex rounded-full border border-white/10 bg-white/[0.03] p-1 text-sm"
+              >
+                {(
+                  [
+                    ["active", `Активные · ${activeStudents.length}`],
+                    ["paused", `На паузе · ${pausedCount}`],
+                    ["all", "Все"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={statusFilter === key}
+                    onClick={() => setStatusFilter(key)}
+                    className={`rounded-full px-3 py-1.5 transition ${
+                      statusFilter === key
+                        ? "bg-gold text-gold-ink"
+                        : "text-muted hover:text-navy"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            }
           />
           <CardBody>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -284,7 +355,11 @@ export default function AdminPage() {
               </p>
             ) : filtered.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-muted sm:px-5">
-                Пока нет учеников. Они появятся после регистрации.
+                {students.length === 0
+                  ? "Пока нет учеников. Они появятся после регистрации."
+                  : statusFilter === "paused"
+                    ? "На паузе никого нет."
+                    : "Под этот фильтр никто не подходит."}
               </p>
             ) : (
               <TableScroll>
@@ -344,10 +419,20 @@ export default function AdminPage() {
                       return (
                         <tr
                           key={student.id}
-                          className="border-t border-light-gray hover:bg-gold/10"
+                          className={`border-t border-light-gray hover:bg-gold/10 ${
+                            student.status === "paused" ? "opacity-60" : ""
+                          }`}
                         >
                           <td className="px-3 py-3 font-medium text-navy sm:px-5">
                             {fullName}
+                            {student.status === "paused" ? (
+                              <span className="ml-2 rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-normal text-muted">
+                                на паузе
+                                {student.pausedAt
+                                  ? ` с ${new Date(student.pausedAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}`
+                                  : ""}
+                              </span>
+                            ) : null}
                             {isOwnLinked ? (
                               <span className="mt-1 block text-xs font-normal text-burgundy">
                                 связан с вашим админ-аккаунтом
@@ -374,6 +459,23 @@ export default function AdminPage() {
                               >
                                 Открыть
                               </Link>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                className="!px-2.5 !py-1.5 text-xs"
+                                disabled={togglingId === student.id}
+                                onClick={() =>
+                                  void togglePause(
+                                    student.id,
+                                    fullName,
+                                    student.status === "paused",
+                                  )
+                                }
+                              >
+                                {student.status === "paused"
+                                  ? "Вернуть"
+                                  : "На паузу"}
+                              </Button>
                               <Button
                                 type="button"
                                 variant="danger"
