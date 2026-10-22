@@ -6,6 +6,20 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 
+/** Основные разделы ментора (кроме «Ученики» и «Посещаемость»). */
+const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
+  { href: "/admin/essays", label: "Эссе" },
+  { href: "/admin/summary", label: "Отчёт" },
+];
+
+/** Реже нужные разделы — под «Ещё». */
+const ADMIN_MORE: { href: string; label: string }[] = [
+  { href: "/admin/accounts", label: "Аккаунты" },
+  { href: "/admin/templates", label: "Шаблоны встреч" },
+  { href: "/admin/activity", label: "История" },
+  { href: "/admin/system", label: "База и копии" },
+];
+
 const ROLE_LABELS: Record<string, string> = {
   admin: "Админ / Ментор",
   student: "Ученик",
@@ -57,8 +71,8 @@ export function AppHeader() {
           </p>
         ) : user ? (
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <nav aria-label="Разделы" className="flex items-center gap-5 text-sm">
-              <NavLink href={homeHref} active={pathname === homeHref || (user.role === "admin" && pathname.startsWith("/admin") && !pathname.startsWith("/admin/attendance") && !pathname.startsWith("/admin/accounts") && !pathname.startsWith("/admin/activity"))}>
+            <nav aria-label="Разделы" className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+              <NavLink href={homeHref} active={pathname === homeHref || (user.role === "admin" && pathname.startsWith("/admin/students"))}>
                 {user.role === "admin" ? "Ученики" : "Кабинет"}
               </NavLink>
               {user.role === "admin" ? (
@@ -66,17 +80,21 @@ export function AppHeader() {
                   <NavLink href="/admin/attendance" active={pathname.startsWith("/admin/attendance")}>
                     Посещаемость
                   </NavLink>
-                  <NavLink href="/admin/accounts" active={pathname.startsWith("/admin/accounts")}>
-                    Аккаунты
-                  </NavLink>
-                  <NavLink href="/admin/activity" active={pathname.startsWith("/admin/activity")}>
-                    История
-                  </NavLink>
+                  {ADMIN_EXTRA_MAIN.map((item) => (
+                    <NavLink key={item.href} href={item.href} active={pathname.startsWith(item.href)}>
+                      {item.label}
+                    </NavLink>
+                  ))}
                 </>
+              ) : user.role === "student" ? (
+                <NavLink href="/dashboard/essays" active={pathname.startsWith("/dashboard/essays")}>
+                  Эссе
+                </NavLink>
               ) : null}
               <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
                 Возможности
               </NavLink>
+              {user.role === "admin" ? <MoreMenu pathname={pathname} /> : null}
             </nav>
             <div className="flex items-center gap-3">
             <div className="hidden min-w-0 text-right sm:block">
@@ -121,5 +139,35 @@ function NavLink({
     >
       {children}
     </Link>
+  );
+}
+
+function MoreMenu({ pathname }: { pathname: string }) {
+  const active = ADMIN_MORE.some((i) => pathname.startsWith(i.href));
+  return (
+    <details className="group relative">
+      <summary
+        className={`flex cursor-pointer list-none items-center gap-1 border-b-2 py-1.5 transition [&::-webkit-details-marker]:hidden ${
+          active ? "border-gold text-navy" : "border-transparent text-muted hover:text-navy"
+        }`}
+      >
+        Ещё <span aria-hidden className="text-[10px] transition group-open:rotate-180">▼</span>
+      </summary>
+      <div className="absolute right-0 z-30 mt-2 w-48 rounded-2xl border border-white/10 bg-[#172235] p-1.5 shadow-xl">
+        {ADMIN_MORE.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={(e) => e.currentTarget.closest("details")?.removeAttribute("open")}
+            aria-current={pathname.startsWith(item.href) ? "page" : undefined}
+            className={`block rounded-xl px-3 py-2 text-sm transition hover:bg-white/5 ${
+              pathname.startsWith(item.href) ? "text-gold" : "text-navy"
+            }`}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </div>
+    </details>
   );
 }

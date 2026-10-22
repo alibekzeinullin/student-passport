@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
+import { FieldTools } from "@/components/FieldTools";
+import { fetchTemplates, peekTemplates, type MeetingTemplate } from "@/lib/templates";
 import {
   ATTENDANCE_LABELS,
   EMPTY_NOTES,
@@ -511,6 +513,18 @@ function MeetingForm({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [templates, setTemplates] = useState<MeetingTemplate[]>(() => peekTemplates() ?? []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTemplates().then(
+      (list) => !cancelled && setTemplates(list),
+      () => undefined,
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const patch = (p: Partial<typeof meeting>) =>
     setMeeting((prev) => ({ ...prev, ...p }));
@@ -612,6 +626,7 @@ function MeetingForm({
 
       {/* 2. План */}
       <FormBlock title="2. План встречи" privateNote="только вы">
+        <FieldTools kind="plan" templates={templates} value={notes.plan} onChange={(v) => patchNotes({ plan: v })} />
         <Textarea
           value={notes.plan}
           onChange={(e) => patchNotes({ plan: e.target.value })}
@@ -645,6 +660,7 @@ function MeetingForm({
       <FormBlock title="4. Итог встречи">
         <div>
           <Label>Что обсудили</Label>
+          <FieldTools kind="summary" templates={templates} value={meeting.summary} onChange={(v) => patch({ summary: v })} />
           <Textarea
             value={meeting.summary}
             onChange={(e) => patch({ summary: e.target.value })}
@@ -653,6 +669,7 @@ function MeetingForm({
         </div>
         <div>
           <Label>Новое домашнее задание</Label>
+          <FieldTools kind="homework" templates={templates} value={meeting.homework} onChange={(v) => patch({ homework: v })} />
           <Textarea
             value={meeting.homework}
             onChange={(e) => patch({ homework: e.target.value })}
@@ -675,6 +692,7 @@ function MeetingForm({
         ))}
         <div>
           <Label>Что улучшить в следующий раз</Label>
+          <FieldTools value={notes.reflectionComment} onChange={(v) => patchNotes({ reflectionComment: v })} />
           <Textarea
             value={notes.reflectionComment}
             onChange={(e) => patchNotes({ reflectionComment: e.target.value })}

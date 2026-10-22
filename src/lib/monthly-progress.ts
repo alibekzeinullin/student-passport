@@ -33,7 +33,8 @@ export function createEmptyMonthlyProgressReview(
 
 export function clampAttendanceOutOfTwo(value: number | null): number | null {
   if (value === null || Number.isNaN(value)) return null;
-  return Math.max(0, Math.min(2, Math.round(value)));
+  // Индивидуальные — 2 в месяц, групповые — до 5 (каждую субботу)
+  return Math.max(0, Math.min(5, Math.round(value)));
 }
 
 export function clampPercent(value: number): number {

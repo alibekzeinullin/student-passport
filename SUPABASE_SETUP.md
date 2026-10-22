@@ -32,24 +32,26 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 ## Шаг 4. Примените схему БД
 
 1. В Supabase: **SQL Editor** → **New query**
-2. Откройте файл `supabase/schema.sql` из этого репозитория
+2. Откройте файл **`supabase/setup-all.sql`** из этого репозитория — в нём вся база одним файлом
 3. Вставьте весь SQL и нажмите **Run**
 4. Должно пройти без ошибок (зелёная галочка)
 
-После schema.sql выполните также `supabase/migration-meetings.sql` и `supabase/migration-platform.sql`.
+Файл безопасно запускать повторно — и на новом проекте, и на уже работающем: он только добавляет недостающее, данные не трогает. После каждого обновления сайта, где появились новые таблицы, просто запустите его ещё раз.
 
-Если проект уже был создан раньше, дополнительно выполните:
-- `supabase/migration-monthly-vision.sql` (Monthly Progress Review и Vision Map)
-- `supabase/migration-delete-student.sql` (удаление учеников админом)
-- `supabase/migration-security.sql` (**обязательно**: права доступа — ученик не может стать админом и менять поля ментора)
-- `supabase/migration-meetings.sql` (журнал встреч; выполнять после migration-security.sql)
-- `supabase/migration-platform.sql` (дедлайны, GPA по четвертям, лента возможностей; выполнять после migration-meetings.sql)
-- `supabase/migration-pause.sql` (ученики на паузе)
-- `supabase/migration-attendance.sql` (таблица посещаемости и групповые встречи)
-- `supabase/migration-schedule.sql` (график встреч и отметки приглашений)
-- `supabase/migration-avatars.sql` (фото учеников и логотипы конкурсов)
-- `supabase/migration-student-edit.sql` (ученик вносит GPA за четверти, SAT/IELTS и свои цели года)
-- `supabase/migration-activity.sql` (история действий: входы и изменения)
+Проверить, всё ли применено: на сайте под админом → **Ещё → База и копии**.
+
+<details>
+<summary>Отдельные файлы (для справки)</summary>
+
+`setup-all.sql` собирается командой `node scripts/build-setup-sql.mjs` из файлов в таком порядке:
+schema.sql → migration-monthly-vision.sql → migration-delete-student.sql → migration-security.sql → migration-meetings.sql → migration-platform.sql → migration-pause.sql → migration-attendance.sql → migration-schedule.sql → migration-avatars.sql → migration-student-edit.sql → migration-activity.sql → migration-workflow.sql (эссе и шаблоны встреч).
+
+</details>
+
+## Резервные копии
+
+- На сайте: **Ещё → База и копии → «Скачать всё (.zip)»** — CSV по каждой таблице + полный backup.json. Делайте раз в месяц.
+- В Supabase: **Database → Backups** (на бесплатном тарифе может быть недоступно для скачивания).
 
 ## Шаг 5. Auth настройки (рекомендуется для локальной разработки)
 

@@ -92,6 +92,12 @@ export function StudentDashboard({
               >
                 Vision Map — мои цели на год
               </Link>
+              <Link
+                href="/dashboard/essays"
+                className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
+              >
+                Эссе — 100 тем
+              </Link>
             </nav>
           ) : null}
           {accessMode === "admin" ? (

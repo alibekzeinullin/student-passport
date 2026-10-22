@@ -2,6 +2,7 @@ import type { StudentProfile } from "@/lib/types";
 import type { Deadline } from "@/lib/deadlines";
 import { daysLeft, formatDaysLeft, formatDueDate } from "@/lib/deadlines";
 import type { Meeting } from "@/lib/meetings";
+import type { EssaySubmission } from "@/lib/essays";
 
 export type TodoSeverity = "high" | "medium" | "low";
 
@@ -33,6 +34,7 @@ export function buildStudentTodos(
   deadlines: Deadline[],
   meetings: Meeting[],
   today = new Date(),
+  essays: EssaySubmission[] | null = null,
 ): StudentTodo[] {
   const todos: StudentTodo[] = [];
   const push = (key: string, severity: TodoSeverity, text: string, href: string) =>
@@ -53,6 +55,27 @@ export function buildStudentTodos(
     .sort((a, b) => b.meetingDate.localeCompare(a.meetingDate))[0];
   if (lastInd?.homework.trim()) {
     push("homework", "medium", `Домашка к следующей встрече: ${lastInd.homework.trim().split("\n")[0]}`, "#sec-journal");
+  }
+
+  // Эссе: последняя версия по каждой теме
+  if (essays) {
+    const latest = new Map<string, EssaySubmission>();
+    for (const e of essays) {
+      const cur = latest.get(e.topicId);
+      if (!cur || e.version > cur.version) latest.set(e.topicId, e);
+    }
+    const accepted = new Set(essays.filter((e) => e.status === "accepted").map((e) => e.topicId));
+    const revision = [...latest.values()].filter((e) => e.status === "revision" && !accepted.has(e.topicId));
+    const drafts = [...latest.values()].filter((e) => e.status === "draft");
+    if (revision.length) {
+      push("essay-rev", "medium", `Эссе вернули на доработку (${revision.length}) — посмотри комментарий ментора`, "/dashboard/essays");
+    }
+    if (drafts.length) {
+      push("essay-draft", "low", `Есть недописанный черновик эссе (${drafts.length}) — допиши и сдай`, "/dashboard/essays");
+    }
+    if (essays.length === 0) {
+      push("essay-start", "low", "Напиши первое эссе из 100 тем", "/dashboard/essays");
+    }
   }
 
   // Спринты

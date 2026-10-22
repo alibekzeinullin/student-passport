@@ -41,6 +41,7 @@ import {
   type Badge,
 } from "@/lib/achievements";
 import { useCountUp } from "@/lib/use-count-up";
+import { fetchSubmissions, peekSubmissions, type EssaySubmission } from "@/lib/essays";
 import { buildStudentTodos, type StudentTodo } from "@/lib/student-todos";
 import { OpportunityLogo } from "@/components/OpportunityLogo";
 
@@ -74,6 +75,9 @@ export function StudentOverview({
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
   const [showDone, setShowDone] = useState(false);
+  const [essays, setEssays] = useState<EssaySubmission[] | null>(() =>
+    mode === "student" ? (peekSubmissions(student.id) ?? null) : null,
+  );
 
   const load = useCallback(async () => {
     const [d, m] = await Promise.allSettled([
@@ -111,10 +115,16 @@ export function StudentOverview({
     void load().then((r) => {
       if (!cancelled) apply(r);
     });
+    if (mode === "student") {
+      fetchSubmissions(student.id).then(
+        (list) => !cancelled && setEssays(list),
+        () => undefined,
+      );
+    }
     return () => {
       cancelled = true;
     };
-  }, [load, apply]);
+  }, [load, apply, mode, student.id]);
 
   const reload = async () => apply(await load());
 
@@ -153,7 +163,7 @@ export function StudentOverview({
   const rest = [...overdue, ...upcoming.slice(1)];
 
   const canEdit = mode !== "parent";
-  const todos = loaded ? buildStudentTodos(student, deadlines, meetings) : [];
+  const todos = loaded ? buildStudentTodos(student, deadlines, meetings, new Date(), essays) : [];
 
   return (
     <div className="flex flex-col gap-5">
@@ -297,14 +307,14 @@ function TodoPanel({ todos, mode }: { todos: StudentTodo[]; mode: Mode }) {
                 <span className="min-w-0 flex-1">{t.text.replace(/^Добавь фото в профиль$/, "Нет фото в профиле")}</span>
               </span>
             ) : (
-              <a
+              <Link
                 href={t.href}
                 className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-sm text-navy transition hover:bg-white/[0.04]"
               >
                 <span className={`size-2 shrink-0 rounded-full ${TODO_DOT[t.severity]}`} aria-hidden />
                 <span className="min-w-0 flex-1">{t.text}</span>
                 <span className="text-muted" aria-hidden>→</span>
-              </a>
+              </Link>
             )}
           </li>
         ))}

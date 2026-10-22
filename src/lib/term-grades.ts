@@ -173,3 +173,15 @@ export function fetchUnverifiedGrades(): Promise<TermGrade[]> {
 export function peekFetchUnverifiedGrades(): TermGrade[] | undefined {
   return peek<TermGrade[]>("grades:unverified");
 }
+
+/** Ментор: оценки всех учеников (для общего отчёта). */
+async function fetchAllTermGradesRaw(): Promise<TermGrade[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await createClient().from("term_grades").select("*");
+  if (error) throw error;
+  return sortGrades(((data as DbTermGrade[]) ?? []).map(mapGrade));
+}
+
+export function fetchAllTermGrades(): Promise<TermGrade[]> {
+  return cached("grades:all", () => fetchAllTermGradesRaw());
+}

@@ -16,6 +16,7 @@ import {
 import { currentMonthYearLabel } from "@/lib/monthly-progress";
 import { mondayOf, todayLocalIso } from "@/lib/attendance";
 import { fetchUnverifiedGrades, peekFetchUnverifiedGrades, type TermGrade } from "@/lib/term-grades";
+import { fetchSubmissions, peekSubmissions } from "@/lib/essays";
 import { fetchInvites, peekFetchInvites, hasIndividualThisWeek, inviteKey, studentParity, type Invite } from "@/lib/schedule";
 
 type Severity = "high" | "medium" | "low";
@@ -163,6 +164,9 @@ export function AttentionPanel({ students }: { students: StudentProfile[] }) {
   const [unverified, setUnverified] = useState<TermGrade[]>(() => peekFetchUnverifiedGrades() ?? []);
   const [loaded, setLoaded] = useState(() => peekFetchAllMeetings() !== undefined);
   const [showAll, setShowAll] = useState(false);
+  const [essaysPending, setEssaysPending] = useState(
+    () => (peekSubmissions() ?? []).filter((e) => e.status === "submitted").length,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -175,6 +179,10 @@ export function AttentionPanel({ students }: { students: StudentProfile[] }) {
       if (ug.status === "fulfilled") setUnverified(ug.value);
       setLoaded(true);
     });
+    fetchSubmissions().then(
+      (list) => !cancelled && setEssaysPending(list.filter((e) => e.status === "submitted").length),
+      () => undefined,
+    );
     return () => {
       cancelled = true;
     };
@@ -200,6 +208,19 @@ export function AttentionPanel({ students }: { students: StudentProfile[] }) {
             </span>
           ) : null}
         </div>
+
+        {essaysPending > 0 ? (
+          <Link
+            href="/admin/essays"
+            className="mt-3 flex items-center gap-3 rounded-2xl border border-gold/30 bg-gold/[0.07] px-3 py-2.5 text-sm text-navy transition hover:bg-gold/[0.12]"
+          >
+            <span className="size-2 shrink-0 rounded-full bg-gold" aria-hidden />
+            <span className="flex-1">
+              Эссе ждут проверки: <span className="font-medium text-gold">{essaysPending}</span>
+            </span>
+            <span className="text-muted" aria-hidden>→</span>
+          </Link>
+        ) : null}
 
         {!loaded ? (
           <p className="mt-4 text-sm text-muted">Собираю данные…</p>

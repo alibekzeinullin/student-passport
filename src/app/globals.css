@@ -190,3 +190,41 @@ html.sp-seen .sp-rise {
     word-break: break-word;
   }
 }
+
+/* Печать / «Сохранить как PDF»: светлый лист, фирменные цвета */
+@media print {
+  :root {
+    color-scheme: light;
+    --navy: #23334a;
+    --navy-soft: #4a628a;
+    --burgundy: #7f2231;
+    --gold: #9a7b33;
+    --muted: #5c6675;
+    --background: #ffffff;
+    --foreground: #23334a;
+    --field: #ffffff;
+  }
+  @page {
+    margin: 14mm;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+  header {
+    display: none !important;
+  }
+  .sp-glass {
+    background: #ffffff !important;
+    border-color: #d9dde3 !important;
+    backdrop-filter: none !important;
+    break-inside: avoid;
+  }
+  .sp-rise {
+    animation: none !important;
+  }
+  .text-emerald-300 {
+    color: #2f7a52 !important;
+  }
+}

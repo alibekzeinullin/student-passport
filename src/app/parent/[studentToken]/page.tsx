@@ -86,6 +86,17 @@ export default function ParentHubPage({
         </p>
       </div>
 
+      <Link
+        href={`${base}/month`}
+        className="sp-glass group flex items-center justify-between gap-4 rounded-3xl border border-gold/30 px-5 py-4 transition hover:border-gold/60"
+      >
+        <span>
+          <span className="block text-[11px] font-medium uppercase tracking-[0.16em] text-gold">Коротко</span>
+          <span className="mt-1 block text-lg text-navy">Итоги месяца — посещаемость, домашки, эссе, главное</span>
+        </span>
+        <span className="text-gold transition group-hover:translate-x-1" aria-hidden>→</span>
+      </Link>
+
       <StudentOverview student={student} mode="parent" parentToken={studentToken} />
 
       <TermGradesChart student={student} mode="parent" parentToken={studentToken} />

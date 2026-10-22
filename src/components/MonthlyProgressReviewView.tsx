@@ -12,6 +12,7 @@ import { ZoneBand } from "@/components/ui/ZoneBand";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Textarea } from "@/components/ui/Field";
+import { MonthlyDraftPanel } from "@/components/MonthlyDraftPanel";
 
 function ReadValue({ value, fallback = "—" }: { value: string; fallback?: string }) {
   const text = value.trim();
@@ -92,10 +93,22 @@ export function MonthlyProgressReviewView({
               месяца.
             </p>
             {editable ? (
-              <Button onClick={addReview}>Добавить обзор месяца</Button>
+              <Button variant="secondary" onClick={addReview}>Добавить пустой обзор</Button>
             ) : null}
           </CardBody>
         </Card>
+        {editable ? (
+          <div className="mt-4">
+            <MonthlyDraftPanel
+              student={student}
+              reviews={reviews}
+              onApply={(next, id) => {
+                commitReviews(next);
+                setSelectedId(id);
+              }}
+            />
+          </div>
+        ) : null}
       </ZoneBand>
     );
   }
@@ -132,6 +145,17 @@ export function MonthlyProgressReviewView({
           </div>
         ) : null}
       </div>
+
+      {editable ? (
+        <MonthlyDraftPanel
+          student={student}
+          reviews={reviews}
+          onApply={(next, id) => {
+            commitReviews(next);
+            setSelectedId(id);
+          }}
+        />
+      ) : null}
 
       <ZoneBand tone="other">
         <Section
@@ -175,12 +199,12 @@ export function MonthlyProgressReviewView({
                 )}
               </FieldBlock>
 
-              <FieldBlock label="Индивидуальные занятия (из 2)">
+              <FieldBlock label="Индивидуальные занятия (посетил за месяц)">
                 {editable ? (
                   <Input
                     type="number"
                     min={0}
-                    max={2}
+                    max={5}
                     value={selected.individualSessionsAttended ?? ""}
                     onChange={(e) =>
                       updateSelected({
@@ -191,25 +215,25 @@ export function MonthlyProgressReviewView({
                         ),
                       })
                     }
-                    placeholder="0–2"
+                    placeholder="0–5"
                   />
                 ) : (
                   <ReadValue
                     value={
                       selected.individualSessionsAttended === null
                         ? ""
-                        : `${selected.individualSessionsAttended} из 2`
+                        : `${selected.individualSessionsAttended}`
                     }
                   />
                 )}
               </FieldBlock>
 
-              <FieldBlock label="Групповые занятия (из 2)">
+              <FieldBlock label="Групповые занятия (посетил за месяц)">
                 {editable ? (
                   <Input
                     type="number"
                     min={0}
-                    max={2}
+                    max={5}
                     value={selected.groupSessionsAttended ?? ""}
                     onChange={(e) =>
                       updateSelected({
@@ -220,14 +244,14 @@ export function MonthlyProgressReviewView({
                         ),
                       })
                     }
-                    placeholder="0–2"
+                    placeholder="0–5"
                   />
                 ) : (
                   <ReadValue
                     value={
                       selected.groupSessionsAttended === null
                         ? ""
-                        : `${selected.groupSessionsAttended} из 2`
+                        : `${selected.groupSessionsAttended}`
                     }
                   />
                 )}

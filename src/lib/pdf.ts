@@ -337,7 +337,7 @@ function drawMonthlyProgressPdf(
     "Индивидуальные",
     review.individualSessionsAttended === null
       ? "—"
-      : `${review.individualSessionsAttended} из 2`,
+      : `${review.individualSessionsAttended}`,
     y,
     valueCol,
   );
@@ -346,7 +346,7 @@ function drawMonthlyProgressPdf(
     "Групповые",
     review.groupSessionsAttended === null
       ? "—"
-      : `${review.groupSessionsAttended} из 2`,
+      : `${review.groupSessionsAttended}`,
     y,
     valueCol,
   );
