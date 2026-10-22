@@ -12,6 +12,7 @@ import {
 } from "@/lib/report-types";
 import type { StudentProfile } from "@/lib/types";
 import { MeetingsJournal } from "@/components/MeetingsJournal";
+import { logParentVisit } from "@/lib/activity";
 import { StudentOverview } from "@/components/StudentOverview";
 import { TermGradesChart } from "@/components/TermGradesChart";
 
@@ -30,6 +31,7 @@ export default function ParentHubPage({
     (async () => {
       setLoading(true);
       const next = await fetchStudentByToken(studentToken);
+      if (next) logParentVisit(studentToken);
       if (!cancelled) {
         setStudent(next);
         setLoading(false);

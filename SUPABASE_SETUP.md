@@ -49,6 +49,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 - `supabase/migration-schedule.sql` (график встреч и отметки приглашений)
 - `supabase/migration-avatars.sql` (фото учеников и логотипы конкурсов)
 - `supabase/migration-student-edit.sql` (ученик вносит GPA за четверти, SAT/IELTS и свои цели года)
+- `supabase/migration-activity.sql` (история действий: входы и изменения)
 
 ## Шаг 5. Auth настройки (рекомендуется для локальной разработки)
 
