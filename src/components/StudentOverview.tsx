@@ -15,6 +15,8 @@ import {
   deleteDeadline,
   fetchDeadlines,
   fetchDeadlinesByParentToken,
+  peekFetchDeadlines,
+  peekFetchDeadlinesByParentToken,
   formatDaysLeft,
   formatDueDate,
   isTableMissing,
@@ -28,6 +30,8 @@ import {
 import {
   fetchMeetingsByParentToken,
   fetchMeetingsForStudent,
+  peekFetchMeetingsByParentToken,
+  peekFetchMeetingsForStudent,
   type Meeting,
 } from "@/lib/meetings";
 import {
@@ -59,9 +63,14 @@ export function StudentOverview({
   mode: Mode;
   parentToken?: string;
 }) {
-  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  // Уже загружали в этой сессии — показываем сразу, обновляем в фоне
+  const cachedDeadlines =
+    mode === "parent" ? peekFetchDeadlinesByParentToken(parentToken ?? "") : peekFetchDeadlines(student.id);
+  const cachedMeetings =
+    mode === "parent" ? peekFetchMeetingsByParentToken(parentToken ?? "") : peekFetchMeetingsForStudent(student.id);
+  const [deadlines, setDeadlines] = useState<Deadline[]>(() => cachedDeadlines ?? []);
+  const [meetings, setMeetings] = useState<Meeting[]>(() => cachedMeetings ?? []);
+  const [loaded, setLoaded] = useState(() => cachedDeadlines !== undefined);
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
   const [showDone, setShowDone] = useState(false);
@@ -348,7 +357,7 @@ function DeadlineHero({
   loaded: boolean;
   mode: Mode;
 }) {
-  const progress = useCountUp(1400, 150);
+  const progress = useCountUp(1400, 150, `hero-${item?.id ?? "none"}`);
 
   if (!item) {
     return (
@@ -668,7 +677,7 @@ function MotivationCard({
   const badges = computeBadges(student, meetings, deadlines);
   const earned = badges.filter((b) => b.earned);
   const locked = badges.filter((b) => !b.earned);
-  const progress = useCountUp(1200, 300);
+  const progress = useCountUp(1200, 300, `streak-${student.id}`);
 
   return (
     <aside className="sp-glass sp-rise flex min-w-0 flex-[2_1_0%] flex-col gap-5 rounded-3xl border px-5 py-5 sm:px-6">

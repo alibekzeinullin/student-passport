@@ -15,6 +15,9 @@ import {
   fetchMeetingsByParentToken,
   fetchMeetingsForStudent,
   fetchMeetingsWithNotes,
+  peekFetchMeetingsByParentToken,
+  peekFetchMeetingsForStudent,
+  peekFetchMeetingsWithNotes,
   formatMeetingDate,
   homeworkRating,
   isMeetingsTableMissing,
@@ -65,8 +68,17 @@ export function MeetingsJournal({
   onScoresChanged,
 }: MeetingsJournalProps) {
   const isAdmin = mode === "admin";
-  const [meetings, setMeetings] = useState<MeetingWithNotes[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [meetings, setMeetings] = useState<MeetingWithNotes[]>(() => {
+    if (mode === "admin") return peekFetchMeetingsWithNotes(studentId) ?? [];
+    const plain =
+      mode === "parent" ? peekFetchMeetingsByParentToken(parentToken ?? "") : peekFetchMeetingsForStudent(studentId);
+    return plain ? plain.map((m) => ({ ...m, notes: { ...EMPTY_NOTES } })) : [];
+  });
+  const [loading, setLoading] = useState(() =>
+    mode === "admin"
+      ? peekFetchMeetingsWithNotes(studentId) === undefined
+      : (mode === "parent" ? peekFetchMeetingsByParentToken(parentToken ?? "") : peekFetchMeetingsForStudent(studentId)) === undefined,
+  );
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);

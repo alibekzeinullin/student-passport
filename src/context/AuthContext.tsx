@@ -12,6 +12,7 @@ import {
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { splitFullName } from "@/lib/supabase/mappers";
 import { loginToEmail } from "@/lib/accounts";
+import { clearCache } from "@/lib/cache";
 import type { DbProfile } from "@/lib/supabase/database.types";
 import type {
   AuthUser,
@@ -82,7 +83,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           window.setTimeout(() => resolve(null), 8000);
         }),
       ]);
-      setUser(next);
+      // Тот же пользователь — не создаём новый объект, чтобы страницы не перезагружались
+      setUser((prev) => {
+        if (
+          prev &&
+          next &&
+          prev.id === next.id &&
+          prev.role === next.role &&
+          prev.studentId === next.studentId &&
+          prev.name === next.name &&
+          prev.mustChangePassword === next.mustChangePassword
+        ) {
+          return prev;
+        }
+        return next;
+      });
     } catch (error) {
       console.error(error);
       setUser(null);
@@ -102,7 +117,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = createClient();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
+    } = supabase.auth.onAuthStateChange((event) => {
+      // Обновление токена и первичная сессия не меняют пользователя
+      if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
+      if (event === "SIGNED_OUT") {
+        clearCache();
+        setUser(null);
+        return;
+      }
       void refreshUser();
     });
 
@@ -256,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const supabase = createClient();
       await supabase.auth.signOut();
     }
+    clearCache();
     setUser(null);
   }, []);
 

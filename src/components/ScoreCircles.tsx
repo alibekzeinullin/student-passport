@@ -19,7 +19,7 @@ interface ScoreCirclesProps {
  */
 export function ScoreCircles({ student }: ScoreCirclesProps) {
   const academic = calculateAcademicSuccessScore(student);
-  const progress = useCountUp(1800, 250);
+  const progress = useCountUp(1800, 250, `rings-${student.id}`);
 
   return (
     <section className="sp-glass rounded-3xl border px-4 py-6 sm:px-8 sm:py-8">

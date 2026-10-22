@@ -3,19 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { StudentProfile } from "@/lib/types";
-import { fetchAllMeetings, homeworkRating, type Meeting } from "@/lib/meetings";
+import { fetchAllMeetings, homeworkRating, peekFetchAllMeetings, type Meeting } from "@/lib/meetings";
 import {
   CATEGORY_LABELS,
   daysLeft,
   fetchDeadlines,
+  peekFetchDeadlines,
   formatDaysLeft,
   formatDueDate,
   type Deadline,
 } from "@/lib/deadlines";
 import { currentMonthYearLabel } from "@/lib/monthly-progress";
 import { mondayOf, todayLocalIso } from "@/lib/attendance";
-import { fetchUnverifiedGrades, type TermGrade } from "@/lib/term-grades";
-import { fetchInvites, hasIndividualThisWeek, inviteKey, studentParity, type Invite } from "@/lib/schedule";
+import { fetchUnverifiedGrades, peekFetchUnverifiedGrades, type TermGrade } from "@/lib/term-grades";
+import { fetchInvites, peekFetchInvites, hasIndividualThisWeek, inviteKey, studentParity, type Invite } from "@/lib/schedule";
 
 type Severity = "high" | "medium" | "low";
 
@@ -155,11 +156,12 @@ function groupUpcoming(students: StudentProfile[], deadlines: Deadline[]): Deadl
 }
 
 export function AttentionPanel({ students }: { students: StudentProfile[] }) {
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  const [invites, setInvites] = useState<Invite[] | null>(null);
-  const [unverified, setUnverified] = useState<TermGrade[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const thisMonday = mondayOf(todayLocalIso());
+  const [meetings, setMeetings] = useState<Meeting[]>(() => peekFetchAllMeetings() ?? []);
+  const [deadlines, setDeadlines] = useState<Deadline[]>(() => peekFetchDeadlines() ?? []);
+  const [invites, setInvites] = useState<Invite[] | null>(() => peekFetchInvites(thisMonday, thisMonday) ?? null);
+  const [unverified, setUnverified] = useState<TermGrade[]>(() => peekFetchUnverifiedGrades() ?? []);
+  const [loaded, setLoaded] = useState(() => peekFetchAllMeetings() !== undefined);
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {

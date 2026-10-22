@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { cached, peek } from "@/lib/cache";
 import type { Attendance, MeetingFormat } from "@/lib/meetings";
 
 /** Запись встречи в объёме, нужном таблице посещаемости. */
@@ -111,7 +112,7 @@ export function weeksBetween(startMonday: string, endMonday: string): string[] {
 
 // ---------- Загрузка ----------
 
-export async function fetchAttendance(
+async function fetchAttendanceRaw(
   fromIso: string,
   toIsoDate: string,
 ): Promise<AttendanceMeeting[]> {
@@ -322,4 +323,12 @@ export function individualDue(
   if (weeks <= 1) return "off";
   if (weeks === 2) return "due";
   return "overdue";
+}
+
+export function fetchAttendance(fromIso: string, toIsoDate: string): Promise<AttendanceMeeting[]> {
+  return cached(`att:${fromIso}:${toIsoDate}`, () => fetchAttendanceRaw(fromIso, toIsoDate));
+}
+
+export function peekFetchAttendance(fromIso: string, toIsoDate: string): AttendanceMeeting[] | undefined {
+  return peek<AttendanceMeeting[]>(`att:${fromIso}:${toIsoDate}`);
 }

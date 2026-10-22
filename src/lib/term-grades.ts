@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { cached, peek } from "@/lib/cache";
 import type { EducationSystem, TermSystem } from "@/lib/types";
 
 export const TERM_SYSTEM_LABELS: Record<TermSystem, string> = {
@@ -80,7 +81,7 @@ export function gpaScaleMax(system: EducationSystem): number {
   return system === "IB" ? 7 : 5;
 }
 
-export async function fetchTermGrades(studentId: string): Promise<TermGrade[]> {
+async function fetchTermGradesRaw(studentId: string): Promise<TermGrade[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createClient();
   const { data, error } = await supabase
@@ -91,7 +92,7 @@ export async function fetchTermGrades(studentId: string): Promise<TermGrade[]> {
   return sortGrades(((data as DbTermGrade[]) ?? []).map(mapGrade));
 }
 
-export async function fetchTermGradesByParentToken(
+async function fetchTermGradesByParentTokenRaw(
   token: string,
 ): Promise<TermGrade[]> {
   if (!isSupabaseConfigured() || !token) return [];
@@ -141,10 +142,34 @@ export async function verifyTermGrade(id: string): Promise<void> {
 }
 
 /** Ментор: все непроверенные оценки (для «Что требует внимания»). */
-export async function fetchUnverifiedGrades(): Promise<TermGrade[]> {
+async function fetchUnverifiedGradesRaw(): Promise<TermGrade[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createClient();
   const { data, error } = await supabase.from("term_grades").select("*").eq("verified", false);
   if (error) throw error;
   return ((data as DbTermGrade[]) ?? []).map(mapGrade);
+}
+
+export function fetchTermGrades(studentId: string): Promise<TermGrade[]> {
+  return cached(`grades:${studentId}`, () => fetchTermGradesRaw(studentId));
+}
+
+export function peekFetchTermGrades(studentId: string): TermGrade[] | undefined {
+  return peek<TermGrade[]>(`grades:${studentId}`);
+}
+
+export function fetchTermGradesByParentToken(token: string): Promise<TermGrade[]> {
+  return cached(`grades:p:${token}`, () => fetchTermGradesByParentTokenRaw(token));
+}
+
+export function peekFetchTermGradesByParentToken(token: string): TermGrade[] | undefined {
+  return peek<TermGrade[]>(`grades:p:${token}`);
+}
+
+export function fetchUnverifiedGrades(): Promise<TermGrade[]> {
+  return cached("grades:unverified", () => fetchUnverifiedGradesRaw());
+}
+
+export function peekFetchUnverifiedGrades(): TermGrade[] | undefined {
+  return peek<TermGrade[]>("grades:unverified");
 }

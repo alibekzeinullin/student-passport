@@ -12,6 +12,7 @@ import {
   TIER_LABELS,
   categoryFor,
   fetchOpportunities,
+  peekFetchOpportunities,
   setOpportunityLogo,
   type Opportunity,
 } from "@/lib/opportunities";
@@ -19,6 +20,7 @@ import {
   createDeadlines,
   daysLeft,
   fetchDeadlines,
+  peekFetchDeadlines,
   formatDaysLeft,
   formatDueDate,
   isTableMissing,
@@ -31,9 +33,11 @@ export function OpportunitiesFeed() {
   const { user } = useAuth();
   const { students } = useStudents();
   const isAdmin = user?.role === "admin";
-  const [items, setItems] = useState<Opportunity[]>([]);
-  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [items, setItems] = useState<Opportunity[]>(() => peekFetchOpportunities() ?? []);
+  const [deadlines, setDeadlines] = useState<Deadline[]>(
+    () => peekFetchDeadlines(isAdmin ? undefined : user?.studentId) ?? [],
+  );
+  const [loaded, setLoaded] = useState(() => peekFetchOpportunities() !== undefined);
   const [error, setError] = useState("");
   const [section, setSection] = useState(ALL);
   const [query, setQuery] = useState("");

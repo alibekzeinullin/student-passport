@@ -10,6 +10,8 @@ import {
   currentAcademicYear,
   fetchTermGrades,
   fetchTermGradesByParentToken,
+  peekFetchTermGrades,
+  peekFetchTermGradesByParentToken,
   gpaScaleMax,
   saveTermGrade,
   shiftAcademicYear,
@@ -36,7 +38,9 @@ export function TermGradesChart({
   parentToken?: string;
   onTermSystemChange?: (system: TermSystem) => void;
 }) {
-  const [grades, setGrades] = useState<TermGrade[]>([]);
+  const [grades, setGrades] = useState<TermGrade[]>(
+    () => (mode === "parent" ? peekFetchTermGradesByParentToken(parentToken ?? "") : peekFetchTermGrades(student.id)) ?? [],
+  );
   const [error, setError] = useState("");
   const [year, setYear] = useState(currentAcademicYear());
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -178,7 +182,7 @@ export function TermGradesChart({
         </p>
       ) : null}
 
-      <LineChart points={points} max={scaleMax} />
+      <LineChart points={points} max={scaleMax} animKey={`gpa-${student.id}`} />
 
       {grades.some((g) => !g.verified) ? (
         <div className="mt-4 rounded-2xl border border-gold/30 bg-gold/[0.06] px-4 py-3">
@@ -282,11 +286,13 @@ export function TermGradesChart({
 function LineChart({
   points,
   max,
+  animKey,
 }: {
+  animKey?: string;
   points: { key: string; label: string; year: string; value: number }[];
   max: number;
 }) {
-  const progress = useCountUp(1600, 200);
+  const progress = useCountUp(1600, 200, animKey);
   const W = 640;
   const H = 220;
   const padL = 72;

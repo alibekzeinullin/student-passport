@@ -165,6 +165,11 @@ textarea::placeholder {
   border-color: rgba(203, 176, 115, 0.35);
 }
 
+/* После первой страницы сессии — без анимаций появления при переходах */
+html.sp-seen .sp-rise {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sp-rise,
   .sp-pulse {

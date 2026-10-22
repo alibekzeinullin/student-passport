@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { cached, peek } from "@/lib/cache";
 import type { DeadlineCategory } from "@/lib/deadlines";
 
 export interface Opportunity {
@@ -120,7 +121,7 @@ function mapOpportunity(row: DbOpportunity): Opportunity {
   };
 }
 
-export async function fetchOpportunities(): Promise<Opportunity[]> {
+async function fetchOpportunitiesRaw(): Promise<Opportunity[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createClient();
   const { data, error } = await supabase.from("opportunities").select("*");
@@ -139,4 +140,12 @@ export async function setOpportunityLogo(id: string, logoUrl: string | null): Pr
   const supabase = createClient();
   const { error } = await supabase.from("opportunities").update({ logo_url: logoUrl }).eq("id", id);
   if (error) throw error;
+}
+
+export function fetchOpportunities(): Promise<Opportunity[]> {
+  return cached("opps", () => fetchOpportunitiesRaw());
+}
+
+export function peekFetchOpportunities(): Opportunity[] | undefined {
+  return peek<Opportunity[]>("opps");
 }

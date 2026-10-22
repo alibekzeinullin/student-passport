@@ -11,6 +11,7 @@ import {
   cellState,
   defaultDateInWeek,
   fetchAttendance,
+  peekFetchAttendance,
   findCell,
   GROUP_WEEKLY_FROM,
   mondayOf,
@@ -31,8 +32,14 @@ type Filter = "all" | "individual" | "group";
 export function AttendanceGrid({ students }: { students: StudentProfile[] }) {
   const [endMonday, setEndMonday] = useState(() => mondayOf(todayLocalIso()));
   const [filter, setFilter] = useState<Filter>("all");
-  const [meetings, setMeetings] = useState<AttendanceMeeting[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [meetings, setMeetings] = useState<AttendanceMeeting[]>(() => {
+    const end = mondayOf(todayLocalIso());
+    return peekFetchAttendance(addDays(end, -7 * (WINDOW - 1)), addDays(end, 6)) ?? [];
+  });
+  const [loaded, setLoaded] = useState(() => {
+    const end = mondayOf(todayLocalIso());
+    return peekFetchAttendance(addDays(end, -7 * (WINDOW - 1)), addDays(end, 6)) !== undefined;
+  });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
 

@@ -10,6 +10,7 @@ import {
   cellState,
   defaultDateInWeek,
   fetchAttendance,
+  peekFetchAttendance,
   findCell,
   individualDue,
   insertMeetings,
@@ -45,8 +46,14 @@ function errorText(err: unknown): string {
 
 export function AttendanceWeek({ students }: { students: StudentProfile[] }) {
   const [monday, setMonday] = useState(() => mondayOf(todayLocalIso()));
-  const [meetings, setMeetings] = useState<AttendanceMeeting[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [meetings, setMeetings] = useState<AttendanceMeeting[]>(() => {
+    const m = mondayOf(todayLocalIso());
+    return peekFetchAttendance(addDays(m, -7 * (HISTORY_WEEKS - 1)), addDays(m, 6)) ?? [];
+  });
+  const [loaded, setLoaded] = useState(() => {
+    const m = mondayOf(todayLocalIso());
+    return peekFetchAttendance(addDays(m, -7 * (HISTORY_WEEKS - 1)), addDays(m, 6)) !== undefined;
+  });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
 

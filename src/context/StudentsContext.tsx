@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -50,18 +51,27 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const userId = user?.id;
+  const userRole = user?.role;
+  const userStudentId = user?.studentId;
+  const loadedOnce = useRef<string | null>(null);
+
   const refreshStudents = useCallback(async () => {
-    if (!isSupabaseConfigured() || !user) {
+    if (!isSupabaseConfigured() || !userId) {
       setStudents([]);
       setLoading(false);
+      loadedOnce.current = null;
       return;
     }
 
-    setLoading(true);
+    // Индикатор загрузки — только при первой загрузке для этого пользователя;
+    // дальше данные обновляются тихо, страница не мигает
+    const key = `${userId}|${userRole}|${userStudentId ?? ""}`;
+    if (loadedOnce.current !== key) setLoading(true);
     const supabase = createClient();
 
     try {
-      if (user.role === "admin") {
+      if (userRole === "admin") {
         const { data, error } = await supabase
           .from("students")
           .select("*")
@@ -71,11 +81,11 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
         setStudents(
           ((data as DbStudent[]) ?? []).map(mapDbStudentToProfile),
         );
-      } else if (user.role === "student" && user.studentId) {
+      } else if (userRole === "student" && userStudentId) {
         const { data, error } = await supabase
           .from("students")
           .select("*")
-          .eq("id", user.studentId)
+          .eq("id", userStudentId)
           .maybeSingle();
 
         if (error) throw error;
@@ -83,13 +93,14 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
       } else {
         setStudents([]);
       }
+      loadedOnce.current = key;
     } catch (error) {
       console.error("Failed to load students", error);
-      setStudents([]);
+      if (loadedOnce.current !== key) setStudents([]);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [userId, userRole, userStudentId]);
 
   useEffect(() => {
     if (authLoading) return;

@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { cached, peek } from "@/lib/cache";
 
 export type MeetingFormat = "individual" | "group";
 export type Attendance = "present" | "late" | "absent";
@@ -148,7 +149,7 @@ export function isMeetingsTableMissing(error: unknown): boolean {
 }
 
 /** Ментор: встречи + план и самооценка. studentId не задан — по всем ученикам. */
-export async function fetchMeetingsWithNotes(
+async function fetchMeetingsWithNotesRaw(
   studentId?: string,
 ): Promise<MeetingWithNotes[]> {
   if (!isSupabaseConfigured()) return [];
@@ -182,7 +183,7 @@ export async function fetchMeetingsWithNotes(
 }
 
 /** Ученик: свои встречи (без плана и самооценки — их закрывает база). */
-export async function fetchMeetingsForStudent(
+async function fetchMeetingsForStudentRaw(
   studentId: string,
 ): Promise<Meeting[]> {
   if (!isSupabaseConfigured()) return [];
@@ -196,7 +197,7 @@ export async function fetchMeetingsForStudent(
 }
 
 /** Родитель: встречи по гостевой ссылке. */
-export async function fetchMeetingsByParentToken(
+async function fetchMeetingsByParentTokenRaw(
   token: string,
 ): Promise<Meeting[]> {
   if (!isSupabaseConfigured() || !token) return [];
@@ -411,10 +412,42 @@ export function downloadTextFile(filename: string, content: string) {
 }
 
 /** Ментор: встречи всех учеников (без плана и самооценки). */
-export async function fetchAllMeetings(): Promise<Meeting[]> {
+async function fetchAllMeetingsRaw(): Promise<Meeting[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createClient();
   const { data, error } = await supabase.from("meetings").select(MEETING_COLUMNS);
   if (error) throw error;
   return sortMeetings(((data as DbMeeting[]) ?? []).map(mapMeeting));
+}
+
+export function fetchMeetingsWithNotes(studentId?: string): Promise<MeetingWithNotes[]> {
+  return cached(`meetingsN:${studentId ?? "all"}`, () => fetchMeetingsWithNotesRaw(studentId));
+}
+
+export function peekFetchMeetingsWithNotes(studentId?: string): MeetingWithNotes[] | undefined {
+  return peek<MeetingWithNotes[]>(`meetingsN:${studentId ?? "all"}`);
+}
+
+export function fetchMeetingsForStudent(studentId: string): Promise<Meeting[]> {
+  return cached(`meetings:s:${studentId}`, () => fetchMeetingsForStudentRaw(studentId));
+}
+
+export function peekFetchMeetingsForStudent(studentId: string): Meeting[] | undefined {
+  return peek<Meeting[]>(`meetings:s:${studentId}`);
+}
+
+export function fetchMeetingsByParentToken(token: string): Promise<Meeting[]> {
+  return cached(`meetings:p:${token}`, () => fetchMeetingsByParentTokenRaw(token));
+}
+
+export function peekFetchMeetingsByParentToken(token: string): Meeting[] | undefined {
+  return peek<Meeting[]>(`meetings:p:${token}`);
+}
+
+export function fetchAllMeetings(): Promise<Meeting[]> {
+  return cached("meetings:all", () => fetchAllMeetingsRaw());
+}
+
+export function peekFetchAllMeetings(): Meeting[] | undefined {
+  return peek<Meeting[]>("meetings:all");
 }

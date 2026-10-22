@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { cached, peek } from "@/lib/cache";
 import type { MeetingFormat } from "@/lib/meetings";
 import type { StudentProfile } from "@/lib/types";
 import { addDays, mondayOf, parseIso, type AttendanceMeeting } from "@/lib/attendance";
@@ -55,7 +56,7 @@ export function inviteKey(studentId: string, weekMonday: string, format: Meeting
   return `${studentId}|${weekMonday}|${format}`;
 }
 
-export async function fetchInvites(fromMonday: string, toMonday: string): Promise<Invite[]> {
+async function fetchInvitesRaw(fromMonday: string, toMonday: string): Promise<Invite[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createClient();
   const { data, error } = await supabase
@@ -92,4 +93,12 @@ export async function setInvited(
       .eq("format", i.format);
     if (error) throw error;
   }
+}
+
+export function fetchInvites(fromMonday: string, toMonday: string): Promise<Invite[]> {
+  return cached(`inv:${fromMonday}:${toMonday}`, () => fetchInvitesRaw(fromMonday, toMonday));
+}
+
+export function peekFetchInvites(fromMonday: string, toMonday: string): Invite[] | undefined {
+  return peek<Invite[]>(`inv:${fromMonday}:${toMonday}`);
 }

@@ -1,11 +1,16 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AuthProvider } from "@/context/AuthContext";
 import { StudentsProvider } from "@/context/StudentsContext";
 import { AppHeader } from "@/components/AppHeader";
 
 export function Providers({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    const t = window.setTimeout(() => document.documentElement.classList.add("sp-seen"), 1500);
+    return () => window.clearTimeout(t);
+  }, []);
+
   return (
     <AuthProvider>
       <StudentsProvider>

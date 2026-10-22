@@ -9,6 +9,7 @@ import {
   addDays,
   cellState,
   fetchAttendance,
+  peekFetchAttendance,
   findCell,
   mondayOf,
   parseIso,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/attendance";
 import {
   fetchInvites,
+  peekFetchInvites,
   hasIndividualThisWeek,
   inviteKey,
   saturdayOf,
@@ -42,9 +44,11 @@ export function AttendancePlan({ students }: { students: StudentProfile[] }) {
   const { updateStudent } = useStudents();
   const thisMonday = mondayOf(todayLocalIso());
   const nextMonday = addDays(thisMonday, 7);
-  const [meetings, setMeetings] = useState<AttendanceMeeting[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [meetings, setMeetings] = useState<AttendanceMeeting[]>(
+    () => peekFetchAttendance(HISTORY_FROM, addDays(nextMonday, 6)) ?? [],
+  );
+  const [invites, setInvites] = useState<Invite[]>(() => peekFetchInvites(thisMonday, nextMonday) ?? []);
+  const [loaded, setLoaded] = useState(() => peekFetchInvites(thisMonday, nextMonday) !== undefined);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 

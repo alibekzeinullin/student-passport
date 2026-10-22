@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { cached, peek } from "@/lib/cache";
 
 export type DeadlineCategory =
   | "olympiad"
@@ -89,7 +90,7 @@ export function isTableMissing(error: unknown, table: string): boolean {
 }
 
 /** Ученик / ментор: дедлайны одного ученика; без studentId (ментор) — всех. */
-export async function fetchDeadlines(studentId?: string): Promise<Deadline[]> {
+async function fetchDeadlinesRaw(studentId?: string): Promise<Deadline[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = createClient();
   let query = supabase.from("student_deadlines").select("*");
@@ -99,7 +100,7 @@ export async function fetchDeadlines(studentId?: string): Promise<Deadline[]> {
   return sortByDate(((data as DbDeadline[]) ?? []).map(mapDeadline));
 }
 
-export async function fetchDeadlinesByParentToken(
+async function fetchDeadlinesByParentTokenRaw(
   token: string,
 ): Promise<Deadline[]> {
   if (!isSupabaseConfigured() || !token) return [];
@@ -230,4 +231,20 @@ export function addDaysIso(iso: string, days: number): string {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+export function fetchDeadlines(studentId?: string): Promise<Deadline[]> {
+  return cached(`deadlines:${studentId ?? "all"}`, () => fetchDeadlinesRaw(studentId));
+}
+
+export function peekFetchDeadlines(studentId?: string): Deadline[] | undefined {
+  return peek<Deadline[]>(`deadlines:${studentId ?? "all"}`);
+}
+
+export function fetchDeadlinesByParentToken(token: string): Promise<Deadline[]> {
+  return cached(`deadlines:p:${token}`, () => fetchDeadlinesByParentTokenRaw(token));
+}
+
+export function peekFetchDeadlinesByParentToken(token: string): Deadline[] | undefined {
+  return peek<Deadline[]>(`deadlines:p:${token}`);
 }
