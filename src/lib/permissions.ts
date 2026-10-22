@@ -15,7 +15,7 @@ export function getDashboardPermissions(
     canEditGrowthZones: isAdmin,
     canEditScores: isAdmin,
     canEditGpa: isAdmin,
-    canEditTestScores: isAdmin,
+    canEditTestScores: isAdmin || isStudent,
     canEditAcademicActivities: isAdmin || isStudent,
     canEditProjects: isAdmin || isStudent,
     canEditBooks: isAdmin || isStudent,

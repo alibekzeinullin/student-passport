@@ -254,9 +254,10 @@ security definer
 set search_path = public
 as $$
 declare
-  -- Колонки, которые ученик может менять в своей карточке
+  -- Колонки, которые ученик может менять в своей карточке целиком
   v_allowed text[] := array[
-    'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks', 'avatar_url', 'updated_at'
+    'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks',
+    'avatar_url', 'test_scores', 'updated_at'
   ];
   v_old_sprints jsonb;
   v_new_sprints jsonb;
@@ -267,8 +268,15 @@ begin
     return new;
   end if;
 
-  if (to_jsonb(new) - v_allowed) is distinct from (to_jsonb(old) - v_allowed) then
+  if (to_jsonb(new) - v_allowed - 'vision_map') is distinct from (to_jsonb(old) - v_allowed - 'vision_map') then
     raise exception 'Недостаточно прав: это поле может менять только ментор'
+      using errcode = '42501';
+  end if;
+
+  -- Vision Map: ученик меняет только свои цели года (Future Review)
+  if (coalesce(new.vision_map, '{}'::jsonb) - 'futureAcademicGoals' - 'futureOtherGoals')
+     is distinct from (coalesce(old.vision_map, '{}'::jsonb) - 'futureAcademicGoals' - 'futureOtherGoals') then
+    raise exception 'В Vision Map ученик может менять только свои цели года'
       using errcode = '42501';
   end if;
 

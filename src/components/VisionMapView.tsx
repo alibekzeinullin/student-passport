@@ -205,10 +205,13 @@ function ReadText({ value }: { value: string }) {
 export function VisionMapView({
   student,
   editable = false,
+  goalsEditable = false,
   onChange,
 }: {
   student: StudentProfile;
   editable?: boolean;
+  /** Ученик: может менять только свои цели года (Future Review) */
+  goalsEditable?: boolean;
   onChange?: (patch: Partial<StudentProfile>) => void;
 }) {
   const vision: VisionMap = normalizeVisionMap(student.visionMap);
@@ -309,7 +312,7 @@ export function VisionMapView({
                   }
                 />
               </div>
-              {editable ? (
+              {editable || goalsEditable ? (
                 <div className="space-y-2">
                   <Input
                     value={goal.text}

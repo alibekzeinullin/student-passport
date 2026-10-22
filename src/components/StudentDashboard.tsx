@@ -84,6 +84,16 @@ export function StudentDashboard({
             ) : null}
           </div>
 
+          {accessMode === "student" ? (
+            <nav aria-label="Разделы ученика" className="flex flex-wrap gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
+              <Link
+                href="/dashboard/vision"
+                className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
+              >
+                Vision Map — мои цели на год
+              </Link>
+            </nav>
+          ) : null}
           {accessMode === "admin" ? (
             <nav
               aria-label="Отчёты ученика"
@@ -300,6 +310,7 @@ export function StudentDashboard({
         </Section>
       </ZoneBand>
 
+      {accessMode !== "student" ? (
       <ZoneBand tone="other">
         <Section
           number="6"
@@ -317,6 +328,7 @@ export function StudentDashboard({
           />
         </Section>
       </ZoneBand>
+      ) : null}
     </div>
   );
 }

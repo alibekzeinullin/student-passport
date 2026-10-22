@@ -33,6 +33,8 @@ export interface TermGrade {
   academicYear: string; // «2026–27»
   termNumber: number;
   gpa: number | null;
+  /** false — внёс ученик, ждёт проверки ментора */
+  verified: boolean;
 }
 
 interface DbTermGrade {
@@ -41,6 +43,7 @@ interface DbTermGrade {
   academic_year: string;
   term_number: number;
   gpa: number | string | null;
+  verified?: boolean | null;
 }
 
 function mapGrade(row: DbTermGrade): TermGrade {
@@ -50,6 +53,7 @@ function mapGrade(row: DbTermGrade): TermGrade {
     academicYear: row.academic_year,
     termNumber: row.term_number,
     gpa: row.gpa === null ? null : Number(row.gpa),
+    verified: row.verified !== false,
   };
 }
 
@@ -127,4 +131,20 @@ export async function saveTermGrade(
     { onConflict: "student_id,academic_year,term_number" },
   );
   if (error) throw error;
+}
+
+/** Ментор: подтвердить оценку, которую внёс ученик. */
+export async function verifyTermGrade(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("term_grades").update({ verified: true }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Ментор: все непроверенные оценки (для «Что требует внимания»). */
+export async function fetchUnverifiedGrades(): Promise<TermGrade[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = createClient();
+  const { data, error } = await supabase.from("term_grades").select("*").eq("verified", false);
+  if (error) throw error;
+  return ((data as DbTermGrade[]) ?? []).map(mapGrade);
 }

@@ -14,6 +14,7 @@ import {
 } from "@/lib/deadlines";
 import { currentMonthYearLabel } from "@/lib/monthly-progress";
 import { mondayOf, todayLocalIso } from "@/lib/attendance";
+import { fetchUnverifiedGrades, type TermGrade } from "@/lib/term-grades";
 import { fetchInvites, hasIndividualThisWeek, inviteKey, studentParity, type Invite } from "@/lib/schedule";
 
 type Severity = "high" | "medium" | "low";
@@ -46,6 +47,7 @@ function buildAlerts(
   meetings: Meeting[],
   deadlines: Deadline[],
   invites: Invite[] | null,
+  unverified: TermGrade[] = [],
 ): Alert[] {
   const thisMonday = mondayOf(todayLocalIso());
   const invited = new Set((invites ?? []).map((i) => inviteKey(i.studentId, i.weekMonday, i.format)));
@@ -104,6 +106,11 @@ function buildAlerts(
       }
     }
 
+    const pendingGrades = unverified.filter((g) => g.studentId === s.id).length;
+    if (pendingGrades > 0) {
+      push("grades", "medium", `Внёс оценки за четверть (${pendingGrades}) — проверьте`);
+    }
+
     const hadMeetingsLastMonth = own.some((m) => m.meetingDate.startsWith(prevMonthPrefix));
     const hasReview = s.monthlyProgressReviews.some(
       (r) => normalizeMonth(r.monthYear) === prevMonth,
@@ -151,17 +158,19 @@ export function AttentionPanel({ students }: { students: StudentProfile[] }) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [invites, setInvites] = useState<Invite[] | null>(null);
+  const [unverified, setUnverified] = useState<TermGrade[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const monday = mondayOf(todayLocalIso());
-    void Promise.allSettled([fetchAllMeetings(), fetchDeadlines(), fetchInvites(monday, monday)]).then(([m, d, inv]) => {
+    void Promise.allSettled([fetchAllMeetings(), fetchDeadlines(), fetchInvites(monday, monday), fetchUnverifiedGrades()]).then(([m, d, inv, ug]) => {
       if (cancelled) return;
       if (m.status === "fulfilled") setMeetings(m.value);
       if (d.status === "fulfilled") setDeadlines(d.value);
       if (inv.status === "fulfilled") setInvites(inv.value);
+      if (ug.status === "fulfilled") setUnverified(ug.value);
       setLoaded(true);
     });
     return () => {
@@ -169,7 +178,7 @@ export function AttentionPanel({ students }: { students: StudentProfile[] }) {
     };
   }, []);
 
-  const alerts = useMemo(() => buildAlerts(students, meetings, deadlines, invites), [students, meetings, deadlines, invites]);
+  const alerts = useMemo(() => buildAlerts(students, meetings, deadlines, invites, unverified), [students, meetings, deadlines, invites, unverified]);
   const groups = useMemo(() => groupUpcoming(students, deadlines), [students, deadlines]);
   const high = alerts.filter((a) => a.severity === "high").length;
   const visible = showAll ? alerts : alerts.slice(0, 8);

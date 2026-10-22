@@ -14,6 +14,7 @@ import {
   saveTermGrade,
   shiftAcademicYear,
   termLabel,
+  verifyTermGrade,
   type TermGrade,
 } from "@/lib/term-grades";
 import { useCountUp } from "@/lib/use-count-up";
@@ -43,7 +44,9 @@ export function TermGradesChart({
   const system = student.termSystem;
   const termCount = TERM_COUNT[system];
   const scaleMax = gpaScaleMax(student.educationSystem);
-  const editable = mode === "admin";
+  const isAdmin = mode === "admin";
+  // Ученик тоже вносит оценки — они ждут проверки ментора
+  const editable = mode === "admin" || mode === "student";
 
   const fetchList = useCallback(
     () =>
@@ -150,7 +153,7 @@ export function TermGradesChart({
             )}
           </p>
         </div>
-        {editable ? (
+        {isAdmin ? (
           <div className="flex flex-wrap gap-2">
             <div className="min-w-36">
               <Label>Школа делит год на</Label>
@@ -176,6 +179,42 @@ export function TermGradesChart({
       ) : null}
 
       <LineChart points={points} max={scaleMax} />
+
+      {grades.some((g) => !g.verified) ? (
+        <div className="mt-4 rounded-2xl border border-gold/30 bg-gold/[0.06] px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.12em] text-gold">Ждут проверки ментора</p>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {grades
+              .filter((g) => !g.verified)
+              .map((g) => (
+                <li key={g.id} className="flex flex-wrap items-center gap-2 text-sm text-navy">
+                  <span className="min-w-0 flex-1">
+                    {g.academicYear}, {termLabel(system, g.termNumber)} — {g.gpa?.toFixed(2) ?? "—"}
+                  </span>
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void verifyTermGrade(g.id).then(
+                          async () => applyResult(...(await Promise.allSettled([fetchList()]))),
+                          (err: unknown) => {
+                            console.error(err);
+                            setError("Не удалось подтвердить оценку.");
+                          },
+                        )
+                      }
+                      className="rounded-full border border-gold/50 px-3 py-1 text-xs text-gold transition hover:bg-gold/10"
+                    >
+                      Подтвердить
+                    </button>
+                  ) : (
+                    <span className="text-xs text-muted">ментор проверит</span>
+                  )}
+                </li>
+              ))}
+          </ul>
+        </div>
+      ) : null}
 
       {editable ? (
         <div className="mt-5 border-t border-white/[0.07] pt-4">
@@ -230,7 +269,9 @@ export function TermGradesChart({
             })}
           </div>
           <p className="mt-2 text-xs text-muted">
-            Сохраняется автоматически, когда уходите из поля. Пустое поле — удалить оценку.
+            {isAdmin
+              ? "Сохраняется автоматически, когда уходите из поля. Пустое поле — удалить оценку."
+              : "Впиши GPA из электронного дневника — сохранится автоматически, ментор проверит."}
           </p>
         </div>
       ) : null}
