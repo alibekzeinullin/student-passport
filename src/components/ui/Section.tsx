@@ -1,18 +1,20 @@
 import type { ReactNode } from "react";
 
 export function Section({
+  id,
   number,
   title,
   description,
   children,
 }: {
+  id?: string;
   number: string;
   title: ReactNode;
   description?: string;
   children: ReactNode;
 }) {
   return (
-    <section className="min-w-0 space-y-4">
+    <section id={id} className="min-w-0 scroll-mt-24 space-y-4">
       <div className="px-1">
         <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-gold">
           <span className="inline-block size-1.5 rounded-full bg-gold" aria-hidden />

@@ -4,6 +4,8 @@ import type { EducationSystem, StudentProfile } from "@/lib/types";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { TermHint } from "@/components/ui/TermHint";
 import type { TermHintKey } from "@/lib/term-hints";
+import { useState } from "react";
+import { uploadAvatar } from "@/lib/avatar";
 
 const EDUCATION_SYSTEMS: EducationSystem[] = [
   "IB",
@@ -22,6 +24,8 @@ interface ProfileHeaderProps {
   canEditMentorNote?: boolean;
   showMentorNote?: boolean;
   onChange?: (patch: Partial<StudentProfile>) => void;
+  /** Загрузка фото: ментор и сам ученик */
+  onAvatarChange?: (url: string) => void;
 }
 
 export function ProfileHeader({
@@ -30,7 +34,29 @@ export function ProfileHeader({
   canEditMentorNote = false,
   showMentorNote = true,
   onChange,
+  onAvatarChange,
 }: ProfileHeaderProps) {
+  const [uploading, setUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+
+  const handleAvatar = async (file: File) => {
+    setUploading(true);
+    setAvatarError("");
+    try {
+      const url = await uploadAvatar(student.id, file);
+      onAvatarChange?.(url);
+    } catch (err) {
+      console.error(err);
+      const msg = err && typeof err === "object" && "message" in err ? String((err as { message: unknown }).message) : "";
+      setAvatarError(
+        msg.toLowerCase().includes("bucket")
+          ? "Хранилище фото не подключено: выполните supabase/migration-avatars.sql."
+          : msg || "Не удалось загрузить фото",
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
   return (
     <div className="sp-glass overflow-hidden rounded-3xl border">
       <div className="relative px-5 py-6 sm:px-8 sm:py-8">
@@ -39,7 +65,13 @@ export function ProfileHeader({
           className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-burgundy-deep/40 blur-3xl"
         />
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex size-16 shrink-0 items-center justify-center self-start rounded-full border-[1.5px] border-gold/80 bg-gold/10 text-xl font-light tracking-wide text-gold sm:size-20 sm:text-2xl">
+          <div className="flex shrink-0 flex-col items-start gap-1">
+          <label
+            className={`group relative flex size-16 items-center justify-center overflow-hidden rounded-full border-[1.5px] border-gold/80 bg-gold/10 text-xl font-light tracking-wide text-gold sm:size-20 sm:text-2xl ${
+              onAvatarChange ? "cursor-pointer" : ""
+            }`}
+            title={onAvatarChange ? "Загрузить фото" : undefined}
+          >
             {student.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -50,6 +82,27 @@ export function ProfileHeader({
             ) : (
               initials(student)
             )}
+            {onAvatarChange ? (
+              <>
+                <span className="absolute inset-0 flex items-center justify-center bg-black/55 text-[11px] font-medium text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                  {uploading ? "…" : student.avatarUrl ? "Сменить" : "Фото"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  aria-label="Загрузить фото профиля"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleAvatar(f);
+                    e.target.value = "";
+                  }}
+                />
+              </>
+            ) : null}
+          </label>
+          {avatarError ? <p className="max-w-40 text-[11px] text-burgundy">{avatarError}</p> : null}
           </div>
 
           <div className="min-w-0 flex-1">

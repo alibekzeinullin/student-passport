@@ -10,6 +10,7 @@ export function getDashboardPermissions(
   return {
     canEditHeader: isAdmin,
     canEditMentorNote: isAdmin,
+    canEditAvatar: isAdmin || isStudent,
     canEditMentorSummary: isAdmin,
     canEditGrowthZones: isAdmin,
     canEditScores: isAdmin,

@@ -24,6 +24,7 @@ export interface Opportunity {
   tags: string[];
   tier: string;
   money: string;
+  logoUrl: string | null;
 }
 
 export const SECTIONS: { id: string; title: string }[] = [
@@ -88,6 +89,7 @@ interface DbOpportunity {
   tags: string[] | null;
   tier: string;
   money: string;
+  logo_url?: string | null;
 }
 
 function mapOpportunity(row: DbOpportunity): Opportunity {
@@ -114,6 +116,7 @@ function mapOpportunity(row: DbOpportunity): Opportunity {
     tags: row.tags ?? [],
     tier: row.tier,
     money: row.money,
+    logoUrl: row.logo_url ?? null,
   };
 }
 
@@ -129,4 +132,11 @@ export async function fetchOpportunities(): Promise<Opportunity[]> {
       if (!b.dueDate) return -1;
       return a.dueDate.localeCompare(b.dueDate);
     });
+}
+
+/** Ментор: свой логотип возможности (ссылка на картинку; пусто — авто). */
+export async function setOpportunityLogo(id: string, logoUrl: string | null): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("opportunities").update({ logo_url: logoUrl }).eq("id", id);
+  if (error) throw error;
 }

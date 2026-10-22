@@ -424,7 +424,17 @@ export default function AdminPage() {
                           }`}
                         >
                           <td className="px-3 py-3 font-medium text-navy sm:px-5">
-                            {fullName}
+                            <span className="inline-flex items-center gap-3">
+                              <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gold/40 bg-gold/10 text-[11px] font-normal text-gold">
+                                {student.avatarUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={student.avatarUrl} alt="" className="size-full object-cover" />
+                                ) : (
+                                  `${student.firstName[0] ?? ""}${student.lastName[0] ?? ""}`.toUpperCase()
+                                )}
+                              </span>
+                              {fullName}
+                            </span>
                             {student.status === "paused" ? (
                               <span className="ml-2 rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-normal text-muted">
                                 на паузе

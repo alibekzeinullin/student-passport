@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { OpportunityLogo } from "@/components/OpportunityLogo";
 import { useStudents } from "@/context/StudentsContext";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Field";
@@ -11,6 +12,7 @@ import {
   TIER_LABELS,
   categoryFor,
   fetchOpportunities,
+  setOpportunityLogo,
   type Opportunity,
 } from "@/lib/opportunities";
 import {
@@ -241,6 +243,8 @@ function OpportunityCard({
 }) {
   const [picking, setPicking] = useState(false);
   const left = item.dueDate ? daysLeft(item.dueDate) : null;
+  const [logoOverride, setLogoOverride] = useState<string | null | undefined>(undefined);
+  const [logoDraft, setLogoDraft] = useState("");
   const sectionTitle = SECTIONS.find((s) => s.id === item.section)?.title ?? "";
 
   const dateTone =
@@ -272,7 +276,9 @@ function OpportunityCard({
           ) : null}
         </div>
 
-        <div className="min-w-0">
+        <div className="flex min-w-0 gap-4">
+          <OpportunityLogo name={item.shortName || item.name} url={item.url} logoUrl={logoOverride ?? item.logoUrl} size={48} />
+          <div className="min-w-0">
           <button type="button" onClick={onToggle} className="text-left" aria-expanded={open}>
             <h3 className="text-lg font-medium leading-snug text-navy hover:text-gold">{item.name}</h3>
           </button>
@@ -281,7 +287,7 @@ function OpportunityCard({
             <span className="rounded-full border border-white/10 px-2 py-0.5 text-muted">{sectionTitle}</span>
             {item.tier === "top" ? (
               <span className="rounded-full bg-gold/15 px-2 py-0.5 text-gold">{TIER_LABELS.top}</span>
-            ) : TIER_LABELS[item.tier] ? (
+            ) : TIER_LABELS[item.tier] && item.tier !== "res" ? (
               <span className="rounded-full border border-white/10 px-2 py-0.5 text-muted">{TIER_LABELS[item.tier]}</span>
             ) : null}
             {item.tags
@@ -295,6 +301,7 @@ function OpportunityCard({
                 </span>
               ))}
           </div>
+        </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
@@ -357,6 +364,33 @@ function OpportunityCard({
                 <dd className="m-0 text-navy">{v}</dd>
               </div>
             ))}
+          {isAdmin ? (
+            <div className="contents">
+              <dt className="text-muted">Логотип</dt>
+              <dd className="m-0 flex flex-wrap items-center gap-2">
+                <input
+                  value={logoDraft}
+                  onChange={(e) => setLogoDraft(e.target.value)}
+                  placeholder="ссылка на картинку (пусто — значок сайта)"
+                  aria-label="Ссылка на логотип"
+                  className="min-w-0 flex-1 rounded-xl border border-white/10 bg-field px-3 py-1.5 text-sm text-navy"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const value = logoDraft.trim() || null;
+                    void setOpportunityLogo(item.id, value).then(
+                      () => setLogoOverride(value),
+                      (err: unknown) => console.error(err),
+                    );
+                  }}
+                  className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-navy hover:border-gold/60"
+                >
+                  Сохранить
+                </button>
+              </dd>
+            </div>
+          ) : null}
           {item.url ? (
             <div className="contents">
               <dt className="text-muted">Сайт</dt>

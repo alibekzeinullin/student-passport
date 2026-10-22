@@ -37,6 +37,8 @@ import {
   type Badge,
 } from "@/lib/achievements";
 import { useCountUp } from "@/lib/use-count-up";
+import { buildStudentTodos, type StudentTodo } from "@/lib/student-todos";
+import { OpportunityLogo } from "@/components/OpportunityLogo";
 
 type Mode = "admin" | "student" | "parent";
 
@@ -142,8 +144,11 @@ export function StudentOverview({
   const rest = [...overdue, ...upcoming.slice(1)];
 
   const canEdit = mode !== "parent";
+  const todos = loaded && mode !== "parent" ? buildStudentTodos(student, deadlines, meetings) : [];
 
   return (
+    <div className="flex flex-col gap-5">
+    {mode !== "parent" && loaded ? <TodoPanel todos={todos} mode={mode} /> : null}
     <div className="flex flex-col gap-5 lg:flex-row">
       <section className="sp-rise flex min-w-0 flex-[3_1_0%] flex-col gap-4">
         {error ? (
@@ -154,7 +159,7 @@ export function StudentOverview({
 
         <DeadlineHero item={hero} loaded={loaded} mode={mode} />
 
-        <div className="sp-glass rounded-3xl border px-4 py-4 sm:px-6 sm:py-5">
+        <div id="sec-deadlines" className="sp-glass scroll-mt-24 rounded-3xl border px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
               Дедлайны
@@ -232,6 +237,72 @@ export function StudentOverview({
         deadlines={deadlines}
       />
     </div>
+    </div>
+  );
+}
+
+// ---------- Что не сделано ----------
+
+const TODO_DOT: Record<StudentTodo["severity"], string> = {
+  high: "bg-burgundy sp-pulse",
+  medium: "bg-gold",
+  low: "bg-navy-soft",
+};
+
+function TodoPanel({ todos, mode }: { todos: StudentTodo[]; mode: Mode }) {
+  const [open, setOpen] = useState(false);
+  const high = todos.filter((t) => t.severity === "high").length;
+  const visible = open ? todos : todos.slice(0, 4);
+
+  if (todos.length === 0) {
+    return (
+      <div className="sp-rise flex items-center gap-3 rounded-3xl border border-emerald-400/25 bg-emerald-400/[0.06] px-5 py-4 text-sm text-navy">
+        <span className="flex size-8 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300" aria-hidden>✓</span>
+        {mode === "admin" ? "У ученика всё заполнено и сдано вовремя." : "Всё сделано — так держать!"}
+      </div>
+    );
+  }
+
+  return (
+    <section
+      className={`sp-rise rounded-3xl border px-5 py-4 sm:px-6 ${
+        high > 0 ? "border-burgundy/35 bg-burgundy-deep/20" : "border-gold/25 bg-gold/[0.05]"
+      }`}
+      aria-label="Что нужно сделать"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-[11px] font-medium uppercase tracking-[0.16em] text-gold">
+          {mode === "admin" ? "Что не сделано у ученика" : "Что нужно сделать"}
+        </h3>
+        <span className="text-xs text-muted">
+          {todos.length} {todos.length === 1 ? "пункт" : todos.length < 5 ? "пункта" : "пунктов"}
+          {high ? ` · ${high} срочно` : ""}
+        </span>
+      </div>
+      <ul className="mt-2 flex flex-col">
+        {visible.map((t) => (
+          <li key={t.key} className="border-t border-white/[0.06] first:border-t-0">
+            <a
+              href={t.href}
+              className="flex items-center gap-3 rounded-xl px-2 py-2.5 text-sm text-navy transition hover:bg-white/[0.04]"
+            >
+              <span className={`size-2 shrink-0 rounded-full ${TODO_DOT[t.severity]}`} aria-hidden />
+              <span className="min-w-0 flex-1">{t.text}</span>
+              <span className="text-muted" aria-hidden>→</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+      {todos.length > 4 ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="mt-1 text-sm text-muted underline-offset-2 hover:text-navy hover:underline"
+        >
+          {open ? "Свернуть" : `Показать все (${todos.length})`}
+        </button>
+      ) : null}
+    </section>
   );
 }
 
@@ -312,9 +383,12 @@ function DeadlineHero({
             ) : null}
             Ближайший дедлайн · {CATEGORY_LABELS[item.category]}
           </p>
-          <h3 className="mt-2 text-2xl font-medium leading-snug text-white sm:text-[28px]">
-            {item.title}
-          </h3>
+          <div className="mt-2 flex items-center gap-3">
+            {item.url && !item.virtual ? <OpportunityLogo name={item.title} url={item.url} size={44} /> : null}
+            <h3 className="text-2xl font-medium leading-snug text-white sm:text-[28px]">
+              {item.title}
+            </h3>
+          </div>
           <p className="mt-2 text-sm text-white/70">
             {item.virtual ? "к следующей встрече · " : "подача до "}
             {formatDueDate(item.dueDate)}
@@ -405,6 +479,8 @@ function DeadlineRow({
 
   return (
     <li className="flex flex-col gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 transition hover:border-white/15 sm:flex-row sm:items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+      {item.url && !item.virtual ? <OpportunityLogo name={item.title} url={item.url} size={36} /> : null}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="font-medium text-navy">{item.title}</span>
@@ -431,6 +507,7 @@ function DeadlineRow({
             </>
           ) : null}
         </p>
+      </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <span

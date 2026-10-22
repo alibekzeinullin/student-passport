@@ -256,7 +256,7 @@ as $$
 declare
   -- Колонки, которые ученик может менять в своей карточке
   v_allowed text[] := array[
-    'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks', 'updated_at'
+    'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks', 'avatar_url', 'updated_at'
   ];
   v_old_sprints jsonb;
   v_new_sprints jsonb;

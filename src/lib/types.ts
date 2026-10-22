@@ -253,6 +253,7 @@ export interface StudentRegistrationInput {
 export interface DashboardPermissions {
   canEditHeader: boolean;
   canEditMentorNote: boolean;
+  canEditAvatar: boolean;
   canEditMentorSummary: boolean;
   canEditGrowthZones: boolean;
   canEditScores: boolean;

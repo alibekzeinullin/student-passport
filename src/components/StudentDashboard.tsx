@@ -142,6 +142,7 @@ export function StudentDashboard({
         />
       ) : null}
 
+      <div id="sec-profile" className="scroll-mt-24" />
       <ZoneBand tone="other">
         <ProfileHeader
           student={student}
@@ -152,12 +153,18 @@ export function StudentDashboard({
               ? patchStudent
               : undefined
           }
+          onAvatarChange={
+            perms.canEditAvatar
+              ? (avatarUrl) => patchStudent({ avatarUrl })
+              : undefined
+          }
         />
 
         <ScoreCircles student={student} />
       </ZoneBand>
 
       {accessMode !== "parent" ? (
+        <div id="sec-journal" className="scroll-mt-24">
         <ZoneBand tone="other">
           <MeetingsJournal
             studentId={studentId}
@@ -168,10 +175,12 @@ export function StudentDashboard({
             }}
           />
         </ZoneBand>
+        </div>
       ) : null}
 
       <ZoneBand tone="academic">
         <Section
+          id="sec-academic"
           number="1"
           title="Академическая динамика"
           description="GPA, SAT/IELTS и академическая активность"
@@ -220,6 +229,7 @@ export function StudentDashboard({
 
       <ZoneBand tone="other">
         <Section
+          id="sec-sprints"
           number="2"
           title="Спринты по групповой работе"
           description="Общие спринты программы. Список тем может меняться."
@@ -242,6 +252,7 @@ export function StudentDashboard({
 
       <ZoneBand tone="growth">
         <Section
+          id="sec-projects"
           number="3"
           title={
             <TermLabel term="Extracurricular">Внеучебная деятельность</TermLabel>
@@ -260,6 +271,7 @@ export function StudentDashboard({
         </Section>
 
         <Section
+          id="sec-books"
           number="4"
           title="Книги"
           description="Рекомендации программы и личный список чтения"
@@ -275,7 +287,7 @@ export function StudentDashboard({
           />
         </Section>
 
-        <Section number="5" title="Навыки" description="Навыки для освоения">
+        <Section id="sec-skills" number="5" title="Навыки" description="Навыки для освоения">
           <SkillsTable
             skills={student.skills}
             editable={perms.canEditSkills}
