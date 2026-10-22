@@ -18,6 +18,7 @@ export const CHECKS: { label: string; table: string; column?: string; file: stri
   { label: "История действий", table: "activity_log", file: "migration-activity.sql" },
   { label: "Эссе", table: "essay_submissions", file: "migration-workflow.sql" },
   { label: "Шаблоны встреч", table: "meeting_templates", file: "migration-workflow.sql" },
+  { label: "Результаты олимпиад", table: "student_deadlines", column: "result", file: "migration-achievements.sql" },
 ];
 
 export interface CheckResult {

@@ -22,6 +22,14 @@ export const CATEGORY_LABELS: Record<DeadlineCategory, string> = {
   other: "Другое",
 };
 
+/** Результат, который отмечает ментор (для достижений). */
+export type DeadlineResult = "advanced" | "prize";
+
+export const RESULT_LABELS: Record<DeadlineResult, string> = {
+  advanced: "Прошёл дальше",
+  prize: "Призёр",
+};
+
 export const STATUS_LABELS: Record<DeadlineStatus, string> = {
   planned: "Готовлюсь",
   submitted: "Подал",
@@ -40,6 +48,7 @@ export interface Deadline {
   createdByAdmin: boolean;
   opportunityId: string | null;
   groupKey: string | null;
+  result: DeadlineResult | null;
 }
 
 interface DbDeadline {
@@ -54,6 +63,7 @@ interface DbDeadline {
   created_by_admin: boolean;
   opportunity_id: string | null;
   group_key: string | null;
+  result?: DeadlineResult | null;
 }
 
 function mapDeadline(row: DbDeadline): Deadline {
@@ -69,6 +79,7 @@ function mapDeadline(row: DbDeadline): Deadline {
     createdByAdmin: row.created_by_admin,
     opportunityId: row.opportunity_id,
     groupKey: row.group_key,
+    result: row.result ?? null,
   };
 }
 
@@ -149,7 +160,7 @@ export async function createDeadlines(
 
 export async function updateDeadline(
   id: string,
-  patch: Partial<Pick<Deadline, "title" | "category" | "dueDate" | "url" | "notes" | "status">>,
+  patch: Partial<Pick<Deadline, "title" | "category" | "dueDate" | "url" | "notes" | "status" | "result">>,
 ): Promise<void> {
   const supabase = createClient();
   const row: Record<string, unknown> = {};
@@ -159,6 +170,7 @@ export async function updateDeadline(
   if (patch.url !== undefined) row.url = patch.url;
   if (patch.notes !== undefined) row.notes = patch.notes;
   if (patch.status !== undefined) row.status = patch.status;
+  if (patch.result !== undefined) row.result = patch.result;
   const { error } = await supabase.from("student_deadlines").update(row).eq("id", id);
   if (error) throw error;
 }

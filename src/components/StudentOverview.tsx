@@ -8,6 +8,7 @@ import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import {
   CATEGORY_LABELS,
   STATUS_LABELS,
+  RESULT_LABELS,
   addDaysIso,
   createDeadlines,
   daysLeft,
@@ -24,6 +25,7 @@ import {
   urgencyOf,
   type Deadline,
   type DeadlineCategory,
+  type DeadlineResult,
   type DeadlineStatus,
   type Urgency,
 } from "@/lib/deadlines";
@@ -38,10 +40,11 @@ import {
   attendanceStreak,
   computeBadges,
   recentAttendance,
-  type Badge,
 } from "@/lib/achievements";
 import { useCountUp } from "@/lib/use-count-up";
-import { fetchSubmissions, peekSubmissions, type EssaySubmission } from "@/lib/essays";
+import { fetchSubmissions, fetchSubmissionsByParentToken, peekSubmissions, type EssaySubmission } from "@/lib/essays";
+import { fetchTermGrades, fetchTermGradesByParentToken, type TermGrade } from "@/lib/term-grades";
+import { BadgesPanel } from "@/components/BadgesPanel";
 import { buildStudentTodos, type StudentTodo } from "@/lib/student-todos";
 import { OpportunityLogo } from "@/components/OpportunityLogo";
 
@@ -76,8 +79,10 @@ export function StudentOverview({
   const [adding, setAdding] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [essays, setEssays] = useState<EssaySubmission[] | null>(() =>
-    mode === "student" ? (peekSubmissions(student.id) ?? null) : null,
+    mode !== "parent" ? (peekSubmissions(student.id) ?? null) : null,
   );
+  const [grades, setGrades] = useState<TermGrade[] | null>(null);
+  const [extrasReady, setExtrasReady] = useState(false);
 
   const load = useCallback(async () => {
     const [d, m] = await Promise.allSettled([
@@ -115,16 +120,20 @@ export function StudentOverview({
     void load().then((r) => {
       if (!cancelled) apply(r);
     });
-    if (mode === "student") {
-      fetchSubmissions(student.id).then(
-        (list) => !cancelled && setEssays(list),
-        () => undefined,
-      );
-    }
+    // Эссе и оценки — для достижений (и задач ученика)
+    void Promise.allSettled([
+      mode === "parent" ? fetchSubmissionsByParentToken(parentToken ?? "") : fetchSubmissions(student.id),
+      mode === "parent" ? fetchTermGradesByParentToken(parentToken ?? "") : fetchTermGrades(student.id),
+    ]).then(([e, g]) => {
+      if (cancelled) return;
+      if (e.status === "fulfilled") setEssays(e.value);
+      if (g.status === "fulfilled") setGrades(g.value);
+      setExtrasReady(true);
+    });
     return () => {
       cancelled = true;
     };
-  }, [load, apply, mode, student.id]);
+  }, [load, apply, mode, student.id, parentToken]);
 
   const reload = async () => apply(await load());
 
@@ -148,6 +157,7 @@ export function StudentOverview({
           createdByAdmin: true,
           opportunityId: null,
           groupKey: null,
+          result: null,
           virtual: true,
         });
       }
@@ -163,7 +173,7 @@ export function StudentOverview({
   const rest = [...overdue, ...upcoming.slice(1)];
 
   const canEdit = mode !== "parent";
-  const todos = loaded ? buildStudentTodos(student, deadlines, meetings, new Date(), essays) : [];
+  const todos = loaded ? buildStudentTodos(student, deadlines, meetings, new Date(), mode === "student" ? essays : null) : [];
 
   return (
     <div className="flex flex-col gap-5">
@@ -254,6 +264,10 @@ export function StudentOverview({
         student={student}
         meetings={meetings}
         deadlines={deadlines}
+        essays={essays}
+        grades={grades}
+        ready={loaded && extrasReady}
+        mode={mode}
       />
     </div>
     </div>
@@ -564,6 +578,29 @@ function DeadlineRow({
             ))}
           </Select>
         ) : null}
+        {item.result && !(mode === "admin") ? (
+          <span className="rounded-full border border-gold/50 bg-gold/15 px-2.5 py-1 text-xs font-medium text-gold">
+            {item.result === "prize" ? "🏆 " : "↗ "}
+            {RESULT_LABELS[item.result]}
+          </span>
+        ) : null}
+        {mode === "admin" && !item.virtual && item.status === "submitted" && ["olympiad", "contest", "hackathon"].includes(item.category) ? (
+          <Select
+            aria-label="Результат"
+            value={item.result ?? ""}
+            disabled={busy}
+            onChange={(e) =>
+              void run(() =>
+                updateDeadline(item.id, { result: (e.target.value || null) as DeadlineResult | null }),
+              )
+            }
+            className={`!w-auto !rounded-full !py-1.5 text-xs ${item.result ? "!border-gold/60 !text-gold" : ""}`}
+          >
+            <option value="">Результат: —</option>
+            <option value="advanced">Прошёл дальше</option>
+            <option value="prize">Призёр / победитель</option>
+          </Select>
+        ) : null}
         {canDelete ? (
           <button
             type="button"
@@ -677,16 +714,22 @@ function MotivationCard({
   student,
   meetings,
   deadlines,
+  essays,
+  grades,
+  ready,
+  mode,
 }: {
   student: StudentProfile;
   meetings: Meeting[];
   deadlines: Deadline[];
+  essays: EssaySubmission[] | null;
+  grades: TermGrade[] | null;
+  ready: boolean;
+  mode: Mode;
 }) {
   const streak = attendanceStreak(meetings);
   const squares = recentAttendance(meetings, 10);
-  const badges = computeBadges(student, meetings, deadlines);
-  const earned = badges.filter((b) => b.earned);
-  const locked = badges.filter((b) => !b.earned);
+  const badges = computeBadges(student, meetings, deadlines, { essays, grades });
   const progress = useCountUp(1200, 300, `streak-${student.id}`);
 
   return (
@@ -721,71 +764,7 @@ function MotivationCard({
         )}
       </div>
 
-      <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <h3 className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
-            Достижения
-          </h3>
-          <span className="text-xs text-muted">
-            {earned.length} из {badges.length}
-          </span>
-        </div>
-        <ul className="mt-3 grid grid-cols-3 gap-2">
-          {[...earned, ...locked].slice(0, 9).map((b) => (
-            <BadgeTile key={b.id} badge={b} />
-          ))}
-        </ul>
-      </div>
+      <BadgesPanel badges={badges} studentId={student.id} ready={ready} celebrate={mode === "student"} />
     </aside>
-  );
-}
-
-function BadgeTile({ badge }: { badge: Badge }) {
-  return (
-    <li
-      className={`flex flex-col items-center gap-1.5 rounded-2xl border px-1.5 py-3 text-center ${
-        badge.earned
-          ? "border-gold/30 bg-gold/[0.08]"
-          : "border-white/[0.06] bg-white/[0.02] opacity-55"
-      }`}
-      title={badge.earned ? badge.title : `Как получить: ${badge.hint}`}
-    >
-      <BadgeIcon icon={badge.icon} earned={badge.earned} />
-      <span className={`text-[11px] leading-tight ${badge.earned ? "text-navy" : "text-muted"}`}>
-        {badge.title}
-      </span>
-      <span className="sr-only">
-        {badge.earned ? "получено" : `не получено: ${badge.hint}`}
-      </span>
-    </li>
-  );
-}
-
-function BadgeIcon({ icon, earned }: { icon: Badge["icon"]; earned: boolean }) {
-  const stroke = earned ? "var(--gold)" : "var(--muted)";
-  const paths: Record<Badge["icon"], React.ReactNode> = {
-    flame: <path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-9z" />,
-    star: <path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />,
-    book: <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 5v16M8 7h7" />,
-    trophy: <path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M9 20h6" />,
-    target: <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01" />,
-    rocket: <path d="M14 4c3 0 6 3 6 6l-6 6-6-6c0-3 3-6 6-6zM8 16l-3 3M10 18l-2 3M6 14l-3 2M15 9h.01" />,
-    spark: <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />,
-    check: <path d="M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0zM8.5 12l2.5 2.5 4.5-5" />,
-  };
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="size-6"
-      fill="none"
-      stroke={stroke}
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      style={earned ? { filter: "drop-shadow(0 0 6px rgba(203,176,115,.45))" } : undefined}
-    >
-      {paths[icon]}
-    </svg>
   );
 }
