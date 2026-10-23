@@ -186,7 +186,7 @@ export function StudentOverview({
           </div>
         ) : null}
 
-        <DeadlineHero item={hero} loaded={loaded} mode={mode} />
+        <DeadlineHero item={hero} loaded={loaded} mode={mode} onChanged={reload} />
 
         <div id="sec-deadlines" className="sp-glass scroll-mt-24 rounded-3xl border px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -376,12 +376,27 @@ function DeadlineHero({
   item,
   loaded,
   mode,
+  onChanged,
 }: {
   item?: OverviewItem;
   loaded: boolean;
   mode: Mode;
+  onChanged: () => Promise<void>;
 }) {
   const progress = useCountUp(1400, 150, `hero-${item?.id ?? "none"}`);
+  const [busy, setBusy] = useState(false);
+  const run = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await fn();
+      await onChanged();
+    } catch (err) {
+      console.error(err);
+      window.alert("Не удалось сохранить. Попробуйте ещё раз.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (!item) {
     return (
@@ -433,16 +448,47 @@ function DeadlineHero({
             {item.virtual ? "к следующей встрече · " : "подача до "}
             {formatDueDate(item.dueDate)}
           </p>
-          {item.url ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-flex text-sm text-[#f0d9a8] underline-offset-2 hover:underline"
-            >
-              Открыть сайт →
-            </a>
-          ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {item.url ? (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex text-sm text-[#f0d9a8] underline-offset-2 hover:underline"
+              >
+                Открыть сайт →
+              </a>
+            ) : null}
+            {mode !== "parent" && !item.virtual ? (
+              <select
+                aria-label="Статус"
+                value={item.status}
+                disabled={busy}
+                onChange={(e) =>
+                  void run(() => updateDeadline(item.id, { status: e.target.value as DeadlineStatus }))
+                }
+                className="rounded-full border border-white/25 bg-black/20 px-3 py-1 text-xs text-white outline-none"
+              >
+                {(Object.keys(STATUS_LABELS) as DeadlineStatus[]).map((st) => (
+                  <option key={st} value={st} className="text-black">
+                    {STATUS_LABELS[st]}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {!item.virtual && (mode === "admin" || (mode === "student" && !item.createdByAdmin)) ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  if (window.confirm(`Удалить «${item.title}»?`)) void run(() => deleteDeadline(item.id));
+                }}
+                className="text-xs text-white/60 underline-offset-2 hover:text-white hover:underline"
+              >
+                Удалить
+              </button>
+            ) : null}
+          </div>
         </div>
         <div className="relative size-32 shrink-0 self-start sm:size-36 sm:self-auto">
           <svg viewBox="0 0 120 120" className="size-full -rotate-90" aria-hidden>

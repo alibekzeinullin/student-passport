@@ -20,6 +20,7 @@ import {
 } from "@/lib/opportunities";
 import {
   createDeadlines,
+  deleteDeadline,
   daysLeft,
   fetchDeadlines,
   peekFetchDeadlines,
@@ -370,12 +371,12 @@ function OpportunityCard({
           {isAdmin ? (
             <>
               <Button type="button" variant={picking ? "secondary" : "primary"} onClick={() => setPicking((v) => !v)}>
-                {picking ? "Отмена" : "Добавить ученикам"}
+                {picking ? "Закрыть" : "Добавить ученикам"}
               </Button>
               {added.length > 0 ? (
-                <span className="text-xs text-muted">
-                  уже у {added.length} · подали {added.filter((d) => d.status === "submitted").length}
-                </span>
+                <button type="button" onClick={() => setPicking(true)} className="text-xs text-muted underline-offset-2 hover:text-navy hover:underline">
+                  уже у {added.length} · подали {added.filter((d) => d.status === "submitted").length} · изменить
+                </button>
               ) : null}
             </>
           ) : added.length > 0 ? (
@@ -398,7 +399,7 @@ function OpportunityCard({
                 aria-label={`Удалить ${item.shortName} из ленты`}
                 className="text-xs text-muted underline-offset-2 hover:text-burgundy hover:underline"
               >
-                Удалить
+                Убрать из ленты
               </button>
             ) : null}
           </span>
@@ -412,6 +413,8 @@ function OpportunityCard({
           studentId={studentId}
           students={students}
           alreadyIds={new Set(added.map((d) => d.studentId))}
+          added={added}
+          onRemoved={onAdded}
           onDone={async () => {
             setPicking(false);
             await onAdded();
@@ -487,15 +490,37 @@ function AddToDeadlines({
   studentId,
   students,
   alreadyIds,
+  added,
   onDone,
+  onRemoved,
 }: {
   item: Opportunity;
   isAdmin: boolean;
   studentId?: string;
   students: { id: string; firstName: string; lastName: string; className: string; status?: string }[];
   alreadyIds: Set<string>;
+  added: Deadline[];
   onDone: () => Promise<void>;
+  onRemoved: () => Promise<void>;
 }) {
+  const [removing, setRemoving] = useState<string | null>(null);
+  const nameOf = (id: string) => {
+    const s = students.find((x) => x.id === id);
+    return s ? `${s.lastName} ${s.firstName}`.trim() : "Ученик";
+  };
+  const remove = async (d: Deadline) => {
+    if (!window.confirm(`Убрать «${item.shortName}» у ${nameOf(d.studentId)}?`)) return;
+    setRemoving(d.id);
+    try {
+      await deleteDeadline(d.id);
+      await onRemoved();
+    } catch (err) {
+      console.error(err);
+      window.alert("Не удалось убрать. Попробуйте ещё раз.");
+    } finally {
+      setRemoving(null);
+    }
+  };
   const [date, setDate] = useState(item.dueDate ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -554,10 +579,32 @@ function AddToDeadlines({
           <p className="mt-1 text-xs text-muted">Дата примерная — проверьте на сайте и поправьте при необходимости.</p>
         ) : null}
       </div>
+      {isAdmin && added.length > 0 ? (
+        <div>
+          <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted">Уже добавлено — нажмите ×, чтобы убрать</span>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {added.map((d) => (
+              <span key={d.id} className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-gold/[0.07] py-1 pl-3 pr-1 text-sm text-navy">
+                {nameOf(d.studentId)}
+                {d.status === "submitted" ? <span className="text-xs text-emerald-300"> · подал</span> : null}
+                <button
+                  type="button"
+                  disabled={removing === d.id}
+                  onClick={() => void remove(d)}
+                  aria-label={`Убрать у ${nameOf(d.studentId)}`}
+                  className="ml-1 flex size-6 items-center justify-center rounded-full text-muted transition hover:bg-burgundy/20 hover:text-burgundy disabled:opacity-40"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {isAdmin ? (
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted">Ученики</span>
+            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted">Добавить ученикам</span>
             <button
               type="button"
               className="text-xs text-gold underline-offset-2 hover:underline"
@@ -572,7 +619,7 @@ function AddToDeadlines({
             ) : null}
           </div>
           {candidates.length === 0 ? (
-            <p className="mt-2 text-sm text-muted">Уже добавлено всем ученикам.</p>
+            <p className="mt-2 text-sm text-muted">Уже добавлено всем активным ученикам.</p>
           ) : (
             <div className="mt-2 flex flex-wrap gap-2">
               {candidates.map((s) => {
