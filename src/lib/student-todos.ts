@@ -3,6 +3,7 @@ import type { Deadline } from "@/lib/deadlines";
 import { daysLeft, formatDaysLeft, formatDueDate } from "@/lib/deadlines";
 import type { Meeting } from "@/lib/meetings";
 import type { EssaySubmission } from "@/lib/essays";
+import type { StudentWork } from "@/lib/works";
 
 export type TodoSeverity = "high" | "medium" | "low";
 
@@ -35,6 +36,7 @@ export function buildStudentTodos(
   meetings: Meeting[],
   today = new Date(),
   essays: EssaySubmission[] | null = null,
+  works: StudentWork[] | null = null,
 ): StudentTodo[] {
   const todos: StudentTodo[] = [];
   const push = (key: string, severity: TodoSeverity, text: string, href: string) =>
@@ -78,6 +80,16 @@ export function buildStudentTodos(
     }
   }
 
+  // Проекты и исследования: просроченный или близкий этап
+  for (const w of works ?? []) {
+    if (w.status === "done" || w.status === "paused") continue;
+    const cur = w.stages.find((st) => !st.done);
+    if (!cur?.due) continue;
+    const left = daysLeft(cur.due);
+    if (left < 0) push(`work-${w.id}`, "high", `«${w.title}»: срок этапа «${cur.title}» прошёл`, "/dashboard/works");
+    else if (left <= 7) push(`work-${w.id}`, "medium", `«${w.title}»: этап «${cur.title}» — до ${formatDueDate(cur.due)}`, "/dashboard/works");
+  }
+
   // Спринты
   const month = today.getMonth();
   const year = today.getFullYear();
@@ -109,7 +121,7 @@ export function buildStudentTodos(
   if (student.academicActivities.length === 0) {
     push("activities", "low", "Заполни «Академ активность»: олимпиады, конкурсы, награды", "#sec-academic");
   }
-  if (student.projects.length === 0) push("projects", "low", "Добавь свой проект во «Внеучебную деятельность»", "#sec-projects");
+  if (student.projects.length === 0) push("projects", "low", "Начни проект или исследование", "/dashboard/works");
   if (!student.books.some((b) => b.status === "Читаю" || b.status === "Прочитано")) {
     push("books", "low", "Выбери книгу из рекомендаций и отметь «Читаю»", "#sec-books");
   }

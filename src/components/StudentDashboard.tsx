@@ -9,7 +9,8 @@ import { GpaTable } from "@/components/GpaTable";
 import { TestScoresCard } from "@/components/TestScoresCard";
 import { AcademicActivityTable } from "@/components/AcademicActivityTable";
 import { SprintTasksTable } from "@/components/SprintTasksTable";
-import { ProjectsGrid } from "@/components/ProjectsGrid";
+import { WorksBoard } from "@/components/works/WorksBoard";
+import { WorksSummary } from "@/components/works/WorksSummary";
 import { BooksTable } from "@/components/BooksTable";
 import { SkillsTable } from "@/components/SkillsTable";
 import { GrowthZonesBlock } from "@/components/GrowthZonesBlock";
@@ -20,7 +21,6 @@ import Link from "next/link";
 import { ParentAccessLinkButton } from "@/components/ParentAccessLinkButton";
 import { Section } from "@/components/ui/Section";
 import { ZoneBand } from "@/components/ui/ZoneBand";
-import { TermLabel } from "@/components/ui/TermHint";
 
 interface StudentDashboardProps {
   studentId: string;
@@ -36,7 +36,6 @@ export function StudentDashboard({
     loading,
     updateStudent,
     updateAcademicActivities,
-    updateProjects,
     updateSprintTasks,
     refreshStudents,
   } = useStudents();
@@ -97,6 +96,12 @@ export function StudentDashboard({
                 className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
               >
                 Эссе — 100 тем
+              </Link>
+              <Link
+                href="/dashboard/works"
+                className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
+              >
+                Проекты и исследования
               </Link>
             </nav>
           ) : null}
@@ -270,20 +275,18 @@ export function StudentDashboard({
         <Section
           id="sec-projects"
           number="3"
-          title={
-            <TermLabel term="Extracurricular">Внеучебная деятельность</TermLabel>
+          title="Проекты и исследования"
+          description={
+            accessMode === "admin"
+              ? "Этапы, сроки и ваши комментарии — ученик и родители их видят"
+              : "Свои проекты и научные работы — по этапам, с комментариями ментора"
           }
-          description="Extracurricular Activities — проекты, роли и метрики импакта"
         >
-          <ProjectsGrid
-            projects={student.projects}
-            editable={perms.canEditProjects}
-            onChange={
-              perms.canEditProjects
-                ? (projects) => updateProjects(studentId, projects)
-                : undefined
-            }
-          />
+          {accessMode === "admin" ? (
+            <WorksBoard studentId={studentId} mode="admin" />
+          ) : (
+            <WorksSummary studentId={studentId} />
+          )}
         </Section>
 
         <Section

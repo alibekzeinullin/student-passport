@@ -18,6 +18,7 @@ export const CHECKS: { label: string; table: string; column?: string; file: stri
   { label: "История действий", table: "activity_log", file: "migration-activity.sql" },
   { label: "Эссе", table: "essay_submissions", file: "migration-workflow.sql" },
   { label: "Шаблоны встреч", table: "meeting_templates", file: "migration-workflow.sql" },
+  { label: "Проекты и исследования", table: "student_works", file: "migration-works.sql" },
   { label: "Удаление из ленты", table: "opportunities", column: "hidden", file: "migration-feed.sql" },
   { label: "Результаты олимпиад", table: "student_deadlines", column: "result", file: "migration-achievements.sql" },
 ];
@@ -51,6 +52,7 @@ export const BACKUP_TABLES = [
   "essay_topics",
   "essay_submissions",
   "meeting_templates",
+  "student_works",
   "opportunities",
   "activity_log",
 ] as const;

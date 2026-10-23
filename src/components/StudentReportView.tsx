@@ -121,17 +121,12 @@ export function StudentReportView({
         <Section
           number="3"
           title={
-            <TermLabel term="Extracurricular">Внеучебная деятельность</TermLabel>
+            <TermLabel term="Extracurricular">Проекты и исследования</TermLabel>
           }
-          description="Extracurricular Activities — проекты, роли и метрики импакта"
+          description="Extracurricular Activities & Research — проекты, роли и результаты"
         >
-          <ProjectsGrid
-            projects={student.projects}
-            editable={editable}
-            onChange={
-              editable ? (projects) => patch({ projects }) : undefined
-            }
-          />
+          {/* Сводка из раздела «Проекты и исследования» — редактируется там */}
+          <ProjectsGrid projects={student.projects} editable={false} />
         </Section>
 
         <Section

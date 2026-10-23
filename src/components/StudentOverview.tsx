@@ -45,6 +45,7 @@ import { useCountUp } from "@/lib/use-count-up";
 import { fetchSubmissions, fetchSubmissionsByParentToken, peekSubmissions, type EssaySubmission } from "@/lib/essays";
 import { fetchTermGrades, fetchTermGradesByParentToken, type TermGrade } from "@/lib/term-grades";
 import { BadgesPanel } from "@/components/BadgesPanel";
+import { fetchWorks, peekWorks, type StudentWork } from "@/lib/works";
 import { buildStudentTodos, type StudentTodo } from "@/lib/student-todos";
 import { OpportunityLogo } from "@/components/OpportunityLogo";
 
@@ -82,6 +83,7 @@ export function StudentOverview({
     mode !== "parent" ? (peekSubmissions(student.id) ?? null) : null,
   );
   const [grades, setGrades] = useState<TermGrade[] | null>(null);
+  const [works, setWorks] = useState<StudentWork[] | null>(() => (mode === "student" ? (peekWorks(student.id) ?? null) : null));
   const [extrasReady, setExtrasReady] = useState(false);
 
   const load = useCallback(async () => {
@@ -120,6 +122,12 @@ export function StudentOverview({
     void load().then((r) => {
       if (!cancelled) apply(r);
     });
+    if (mode === "student") {
+      fetchWorks(student.id).then(
+        (l) => !cancelled && setWorks(l),
+        () => undefined,
+      );
+    }
     // Эссе и оценки — для достижений (и задач ученика)
     void Promise.allSettled([
       mode === "parent" ? fetchSubmissionsByParentToken(parentToken ?? "") : fetchSubmissions(student.id),
@@ -173,7 +181,7 @@ export function StudentOverview({
   const rest = [...overdue, ...upcoming.slice(1)];
 
   const canEdit = mode !== "parent";
-  const todos = loaded ? buildStudentTodos(student, deadlines, meetings, new Date(), mode === "student" ? essays : null) : [];
+  const todos = loaded ? buildStudentTodos(student, deadlines, meetings, new Date(), mode === "student" ? essays : null, works) : [];
 
   return (
     <div className="flex flex-col gap-5">

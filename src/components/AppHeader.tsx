@@ -87,9 +87,14 @@ export function AppHeader() {
                   ))}
                 </>
               ) : user.role === "student" ? (
-                <NavLink href="/dashboard/essays" active={pathname.startsWith("/dashboard/essays")}>
-                  Эссе
-                </NavLink>
+<>
+                  <NavLink href="/dashboard/essays" active={pathname.startsWith("/dashboard/essays")}>
+                    Эссе
+                  </NavLink>
+                  <NavLink href="/dashboard/works" active={pathname.startsWith("/dashboard/works")}>
+                    Проекты
+                  </NavLink>
+                </>
               ) : null}
               <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
                 Возможности

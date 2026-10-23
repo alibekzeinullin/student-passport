@@ -15,6 +15,7 @@ import { MeetingsJournal } from "@/components/MeetingsJournal";
 import { logParentVisit } from "@/lib/activity";
 import { StudentOverview } from "@/components/StudentOverview";
 import { TermGradesChart } from "@/components/TermGradesChart";
+import { WorksBoard } from "@/components/works/WorksBoard";
 
 export default function ParentHubPage({
   params,
@@ -100,6 +101,11 @@ export default function ParentHubPage({
       <StudentOverview student={student} mode="parent" parentToken={studentToken} />
 
       <TermGradesChart student={student} mode="parent" parentToken={studentToken} />
+
+      <section>
+        <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-gold">Проекты и исследования</p>
+        <WorksBoard studentId={student.id} mode="parent" parentToken={studentToken} />
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">
         {REPORT_TYPES.map((type) => (
