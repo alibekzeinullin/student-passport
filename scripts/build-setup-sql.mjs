@@ -17,6 +17,7 @@ const ORDER = [
   "migration-activity.sql",
   "migration-workflow.sql",
   "migration-achievements.sql",
+  "migration-feed.sql",
 ];
 
 const header = `-- Digital Passport TODAY Scholars — ВСЯ база одним файлом

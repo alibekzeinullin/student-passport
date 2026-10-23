@@ -1,5 +1,6 @@
 "use client";
 
+import { clearCache } from "@/lib/cache";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { OpportunityLogo } from "@/components/OpportunityLogo";
@@ -13,6 +14,7 @@ import {
   categoryFor,
   fetchOpportunities,
   peekFetchOpportunities,
+  setOpportunityHidden,
   setOpportunityLogo,
   type Opportunity,
 } from "@/lib/opportunities";
@@ -44,6 +46,7 @@ export function OpportunitiesFeed() {
   const [freeOnly, setFreeOnly] = useState(false);
   const [hidePast, setHidePast] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [showHidden, setShowHidden] = useState(false);
 
   const loadDeadlines = useCallback(
     () => fetchDeadlines(isAdmin ? undefined : user?.studentId),
@@ -83,6 +86,7 @@ export function OpportunitiesFeed() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((o) => {
+      if (o.hidden) return false;
       if (section !== ALL && o.section !== section) return false;
       if (freeOnly && o.money !== "free") return false;
       if (hidePast && (o.nextCycle || (o.dueDate && daysLeft(o.dueDate) < 0))) return false;
@@ -97,12 +101,34 @@ export function OpportunitiesFeed() {
   const soon = useMemo(
     () =>
       items
-        .filter((o) => o.dueDate && !o.nextCycle && daysLeft(o.dueDate) >= 0)
+        .filter((o) => !o.hidden && o.dueDate && !o.nextCycle && daysLeft(o.dueDate) >= 0)
         .slice(0, 3),
     [items],
   );
 
   const addedBy = (id: string) => deadlines.filter((d) => d.opportunityId === id);
+  const hiddenItems = items.filter((o) => o.hidden);
+
+  const toggleHidden = async (o: Opportunity, hidden: boolean) => {
+    if (hidden) {
+      const n = addedBy(o.id).length;
+      const extra = n ? `\n\nУ ${n} учеников она уже в дедлайнах — там она останется.` : "";
+      if (!window.confirm(`Удалить «${o.shortName}» из ленты?${extra}\n\nВернуть можно внизу ленты, в «Удалённые».`)) return;
+    }
+    setItems((list) => list.map((x) => (x.id === o.id ? { ...x, hidden } : x)));
+    try {
+      await setOpportunityHidden(o.id, hidden);
+      clearCache("opps");
+    } catch (err) {
+      console.error(err);
+      setItems((list) => list.map((x) => (x.id === o.id ? { ...x, hidden: !hidden } : x)));
+      window.alert(
+        isTableMissing(err, "hidden") || String((err as { message?: string })?.message ?? "").includes("hidden")
+          ? "Сначала обновите базу: запустите supabase/setup-all.sql в Supabase → SQL Editor."
+          : "Не удалось сохранить. Попробуйте ещё раз.",
+      );
+    }
+  };
 
   return (
     <>
@@ -214,6 +240,7 @@ export function OpportunitiesFeed() {
             studentId={user?.studentId}
             students={students}
             onAdded={refreshDeadlines}
+            onHide={() => void toggleHidden(o, true)}
           />
         ))}
         {loaded && filtered.length === 0 && !error ? (
@@ -222,6 +249,35 @@ export function OpportunitiesFeed() {
           </li>
         ) : null}
       </ul>
+
+      {isAdmin && hiddenItems.length > 0 ? (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowHidden((v) => !v)}
+            aria-expanded={showHidden}
+            className="text-sm text-muted underline-offset-2 hover:text-navy hover:underline"
+          >
+            {showHidden ? "Скрыть удалённые" : `Удалённые (${hiddenItems.length})`}
+          </button>
+          {showHidden ? (
+            <ul className="mt-2 flex flex-col gap-2">
+              {hiddenItems.map((o) => (
+                <li key={o.id} className="flex items-center gap-3 rounded-2xl border border-dashed border-white/10 px-4 py-2.5">
+                  <span className="min-w-0 flex-1 truncate text-sm text-muted">{o.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => void toggleHidden(o, false)}
+                    className="shrink-0 rounded-full border border-white/15 px-3 py-1 text-xs text-navy hover:border-gold/60"
+                  >
+                    Вернуть в ленту
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </>
   );
 }
@@ -235,6 +291,7 @@ function OpportunityCard({
   studentId,
   students,
   onAdded,
+  onHide,
 }: {
   item: Opportunity;
   open: boolean;
@@ -244,6 +301,7 @@ function OpportunityCard({
   studentId?: string;
   students: { id: string; firstName: string; lastName: string; className: string; status?: string }[];
   onAdded: () => Promise<void>;
+  onHide: () => void;
 }) {
   const [picking, setPicking] = useState(false);
   const left = item.dueDate ? daysLeft(item.dueDate) : null;
@@ -329,9 +387,21 @@ function OpportunityCard({
               {picking ? "Отмена" : "В мои дедлайны"}
             </Button>
           )}
-          <button type="button" onClick={onToggle} className="text-xs text-muted underline-offset-2 hover:text-navy hover:underline">
-            {open ? "Свернуть" : "Подробнее"}
-          </button>
+          <span className="flex items-center gap-3">
+            <button type="button" onClick={onToggle} className="text-xs text-muted underline-offset-2 hover:text-navy hover:underline">
+              {open ? "Свернуть" : "Подробнее"}
+            </button>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={onHide}
+                aria-label={`Удалить ${item.shortName} из ленты`}
+                className="text-xs text-muted underline-offset-2 hover:text-burgundy hover:underline"
+              >
+                Удалить
+              </button>
+            ) : null}
+          </span>
         </div>
       </div>
 

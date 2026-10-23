@@ -26,6 +26,8 @@ export interface Opportunity {
   tier: string;
   money: string;
   logoUrl: string | null;
+  /** Удалено ментором из ленты */
+  hidden: boolean;
 }
 
 export const SECTIONS: { id: string; title: string }[] = [
@@ -91,6 +93,7 @@ interface DbOpportunity {
   tier: string;
   money: string;
   logo_url?: string | null;
+  hidden?: boolean | null;
 }
 
 function mapOpportunity(row: DbOpportunity): Opportunity {
@@ -118,6 +121,7 @@ function mapOpportunity(row: DbOpportunity): Opportunity {
     tier: row.tier,
     money: row.money,
     logoUrl: row.logo_url ?? null,
+    hidden: row.hidden === true,
   };
 }
 
@@ -139,6 +143,13 @@ async function fetchOpportunitiesRaw(): Promise<Opportunity[]> {
 export async function setOpportunityLogo(id: string, logoUrl: string | null): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("opportunities").update({ logo_url: logoUrl }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Ментор: убрать возможность из ленты (или вернуть). Дедлайны учеников остаются. */
+export async function setOpportunityHidden(id: string, hidden: boolean): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("opportunities").update({ hidden }).eq("id", id);
   if (error) throw error;
 }
 
