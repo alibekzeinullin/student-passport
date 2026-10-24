@@ -28,6 +28,8 @@ export interface Opportunity {
   logoUrl: string | null;
   /** Удалено ментором из ленты */
   hidden: boolean;
+  /** Олимпиада/конкурс или летняя программа */
+  programType: "competition" | "summer";
 }
 
 export const SECTIONS: { id: string; title: string }[] = [
@@ -41,11 +43,45 @@ export const SECTIONS: { id: string; title: string }[] = [
   { id: "res", title: "Резерв" },
 ];
 
+/** Разделы летних программ */
+export const SUMMER_SECTIONS: { id: string; title: string }[] = [
+  { id: "summer-usa", title: "США" },
+  { id: "summer-res", title: "Исследовательские" },
+  { id: "summer-hk", title: "Гонконг" },
+  { id: "summer-kz", title: "Казахстан и другое" },
+];
+
 export const TIER_LABELS: Record<string, string> = {
   top: "топ для портфолио",
   strong: "сильная",
   base: "хорошее дополнение",
   res: "резерв",
+  paid: "платная с отбором",
+  kz: "Казахстан",
+};
+
+/** Подписи полей в «Подробнее» — у летних программ смысл полей другой */
+export const DETAIL_LABELS: Record<Opportunity["programType"], [keyof Opportunity, string][]> = {
+  competition: [
+    ["dateNote", "Даты"],
+    ["location", "Где"],
+    ["stages", "Этапы"],
+    ["grades", "Классы"],
+    ["price", "Стоимость"],
+    ["topics", "Предметы"],
+    ["gives", "Что даёт"],
+    ["how", "Как участвовать"],
+  ],
+  summer: [
+    ["dateNote", "Дедлайн, подробнее"],
+    ["location", "Где"],
+    ["stages", "Даты проведения"],
+    ["price", "Цена"],
+    ["how", "Взнос за подачу"],
+    ["gives", "Гранты и покрытие"],
+    ["topics", "Темы"],
+    ["grades", "Требования"],
+  ],
 };
 
 export const TAG_LABELS: Record<string, string> = {
@@ -54,10 +90,19 @@ export const TAG_LABELS: Record<string, string> = {
   team: "Команды",
   grant: "Гранты",
   school: "Через школу",
+  aid: "Есть грант",
+  math: "Математика",
+  science: "Наука",
+  research: "Исследования",
+  humanities: "Гуманитарные",
+  business: "Бизнес",
 };
 
 /** К какому типу дедлайна относится возможность. */
-export function categoryFor(o: Pick<Opportunity, "section" | "kind" | "tags" | "name">): DeadlineCategory {
+export function categoryFor(
+  o: Pick<Opportunity, "section" | "kind" | "tags" | "name"> & { programType?: Opportunity["programType"] },
+): DeadlineCategory {
+  if (o.programType === "summer" || o.section.startsWith("summer-")) return "program";
   const text = `${o.kind} ${o.name}`.toLowerCase();
   if (o.section === "hack" || o.tags.includes("hack") || text.includes("хакатон") || text.includes("hackathon")) {
     return "hackathon";
@@ -94,6 +139,7 @@ interface DbOpportunity {
   money: string;
   logo_url?: string | null;
   hidden?: boolean | null;
+  program_type?: string | null;
 }
 
 function mapOpportunity(row: DbOpportunity): Opportunity {
@@ -122,6 +168,7 @@ function mapOpportunity(row: DbOpportunity): Opportunity {
     money: row.money,
     logoUrl: row.logo_url ?? null,
     hidden: row.hidden === true,
+    programType: row.program_type === "summer" ? "summer" : "competition",
   };
 }
 

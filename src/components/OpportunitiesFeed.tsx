@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Field";
 import {
   SECTIONS,
+  SUMMER_SECTIONS,
+  DETAIL_LABELS,
   TAG_LABELS,
   TIER_LABELS,
   categoryFor,
@@ -43,6 +45,17 @@ export function OpportunitiesFeed() {
   const [loaded, setLoaded] = useState(() => peekFetchOpportunities() !== undefined);
   const [error, setError] = useState("");
   const [section, setSection] = useState(ALL);
+  const [type, setType] = useState<Opportunity["programType"]>("competition");
+  const switchType = (t: Opportunity["programType"]) => {
+    setType(t);
+    setSection(ALL);
+    setOpenId(null);
+    try {
+      window.history.replaceState(null, "", t === "summer" ? "#summer" : window.location.pathname);
+    } catch {
+      /* без истории — не страшно */
+    }
+  };
   const [query, setQuery] = useState("");
   const [freeOnly, setFreeOnly] = useState(false);
   const [hidePast, setHidePast] = useState(true);
@@ -58,6 +71,8 @@ export function OpportunitiesFeed() {
     let cancelled = false;
     void Promise.allSettled([fetchOpportunities(), loadDeadlines()]).then(([o, d]) => {
       if (cancelled) return;
+      // Ссылка вида /opportunities#summer открывает сразу летние программы
+      if (window.location.hash === "#summer") setType("summer");
       if (o.status === "fulfilled") {
         setItems(o.value);
       } else {
@@ -88,6 +103,7 @@ export function OpportunitiesFeed() {
     const q = query.trim().toLowerCase();
     return items.filter((o) => {
       if (o.hidden) return false;
+      if (o.programType !== type) return false;
       if (section !== ALL && o.section !== section) return false;
       if (freeOnly && o.money !== "free") return false;
       if (hidePast && (o.nextCycle || (o.dueDate && daysLeft(o.dueDate) < 0))) return false;
@@ -97,14 +113,14 @@ export function OpportunitiesFeed() {
         .toLowerCase()
         .includes(q);
     });
-  }, [items, section, query, freeOnly, hidePast]);
+  }, [items, section, query, freeOnly, hidePast, type]);
 
   const soon = useMemo(
     () =>
       items
-        .filter((o) => !o.hidden && o.dueDate && !o.nextCycle && daysLeft(o.dueDate) >= 0)
+        .filter((o) => !o.hidden && o.programType === type && o.dueDate && !o.nextCycle && daysLeft(o.dueDate) >= 0)
         .slice(0, 3),
-    [items],
+    [items, type],
   );
 
   const addedBy = (id: string) => deadlines.filter((d) => d.opportunityId === id);
@@ -138,7 +154,7 @@ export function OpportunitiesFeed() {
           Лента возможностей
         </p>
         <h2 className="mt-1 text-3xl font-light tracking-tight text-navy sm:text-4xl">
-          Олимпиады, конкурсы и хакатоны 2026–27
+          {type === "summer" ? "Летние программы 2027" : "Олимпиады, конкурсы и хакатоны 2026–27"}
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-muted">
           {isAdmin
@@ -146,6 +162,38 @@ export function OpportunitiesFeed() {
             : "Нажмите «В мои дедлайны» — на главной появится обратный отсчёт до подачи."}
         </p>
       </div>
+
+      <div role="tablist" aria-label="Тип возможностей" className="flex flex-wrap gap-2">
+        {(
+          [
+            ["competition", "Олимпиады и конкурсы"],
+            ["summer", "Летние программы"],
+          ] as const
+        ).map(([t, label]) => {
+          const n = items.filter((o) => !o.hidden && o.programType === t).length;
+          return (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={type === t}
+              onClick={() => switchType(t)}
+              className={`rounded-full border px-5 py-2.5 text-sm transition ${
+                type === t ? "border-gold bg-gold font-medium text-gold-ink" : "border-white/10 text-muted hover:text-navy"
+              }`}
+            >
+              {label}
+              <span className="ml-1.5 tabular-nums opacity-70">{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {type === "summer" ? (
+        <p className="rounded-2xl border border-gold/25 bg-gold/[0.06] px-4 py-3 text-sm text-navy">
+          Даты со знаком ≈ ориентировочные (по циклу 2026). Перед подачей сверьте дедлайн и условия на официальном сайте программы — ссылка в «Подробнее».
+        </p>
+      ) : null}
 
       {error ? (
         <div className="rounded-2xl border border-burgundy/30 bg-burgundy/10 px-4 py-3 text-sm text-burgundy">
@@ -190,7 +238,7 @@ export function OpportunitiesFeed() {
 
       <div className="sp-glass flex flex-col gap-3 rounded-3xl border px-4 py-4 sm:px-6">
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Разделы">
-          {[{ id: ALL, title: "Все" }, ...SECTIONS].map((s) => (
+          {[{ id: ALL, title: "Все" }, ...(type === "summer" ? SUMMER_SECTIONS : SECTIONS)].map((s) => (
             <button
               key={s.id}
               type="button"
@@ -211,7 +259,7 @@ export function OpportunitiesFeed() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск: математика, эссе, 8 класс…"
+            placeholder={type === "summer" ? "Поиск: математика, Stanford, исследования…" : "Поиск: математика, эссе, 8 класс…"}
             aria-label="Поиск"
             className="sm:max-w-sm"
           />
@@ -224,7 +272,7 @@ export function OpportunitiesFeed() {
             Скрыть прошедшие
           </label>
           <span className="text-xs text-muted sm:ml-auto">
-            {loaded ? `${filtered.length} из ${items.length}` : "Загрузка…"}
+            {loaded ? `${filtered.length} из ${items.filter((o) => !o.hidden && o.programType === type).length}` : "Загрузка…"}
           </span>
         </div>
       </div>
@@ -308,7 +356,7 @@ function OpportunityCard({
   const left = item.dueDate ? daysLeft(item.dueDate) : null;
   const [logoOverride, setLogoOverride] = useState<string | null | undefined>(undefined);
   const [logoDraft, setLogoDraft] = useState("");
-  const sectionTitle = SECTIONS.find((s) => s.id === item.section)?.title ?? "";
+  const sectionTitle = [...SECTIONS, ...SUMMER_SECTIONS].find((s) => s.id === item.section)?.title ?? "";
 
   const dateTone =
     left === null || item.nextCycle
@@ -358,7 +406,7 @@ function OpportunityCard({
               .map((t) => (
                 <span
                   key={t}
-                  className={`rounded-full px-2 py-0.5 ${t === "free" ? "bg-emerald-400/10 text-emerald-300" : "border border-white/10 text-muted"}`}
+                  className={`rounded-full px-2 py-0.5 ${t === "free" || t === "aid" ? "bg-emerald-400/10 text-emerald-300" : "border border-white/10 text-muted"}`}
                 >
                   {TAG_LABELS[t]}
                 </span>
@@ -424,16 +472,8 @@ function OpportunityCard({
 
       {open ? (
         <dl className="grid gap-x-6 gap-y-3 border-t border-white/[0.07] px-5 py-4 text-sm sm:grid-cols-[180px_minmax(0,1fr)] sm:px-6">
-          {[
-            ["Даты", item.dateNote],
-            ["Где", item.location],
-            ["Этапы", item.stages],
-            ["Классы", item.grades],
-            ["Стоимость", item.price],
-            ["Предметы", item.topics],
-            ["Что даёт", item.gives],
-            ["Как участвовать", item.how],
-          ]
+          {DETAIL_LABELS[item.programType]
+            .map(([key, label]) => [label, String(item[key] ?? "")] as const)
             .filter(([, v]) => v)
             .map(([k, v]) => (
               <div key={k} className="contents">

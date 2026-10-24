@@ -7,6 +7,7 @@ export type DeadlineCategory =
   | "hackathon"
   | "exam"
   | "application"
+  | "program"
   | "task"
   | "other";
 
@@ -18,6 +19,7 @@ export const CATEGORY_LABELS: Record<DeadlineCategory, string> = {
   hackathon: "Хакатон",
   exam: "Экзамен",
   application: "Подача в вуз",
+  program: "Летняя программа",
   task: "Задание",
   other: "Другое",
 };
