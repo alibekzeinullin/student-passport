@@ -169,6 +169,7 @@ export function StudentDashboard({
           student={student}
           editable={perms.canEditHeader}
           canEditMentorNote={perms.canEditMentorNote}
+          showMentorNote={accessMode !== "student"}
           onChange={
             perms.canEditHeader || perms.canEditMentorNote
               ? patchStudent
