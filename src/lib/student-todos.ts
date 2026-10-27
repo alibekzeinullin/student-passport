@@ -26,10 +26,6 @@ function parseSprintLabel(label: string): { months: number[]; year: number } | n
   return { months, year };
 }
 
-function hasArtifact(t: StudentProfile["sprintTasks"][number]): boolean {
-  return Boolean(t.artifactNotion?.trim() || t.artifactDocs?.trim() || t.artifactDrive?.trim());
-}
-
 export function buildStudentTodos(
   student: StudentProfile,
   deadlines: Deadline[],
@@ -97,20 +93,11 @@ export function buildStudentTodos(
     const p = parseSprintLabel(t.sprintLabel);
     if (!p) continue;
     const last = Math.max(...p.months);
-    const isCurrent = p.year === year && p.months.includes(month);
     const isPast = p.year < year || (p.year === year && last < month);
     if (isPast && !t.completed) {
       push(`sp-over-${t.id}`, "high", `Спринт «${t.title}» (${t.sprintLabel}) не сдан`, "#sec-sprints");
-    } else if (isCurrent && !t.completed) {
-      push(
-        `sp-cur-${t.id}`,
-        hasArtifact(t) ? "low" : "medium",
-        hasArtifact(t)
-          ? `Спринт «${t.title}»: отметь «Выполнено», когда закончишь`
-          : `Спринт «${t.title}»: добавь ссылку на свою работу`,
-        "#sec-sprints",
-      );
     }
+    // Текущий спринт не выносим в «Что нужно сделать»: ссылка на работу — по желанию
   }
 
   // Незаполненные разделы
