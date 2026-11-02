@@ -69,7 +69,7 @@ export function LoginForm() {
           Digital Passport TODAY Scholars
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-muted">
-          Вход через Supabase. Зарегистрируйте ученика или войдите как админ.
+          Личный кабинет ученика программы: дедлайны, проекты, эссе и прогресс.
         </p>
       </div>
 
@@ -126,8 +126,7 @@ export function LoginForm() {
                 {busy ? "Вход…" : "Войти"}
               </Button>
               <p className="text-xs text-muted">
-                После первой регистрации админа выполните SQL из SUPABASE_SETUP.md,
-                чтобы назначить роль admin.
+                Логин и пароль выдаёт ментор. Забыли пароль — напишите ментору.
               </p>
             </div>
           ) : (
