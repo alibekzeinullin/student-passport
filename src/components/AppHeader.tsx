@@ -51,9 +51,8 @@ export function AppHeader() {
             href={isParentGuest ? "/" : homeHref}
             className="flex min-w-0 items-center gap-3"
           >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full border-[1.5px] border-gold text-sm font-semibold text-gold">
-              TS
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-shield.png" alt="" width={34} height={40} className="h-10 w-auto shrink-0" />
             <span className="min-w-0">
               <span className="block text-sm font-medium tracking-[0.12em] sm:text-[15px]">
                 TODAY SCHOLARS
