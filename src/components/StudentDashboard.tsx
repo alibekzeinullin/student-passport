@@ -8,8 +8,7 @@ import { ScoreCircles } from "@/components/ScoreCircles";
 import { TestScoresCard } from "@/components/TestScoresCard";
 import { AcademicActivityTable } from "@/components/AcademicActivityTable";
 import { BooksTable } from "@/components/BooksTable";
-import { SkillsTable } from "@/components/SkillsTable";
-import { GrowthZonesBlock } from "@/components/GrowthZonesBlock";
+import { SkillChips } from "@/components/SkillChips";
 import { MeetingsJournal } from "@/components/MeetingsJournal";
 import { StudentOverview } from "@/components/StudentOverview";
 import { TermGradesChart } from "@/components/TermGradesChart";
@@ -258,38 +257,16 @@ export function StudentDashboard({
           />
         </Section>
 
-        <Section id="sec-skills" number="3" title="Навыки" description="Навыки для освоения">
-          <SkillsTable
+        <Section id="sec-skills" number="3" title="Навыки" description="Отмечай, какие навыки уже прокачиваешь">
+          <SkillChips
             skills={student.skills}
             editable={perms.canEditSkills}
-            onChange={
-              perms.canEditSkills
-                ? (skills) => patchStudent({ skills })
-                : undefined
-            }
+            canManage={accessMode === "admin"}
+            onChange={perms.canEditSkills ? (skills) => patchStudent({ skills }) : undefined}
           />
         </Section>
       </ZoneBand>
 
-      {accessMode !== "student" ? (
-      <ZoneBand tone="other">
-        <Section
-          number="4"
-          title="Зоны роста"
-          description="Что нужно улучшить — заполняет ментор"
-        >
-          <GrowthZonesBlock
-            zones={student.growthZones}
-            editable={perms.canEditGrowthZones}
-            onChange={
-              perms.canEditGrowthZones
-                ? (growthZones) => patchStudent({ growthZones })
-                : undefined
-            }
-          />
-        </Section>
-      </ZoneBand>
-      ) : null}
     </div>
   );
 }

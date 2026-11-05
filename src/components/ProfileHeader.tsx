@@ -225,8 +225,87 @@ export function ProfileHeader({
           ) : (
             <p className="mt-3 text-sm text-muted">Ментор пока не оставил обратную связь.</p>
           )}
+
+          <GrowthPoints
+            zones={student.growthZones}
+            editable={Boolean(canEditMentorNote && onChange)}
+            onChange={(growthZones) => onChange?.({ growthZones })}
+          />
         </section>
       ) : null}
+    </div>
+  );
+}
+
+/** «Точки роста» — 2–3 коротких пункта внутри карточки обратной связи (бывшие «Зоны роста»). */
+function GrowthPoints({
+  zones,
+  editable,
+  onChange,
+}: {
+  zones: StudentProfile["growthZones"];
+  editable: boolean;
+  onChange: (zones: StudentProfile["growthZones"]) => void;
+}) {
+  const [editingZones, setEditingZones] = useState(false);
+  const list = zones.filter((z) => z.text.trim() || editingZones);
+  if (!editable && list.length === 0) return null;
+
+  return (
+    <div className="mt-5 border-t border-white/[0.08] pt-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-gold">Точки роста</p>
+        {editable ? (
+          <button
+            type="button"
+            onClick={() => setEditingZones((v) => !v)}
+            className="text-xs text-muted hover:text-navy"
+          >
+            {editingZones ? "Готово" : list.length ? "Изменить" : "+ Добавить"}
+          </button>
+        ) : null}
+      </div>
+      {editingZones ? (
+        <div className="mt-2 space-y-2">
+          {zones.map((z, i) => (
+            <div key={z.id} className="flex items-center gap-2">
+              <span className="w-4 text-sm text-gold">{i + 1}</span>
+              <Input
+                value={z.text}
+                onChange={(e) => onChange(zones.map((x) => (x.id === z.id ? { ...x, text: e.target.value } : x)))}
+                placeholder="Например: распределять время между учёбой и спортом"
+                aria-label={`Точка роста ${i + 1}`}
+              />
+              <button
+                type="button"
+                onClick={() => onChange(zones.filter((x) => x.id !== z.id))}
+                aria-label="Удалить"
+                className="px-1 text-muted hover:text-burgundy"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => onChange([...zones, { id: `gz-${Date.now().toString(36)}`, text: "" }])}
+            className="text-sm text-gold hover:underline"
+          >
+            + Точка роста
+          </button>
+        </div>
+      ) : list.length ? (
+        <ol className="mt-2 space-y-1.5 text-[15px] text-navy">
+          {list.map((z, i) => (
+            <li key={z.id} className="flex gap-2">
+              <span className="text-gold">{i + 1}.</span>
+              <span>{z.text}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="mt-2 text-sm text-muted">2–3 конкретные вещи, над которыми ученик работает сейчас.</p>
+      )}
     </div>
   );
 }
