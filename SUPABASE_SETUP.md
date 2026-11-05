@@ -92,3 +92,12 @@ npm run dev
 1. Supabase → Project Settings → API → скопируйте ключ `service_role` (secret).
 2. Vercel → Settings → Environment Variables → `SUPABASE_SERVICE_ROLE_KEY` = этот ключ.
 3. Redeploy. Ключ используется только на сервере (`src/lib/supabase/admin.ts`) и не попадает в браузер.
+
+## Monthly Review сам 1-го числа
+
+Vercel запускает `/api/monthly-drafts` 1-го числа каждого месяца (vercel.json → crons) и собирает черновики за прошлый месяц у всех активных учеников.
+Нужны переменные окружения в Vercel (Settings → Environment Variables, Production):
+- `SUPABASE_SERVICE_ROLE_KEY` — уже есть (для аккаунтов);
+- `CRON_SECRET` — любая длинная случайная строка (Vercel сам подставит её в запрос).
+
+Вручную: на странице «Ученики» → «Собрать сейчас у всех».

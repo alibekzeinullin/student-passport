@@ -421,13 +421,6 @@ function drawMonthlyProgressPdf(
     y,
     contentWidth,
   );
-  y = drawLabeledBlock(
-    doc,
-    "Рефлексия ученика",
-    review.studentReflection,
-    y,
-    contentWidth,
-  );
 
   return y;
 }

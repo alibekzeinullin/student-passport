@@ -53,7 +53,7 @@ export interface Deadline {
   result: DeadlineResult | null;
 }
 
-interface DbDeadline {
+export interface DbDeadline {
   id: string;
   student_id: string;
   title: string;
@@ -68,7 +68,7 @@ interface DbDeadline {
   result?: DeadlineResult | null;
 }
 
-function mapDeadline(row: DbDeadline): Deadline {
+export function mapDeadline(row: DbDeadline): Deadline {
   return {
     id: row.id,
     studentId: row.student_id,

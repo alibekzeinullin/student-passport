@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Label, Select } from "@/components/ui/Field";
 import { TableScroll } from "@/components/ui/TableScroll";
+import { MonthlyBulkButton } from "@/components/MonthlyBulkButton";
 import { AttentionPanel } from "@/components/AttentionPanel";
 import {
   buildMeetingsCsv,
@@ -258,7 +259,10 @@ export default function AdminPage() {
         </div>
 
         {!loading && students.length > 0 ? (
-          <AttentionPanel students={activeStudents} />
+          <>
+            <AttentionPanel students={activeStudents} />
+            <MonthlyBulkButton />
+          </>
         ) : null}
 
         {error ? (

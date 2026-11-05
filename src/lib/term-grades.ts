@@ -38,7 +38,7 @@ export interface TermGrade {
   verified: boolean;
 }
 
-interface DbTermGrade {
+export interface DbTermGrade {
   id: string;
   student_id: string;
   academic_year: string;
@@ -47,7 +47,7 @@ interface DbTermGrade {
   verified?: boolean | null;
 }
 
-function mapGrade(row: DbTermGrade): TermGrade {
+export function mapGrade(row: DbTermGrade): TermGrade {
   return {
     id: row.id,
     studentId: row.student_id,

@@ -437,8 +437,8 @@ export function MonthlyProgressReviewView({
 
         <Section
           number="7"
-          title="Обратная связь и рефлексия"
-          description="Feedback & Reflection"
+          title="Обратная связь ментора"
+          description="Mentor Feedback"
         >
           <Card>
             <CardBody className="space-y-4">
@@ -452,18 +452,6 @@ export function MonthlyProgressReviewView({
                   />
                 ) : (
                   <ReadValue value={selected.mentorFeedback} />
-                )}
-              </FieldBlock>
-              <FieldBlock label="Рефлексия ученика (самооценка)">
-                {editable ? (
-                  <Textarea
-                    value={selected.studentReflection}
-                    onChange={(e) =>
-                      updateSelected({ studentReflection: e.target.value })
-                    }
-                  />
-                ) : (
-                  <ReadValue value={selected.studentReflection} />
                 )}
               </FieldBlock>
             </CardBody>

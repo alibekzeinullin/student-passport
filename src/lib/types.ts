@@ -110,6 +110,8 @@ export interface GrowthZone {
 
 export interface MonthlyProgressReview {
   id: string;
+  /** Собран автоматически 1-го числа — ментору стоит проверить и дописать комментарий */
+  autoDraft?: boolean;
   /** Например: «Сентябрь 2026» */
   monthYear: string;
   individualSessionsAttended: number | null;

@@ -50,7 +50,7 @@ export interface EssaySubmission {
   updatedAt: string;
 }
 
-interface DbSubmission {
+export interface DbSubmission {
   id: string;
   student_id: string;
   topic_id: string;
@@ -68,7 +68,7 @@ interface DbSubmission {
   updated_at: string;
 }
 
-function mapSubmission(r: DbSubmission): EssaySubmission {
+export function mapSubmission(r: DbSubmission): EssaySubmission {
   return {
     id: r.id,
     studentId: r.student_id,

@@ -78,7 +78,7 @@ export const EMPTY_NOTES: MeetingMentorNotes = {
   reflectionComment: "",
 };
 
-interface DbMeeting {
+export interface DbMeeting {
   id: string;
   student_id: string;
   meeting_date: string;
@@ -101,10 +101,10 @@ interface DbMeetingNotes {
   reflection_comment: string;
 }
 
-const MEETING_COLUMNS =
+export const MEETING_COLUMNS =
   "id, student_id, meeting_date, format, attendance, prev_homework, hw_understanding, hw_quality, summary, homework";
 
-function mapMeeting(row: DbMeeting): Meeting {
+export function mapMeeting(row: DbMeeting): Meeting {
   return {
     id: row.id,
     studentId: row.student_id,

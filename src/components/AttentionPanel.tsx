@@ -117,6 +117,10 @@ function buildAlerts(
     const hasReview = s.monthlyProgressReviews.some(
       (r) => normalizeMonth(r.monthYear) === prevMonth,
     );
+    const prevReview = s.monthlyProgressReviews.find((r) => normalizeMonth(r.monthYear) === prevMonth);
+    if (prevReview?.autoDraft && !prevReview.mentorFeedback.trim()) {
+      push("monthly-check", "low", `Monthly Review за ${prevMonth} собран автоматически — допишите комментарий`);
+    }
     if (hadMeetingsLastMonth && !hasReview) {
       push("monthly", "low", `Нет месячного отчёта за ${prevMonth.charAt(0).toUpperCase()}${prevMonth.slice(1)}`);
     }
