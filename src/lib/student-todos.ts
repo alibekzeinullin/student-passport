@@ -80,10 +80,22 @@ export function buildStudentTodos(
   if (deadlines.filter((d) => d.status === "planned" && daysLeft(d.dueDate) >= 0).length === 0) {
     push("no-deadlines", "low", "Выбери олимпиаду или конкурс в ленте возможностей", "/opportunities");
   }
-  if (student.academicActivities.length === 0) {
-    push("activities", "low", "Заполни «Академ активность»: олимпиады, конкурсы, награды", "#sec-academic");
+  // Профиль: цели на год, внеклассная активность и достижения, проекты и портфолио
+  const vm = student.visionMap;
+  const goals = [...(vm?.futureAcademicGoals ?? []), ...(vm?.futureOtherGoals ?? [])].filter((g) => g.text?.trim());
+  if (goals.length === 0) {
+    push("goals", "medium", "Нет целей на год — впиши хотя бы 3 цели в Vision Map (учёба и не только)", "/dashboard/vision");
+  } else if (goals.length < 3) {
+    push("goals", "low", `Целей на год пока ${goals.length} — добавь ещё, чтобы было хотя бы 3`, "/dashboard/vision");
   }
-  if (student.projects.length === 0) push("projects", "low", "Начни проект или исследование", "/dashboard/works");
+  if (student.academicActivities.length === 0) {
+    push("activities", "medium", "Нет внеклассной активности и достижений — добавь олимпиады, конкурсы, кружки, спорт, награды", "#sec-academic");
+  }
+  if (student.projects.length === 0) {
+    push("projects", "medium", "Нет проектов и портфолио — добавь свой проект или исследование", "/dashboard/works");
+  } else if (works && works.length > 0 && works.every((w) => w.links.length === 0)) {
+    push("portfolio", "low", "Добавь в проект ссылку на результат (фото, презентация, Drive) — это твоё портфолио", "/dashboard/works");
+  }
   if (!student.books.some((b) => b.status === "Читаю" || b.status === "Прочитано")) {
     push("books", "low", "Выбери книгу из рекомендаций и отметь «Читаю»", "#sec-books");
   }

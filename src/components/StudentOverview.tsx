@@ -51,6 +51,14 @@ import { OpportunityLogo } from "@/components/OpportunityLogo";
 
 type Mode = "admin" | "student" | "parent";
 
+/** Ссылки задач ученика → страницы ментора */
+function adminHref(href: string, studentId: string): string {
+  if (href === "/dashboard/vision") return `/admin/students/${studentId}/vision`;
+  if (href === "/dashboard/works") return `/admin/students/${studentId}/works`;
+  if (href === "/dashboard/essays") return "/admin/essays";
+  return href;
+}
+
 interface OverviewItem extends Deadline {
   /** Домашка из журнала встреч — не хранится как дедлайн */
   virtual?: boolean;
@@ -181,7 +189,9 @@ export function StudentOverview({
   const rest = [...overdue, ...upcoming.slice(1)];
 
   const canEdit = mode !== "parent";
-  const todos = loaded ? buildStudentTodos(student, deadlines, meetings, new Date(), mode === "student" ? essays : null, works) : [];
+  const todos = loaded ? buildStudentTodos(student, deadlines, meetings, new Date(), mode === "student" ? essays : null, works).map((t) =>
+          mode === "admin" ? { ...t, href: adminHref(t.href, student.id) } : t,
+        ) : [];
 
   return (
     <div className="flex flex-col gap-5">
