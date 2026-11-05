@@ -38,6 +38,9 @@ export function ProfileHeader({
 }: ProfileHeaderProps) {
   const [uploading, setUploading] = useState(false);
   const [avatarError, setAvatarError] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editingNote, setEditingNote] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const handleAvatar = async (file: File) => {
     setUploading(true);
@@ -57,28 +60,22 @@ export function ProfileHeader({
       setUploading(false);
     }
   };
+  const note = student.mentorNote?.trim() ?? "";
+  const longNote = note.length > 420;
+
   return (
-    <div className="sp-glass overflow-hidden rounded-3xl border">
-      <div className="relative px-5 py-6 sm:px-8 sm:py-8">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-burgundy-deep/40 blur-3xl"
-        />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex shrink-0 flex-col items-start gap-1">
+    <div className="space-y-4">
+      <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-6">
+        <div className="flex shrink-0 flex-col items-start gap-1">
           <label
-            className={`group relative flex size-16 items-center justify-center overflow-hidden rounded-full border-[1.5px] border-gold/80 bg-gold/10 text-xl font-light tracking-wide text-gold sm:size-20 sm:text-2xl ${
+            className={`group relative flex size-20 items-center justify-center overflow-hidden rounded-full border-2 border-gold/80 bg-gold/10 text-2xl font-light tracking-wide text-gold sm:size-24 ${
               onAvatarChange ? "cursor-pointer" : ""
             }`}
             title={onAvatarChange ? "Загрузить фото" : undefined}
           >
             {student.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={student.avatarUrl}
-                alt=""
-                className="h-full w-full rounded-full object-cover"
-              />
+              <img src={student.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
             ) : (
               initials(student)
             )}
@@ -103,54 +100,49 @@ export function ProfileHeader({
             ) : null}
           </label>
           {avatarError ? <p className="max-w-40 text-[11px] text-burgundy">{avatarError}</p> : null}
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium uppercase tracking-[0.16em] text-gold sm:text-xs">
-              <span className="sp-pulse inline-block size-2 rounded-full bg-gold" aria-hidden />
-              {[student.className, student.school].filter(Boolean).join(" · ") || "Ученик"}
-            </p>
-            <h2 className="mt-2 text-3xl font-light leading-[1.05] tracking-tight text-navy sm:text-5xl">
-              {student.firstName}{" "}
-              <span className="font-semibold">{student.lastName}</span>
-            </h2>
-            <p className="mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-muted">
-              <span>{student.educationSystem}</span>
-              <TermHint term={student.educationSystem as TermHintKey} />
-            </p>
-          </div>
         </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium uppercase tracking-[0.16em] text-gold sm:text-xs">
+            {[student.className ? `${student.className} класс` : "", student.school, student.educationSystem]
+              .filter(Boolean)
+              .join(" · ")}
+            <TermHint term={student.educationSystem as TermHintKey} />
+          </p>
+          <h2 className="mt-1.5 text-3xl font-light leading-[1.05] tracking-tight text-navy sm:text-5xl">
+            {student.firstName} <span className="font-semibold">{student.lastName}</span>
+          </h2>
+        </div>
+
+        {editable && onChange ? (
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            aria-expanded={editing}
+            className="self-start rounded-full border border-white/15 px-4 py-2 text-sm text-navy transition hover:border-gold/60 sm:self-center"
+          >
+            {editing ? "Готово" : "✎ Данные ученика"}
+          </button>
+        ) : null}
       </div>
 
-      {editable && onChange ? (
-        <div className="grid gap-4 border-t border-white/[0.07] px-5 py-5 sm:grid-cols-2 lg:grid-cols-3 sm:px-8">
+      {editable && onChange && editing ? (
+        <div className="sp-glass sp-rise grid gap-4 rounded-3xl border px-5 py-5 sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
           <div>
             <Label>Имя</Label>
-            <Input
-              value={student.firstName}
-              onChange={(e) => onChange({ firstName: e.target.value })}
-            />
+            <Input value={student.firstName} onChange={(e) => onChange({ firstName: e.target.value })} />
           </div>
           <div>
             <Label>Фамилия</Label>
-            <Input
-              value={student.lastName}
-              onChange={(e) => onChange({ lastName: e.target.value })}
-            />
+            <Input value={student.lastName} onChange={(e) => onChange({ lastName: e.target.value })} />
           </div>
           <div>
             <Label>Класс</Label>
-            <Input
-              value={student.className}
-              onChange={(e) => onChange({ className: e.target.value })}
-            />
+            <Input value={student.className} onChange={(e) => onChange({ className: e.target.value })} />
           </div>
           <div>
             <Label>Школа</Label>
-            <Input
-              value={student.school}
-              onChange={(e) => onChange({ school: e.target.value })}
-            />
+            <Input value={student.school} onChange={(e) => onChange({ school: e.target.value })} />
           </div>
           <div className="sm:col-span-2 lg:col-span-1">
             <Label>
@@ -161,11 +153,7 @@ export function ProfileHeader({
             </Label>
             <Select
               value={student.educationSystem}
-              onChange={(e) =>
-                onChange({
-                  educationSystem: e.target.value as EducationSystem,
-                })
-              }
+              onChange={(e) => onChange({ educationSystem: e.target.value as EducationSystem })}
             >
               {EDUCATION_SYSTEMS.map((system) => (
                 <option key={system} value={system}>
@@ -175,59 +163,70 @@ export function ProfileHeader({
             </Select>
           </div>
         </div>
-      ) : (
-        <div className="grid gap-3 border-t border-light-gray px-4 py-3 text-sm sm:grid-cols-3 sm:px-6 sm:py-4">
-          <Meta label="Класс" value={student.className} />
-          <Meta label="Школа" value={student.school} />
-          <Meta
-            label="Система обучения"
-            value={student.educationSystem}
-            hintTerm={student.educationSystem as TermHintKey}
-          />
-        </div>
-      )}
+      ) : null}
 
       {showMentorNote ? (
-      <div className="border-t border-light-gray px-4 py-3 sm:px-6 sm:py-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-          Обратная связь от ментора
-        </p>
-        {canEditMentorNote && onChange ? (
-          <Textarea
-            className="mt-2 min-h-32"
-            value={student.mentorNote}
-            placeholder="Обратная связь от ментора — без лимита на слова"
-            onChange={(e) => onChange({ mentorNote: e.target.value })}
-          />
-        ) : (
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-navy/90">
-            {student.mentorNote?.trim()
-              ? student.mentorNote
-              : "Ментор пока не оставил обратную связь."}
-          </p>
-        )}
-      </div>
-      ) : null}
-    </div>
-  );
-}
+        <section className="relative overflow-hidden rounded-[28px] border border-gold/30 bg-gradient-to-br from-[#22202a] to-[#1a2232] px-5 py-6 sm:py-7 sm:pl-[4.5rem] sm:pr-9">
+          <span aria-hidden className="pointer-events-none absolute left-5 top-1 hidden font-serif text-[96px] leading-none text-gold sm:block">
+            “
+          </span>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-gold">Обратная связь ментора</p>
+            <span className="text-xs text-muted">видят ментор и родители</span>
+          </div>
 
-function Meta({
-  label,
-  value,
-  hintTerm,
-}: {
-  label: string;
-  value: string;
-  hintTerm?: TermHintKey;
-}) {
-  return (
-    <div>
-      <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
-        {label}
-        {hintTerm ? <TermHint term={hintTerm} /> : null}
-      </p>
-      <p className="mt-1 break-words font-medium text-navy">{value}</p>
+          {canEditMentorNote && onChange && editingNote ? (
+            <div className="mt-3 space-y-3">
+              <Textarea
+                className="min-h-40 text-base leading-relaxed"
+                value={student.mentorNote}
+                placeholder="Какой ученик, сильные стороны, точка роста — без лимита на слова"
+                onChange={(e) => onChange({ mentorNote: e.target.value })}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setEditingNote(false)}
+                className="rounded-full bg-gold px-5 py-2 text-sm font-medium text-gold-ink"
+              >
+                Готово
+              </button>
+            </div>
+          ) : note ? (
+            <>
+              <p
+                className={`mt-3 whitespace-pre-wrap text-base leading-relaxed text-navy sm:text-[17px] ${
+                  longNote && !expanded ? "line-clamp-5" : ""
+                }`}
+              >
+                {note}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                {longNote ? (
+                  <button type="button" onClick={() => setExpanded((v) => !v)} className="text-gold hover:underline">
+                    {expanded ? "Свернуть" : "Читать полностью"}
+                  </button>
+                ) : null}
+                {canEditMentorNote && onChange ? (
+                  <button type="button" onClick={() => setEditingNote(true)} className="text-muted hover:text-navy">
+                    Редактировать
+                  </button>
+                ) : null}
+              </div>
+            </>
+          ) : canEditMentorNote && onChange ? (
+            <button
+              type="button"
+              onClick={() => setEditingNote(true)}
+              className="mt-3 text-left text-base text-muted hover:text-navy"
+            >
+              Напишите, какой это ученик: сильные стороны и точка роста. Родители увидят это первым. <span className="text-gold">Написать →</span>
+            </button>
+          ) : (
+            <p className="mt-3 text-sm text-muted">Ментор пока не оставил обратную связь.</p>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

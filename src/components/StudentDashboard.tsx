@@ -151,17 +151,7 @@ export function StudentDashboard({
           </div>
         ) : null}
 
-        {perms.canGenerateParentLink ? (
-          <ParentAccessLinkButton studentId={studentId} />
-        ) : null}
       </div>
-
-      {accessMode !== "parent" ? (
-        <StudentOverview
-          student={student}
-          mode={accessMode === "admin" ? "admin" : "student"}
-        />
-      ) : null}
 
       <div id="sec-profile" className="scroll-mt-24" />
       <ZoneBand tone="other">
@@ -184,6 +174,15 @@ export function StudentDashboard({
 
         <ScoreCircles student={student} />
       </ZoneBand>
+
+      {perms.canGenerateParentLink ? <ParentAccessLinkButton studentId={studentId} /> : null}
+
+      {accessMode !== "parent" ? (
+        <StudentOverview
+          student={student}
+          mode={accessMode === "admin" ? "admin" : "student"}
+        />
+      ) : null}
 
       {accessMode !== "parent" ? (
         <div id="sec-journal" className="scroll-mt-24">
