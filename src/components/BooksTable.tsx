@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import type { Book, BookStatus } from "@/lib/types";
 import {
   RECOMMENDED_BOOKS,
@@ -23,6 +25,7 @@ export function BooksTable({
   editable = false,
   onChange,
 }: BooksTableProps) {
+  const [showRec, setShowRec] = useState(false);
   const updateRow = (id: string, patch: Partial<Book>) => {
     if (!onChange) return;
     onChange(books.map((item) => (item.id === id ? { ...item, ...patch } : item)));
@@ -67,38 +70,6 @@ export function BooksTable({
 
   return (
     <div className="space-y-4">
-      <Card className="border-gold/40">
-        <CardHeader
-          title="Рекомендации программы"
-          subtitle={RECOMMENDED_BOOKS_NOTE}
-        />
-        <CardBody className="space-y-2">
-          <ul className="space-y-2">
-            {RECOMMENDED_BOOKS.map((book) => (
-              <li
-                key={`${book.title}-${book.author}`}
-                className="flex flex-col gap-2 rounded-xl border border-light-gray/80 bg-white/[0.03] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <p className="min-w-0 text-sm text-navy">
-                  <span className="font-medium">«{book.title}»</span>
-                  <span className="text-muted"> — {book.author}</span>
-                </p>
-                {editable ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="shrink-0"
-                    onClick={() => addRecommended(book.title, book.author)}
-                  >
-                    В мой список
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </CardBody>
-      </Card>
-
       <Card>
         <CardHeader
           title="Мой список книг"
@@ -129,7 +100,7 @@ export function BooksTable({
                       colSpan={editable ? 4 : 3}
                       className="px-5 py-8 text-center text-muted"
                     >
-                      Личный список пока пуст — можно добавить из рекомендаций
+                      Личный список пока пуст — добавьте книгу или выберите в рекомендациях ниже
                     </td>
                   </tr>
                 ) : (
@@ -218,6 +189,54 @@ export function BooksTable({
           </TableScroll>
         </CardBody>
       </Card>
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowRec((v) => !v)}
+          aria-expanded={showRec}
+          className="flex w-full items-center justify-between rounded-2xl border border-gold/30 bg-gold/[0.05] px-4 py-3 text-left text-sm text-navy transition hover:bg-gold/[0.09]"
+        >
+          <span>
+            Рекомендации программы <span className="text-muted">· {RECOMMENDED_BOOKS.length} книг</span>
+          </span>
+          <span className="text-gold">{showRec ? "Свернуть ▲" : "Показать ▼"}</span>
+        </button>
+        {showRec ? (
+          <div className="mt-3">
+      <Card className="border-gold/40">
+            <CardHeader
+              title="Рекомендации программы"
+              subtitle={RECOMMENDED_BOOKS_NOTE}
+            />
+            <CardBody className="space-y-2">
+              <ul className="space-y-2">
+                {RECOMMENDED_BOOKS.map((book) => (
+                  <li
+                    key={`${book.title}-${book.author}`}
+                    className="flex flex-col gap-2 rounded-xl border border-light-gray/80 bg-white/[0.03] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <p className="min-w-0 text-sm text-navy">
+                      <span className="font-medium">«{book.title}»</span>
+                      <span className="text-muted"> — {book.author}</span>
+                    </p>
+                    {editable ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="shrink-0"
+                        onClick={() => addRecommended(book.title, book.author)}
+                      >
+                        В мой список
+                      </Button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </CardBody>
+          </Card>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

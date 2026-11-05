@@ -266,7 +266,7 @@ declare
   -- Колонки, которые ученик может менять в своей карточке целиком
   v_allowed text[] := array[
     'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks',
-    'avatar_url', 'test_scores', 'updated_at'
+    'avatar_url', 'updated_at'
   ];
   v_old_sprints jsonb;
   v_new_sprints jsonb;
@@ -512,7 +512,7 @@ declare
   -- Колонки, которые ученик может менять в своей карточке целиком
   v_allowed text[] := array[
     'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks',
-    'avatar_url', 'test_scores', 'updated_at'
+    'avatar_url', 'updated_at'
   ];
   v_old_sprints jsonb;
   v_new_sprints jsonb;
@@ -1168,7 +1168,7 @@ declare
   -- Колонки, которые ученик может менять в своей карточке целиком
   v_allowed text[] := array[
     'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks',
-    'avatar_url', 'test_scores', 'updated_at'
+    'avatar_url', 'updated_at'
   ];
   v_old_sprints jsonb;
   v_new_sprints jsonb;
@@ -1219,7 +1219,7 @@ alter table public.opportunities add column if not exists logo_url text;
 -- Выполните в Supabase: SQL Editor → New query → вставьте весь файл → Run
 -- Файл можно запускать повторно. Нужен уже применённый migration-platform.sql.
 --
--- Ученик может сам: баллы SAT/IELTS, свои цели года в Vision Map,
+-- Ученик может сам: свои цели года в Vision Map,
 -- оценки за четверти (помечаются «ждёт проверки», ментор подтверждает).
 
 create or replace function public.enforce_student_update_rights()
@@ -1232,7 +1232,7 @@ declare
   -- Колонки, которые ученик может менять в своей карточке целиком
   v_allowed text[] := array[
     'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks',
-    'avatar_url', 'test_scores', 'updated_at'
+    'avatar_url', 'updated_at'
   ];
   v_old_sprints jsonb;
   v_new_sprints jsonb;

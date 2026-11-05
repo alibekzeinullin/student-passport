@@ -8,17 +8,43 @@ import {
 import { TermHint } from "@/components/ui/TermHint";
 import type { TermHintKey } from "@/lib/term-hints";
 import { useCountUp } from "@/lib/use-count-up";
+import { useEffect, useState } from "react";
+import { fetchTermGrades, gpaScaleMax, peekFetchTermGrades, type TermGrade } from "@/lib/term-grades";
 
 interface ScoreCirclesProps {
   student: StudentProfile;
+  /** Брать GPA из «Академической динамики» (по четвертям) */
+  useTermGrades?: boolean;
+}
+
+function latestVerified(grades: TermGrade[] | undefined): number | null {
+  const list = (grades ?? []).filter((g) => g.gpa !== null && g.verified);
+  return list.length ? (list[list.length - 1].gpa as number) : null;
 }
 
 /**
  * Индикаторы прогресса. Посещаемость и задания считаются базой из журнала
  * встреч, академ успехи — из паспорта. Кольца заполняются с анимацией.
  */
-export function ScoreCircles({ student }: ScoreCirclesProps) {
-  const academic = calculateAcademicSuccessScore(student);
+export function ScoreCircles({ student, useTermGrades = false }: ScoreCirclesProps) {
+  const [termGpa, setTermGpa] = useState<number | null>(() =>
+    useTermGrades ? latestVerified(peekFetchTermGrades(student.id)) : null,
+  );
+  useEffect(() => {
+    if (!useTermGrades) return;
+    let cancelled = false;
+    fetchTermGrades(student.id).then(
+      (g) => !cancelled && setTermGpa(latestVerified(g)),
+      () => undefined,
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [student.id, useTermGrades]);
+  const academic = calculateAcademicSuccessScore(
+    student,
+    termGpa !== null ? { gpa: termGpa, scaleMax: gpaScaleMax(student.educationSystem) } : null,
+  );
   const progress = useCountUp(1800, 250, `rings-${student.id}`);
 
   return (

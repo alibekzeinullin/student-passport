@@ -84,6 +84,7 @@ export function MeetingsJournal({
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [listOpen, setListOpen] = useState(false);
 
   const fetchList = useCallback(async (): Promise<MeetingWithNotes[]> => {
     if (mode === "admin") return fetchMeetingsWithNotes(studentId);
@@ -162,7 +163,7 @@ export function MeetingsJournal({
         title="Журнал встреч"
         subtitle={
           isAdmin
-            ? "Индивидуальные встречи раз в неделю. Посещаемость и выполнение заданий в индикаторах считаются отсюда автоматически."
+            ? "Индивидуальные встречи раз в две недели, групповые — по субботам. Посещаемость и выполнение заданий в индикаторах считаются отсюда автоматически."
             : "Индивидуальные встречи с ментором: посещение, темы и домашние задания."
         }
         action={
@@ -240,6 +241,24 @@ export function MeetingsJournal({
               </p>
             ) : null}
 
+            {meetings.length > 0 && !listOpen ? (
+              <button
+                type="button"
+                onClick={() => setListOpen(true)}
+                aria-expanded={false}
+                className="flex w-full flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-sm transition hover:border-gold/40"
+              >
+                <span className="text-navy">
+                  Последняя встреча: {formatMeetingDate(meetings[0].meetingDate)}
+                  {meetings[0].attendance ? (
+                    <span className="text-muted"> · {ATTENDANCE_LABELS[meetings[0].attendance].toLowerCase()}</span>
+                  ) : null}
+                </span>
+                <span className="text-gold">Показать все встречи ({meetings.length}) ▼</span>
+              </button>
+            ) : null}
+
+            {listOpen ? (
             <ul className="space-y-3">
               {meetings.map((meeting) =>
                 editingId === meeting.id ? (
@@ -276,6 +295,19 @@ export function MeetingsJournal({
                 ),
               )}
             </ul>
+            ) : null}
+            {listOpen && meetings.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setListOpen(false);
+                  setExpandedId(null);
+                }}
+                className="text-sm text-muted underline-offset-2 hover:text-navy hover:underline"
+              >
+                Свернуть встречи ▲
+              </button>
+            ) : null}
           </>
         )}
       </CardBody>

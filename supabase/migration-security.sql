@@ -72,7 +72,7 @@ declare
   -- Колонки, которые ученик может менять в своей карточке целиком
   v_allowed text[] := array[
     'academic_activities', 'projects', 'books', 'skills', 'sprint_tasks',
-    'avatar_url', 'test_scores', 'updated_at'
+    'avatar_url', 'updated_at'
   ];
   v_old_sprints jsonb;
   v_new_sprints jsonb;

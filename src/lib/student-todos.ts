@@ -15,22 +15,11 @@ export interface StudentTodo {
   href: string;
 }
 
-const MONTHS = ["январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август", "сентябрь", "октябрь", "ноябрь", "декабрь"];
-
-/** «Сентябрь–октябрь 2026» → { months: [8, 9], year: 2026 } */
-function parseSprintLabel(label: string): { months: number[]; year: number } | null {
-  const l = label.toLowerCase();
-  const months = MONTHS.map((m, i) => (l.includes(m) ? i : -1)).filter((i) => i >= 0);
-  const year = Number(l.match(/20\d\d/)?.[0]);
-  if (!months.length || !year) return null;
-  return { months, year };
-}
-
 export function buildStudentTodos(
   student: StudentProfile,
   deadlines: Deadline[],
   meetings: Meeting[],
-  today = new Date(),
+  _today = new Date(),
   essays: EssaySubmission[] | null = null,
   works: StudentWork[] | null = null,
 ): StudentTodo[] {
@@ -84,20 +73,6 @@ export function buildStudentTodos(
     const left = daysLeft(cur.due);
     if (left < 0) push(`work-${w.id}`, "high", `«${w.title}»: срок этапа «${cur.title}» прошёл`, "/dashboard/works");
     else if (left <= 7) push(`work-${w.id}`, "medium", `«${w.title}»: этап «${cur.title}» — до ${formatDueDate(cur.due)}`, "/dashboard/works");
-  }
-
-  // Спринты
-  const month = today.getMonth();
-  const year = today.getFullYear();
-  for (const t of student.sprintTasks) {
-    const p = parseSprintLabel(t.sprintLabel);
-    if (!p) continue;
-    const last = Math.max(...p.months);
-    const isPast = p.year < year || (p.year === year && last < month);
-    if (isPast && !t.completed) {
-      push(`sp-over-${t.id}`, "high", `Спринт «${t.title}» (${t.sprintLabel}) не сдан`, "#sec-sprints");
-    }
-    // Текущий спринт не выносим в «Что нужно сделать»: ссылка на работу — по желанию
   }
 
   // Незаполненные разделы

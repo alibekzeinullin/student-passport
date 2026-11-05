@@ -5,12 +5,8 @@ import { getDashboardPermissions } from "@/lib/permissions";
 import { useStudents } from "@/context/StudentsContext";
 import { ProfileHeader } from "@/components/ProfileHeader";
 import { ScoreCircles } from "@/components/ScoreCircles";
-import { GpaTable } from "@/components/GpaTable";
 import { TestScoresCard } from "@/components/TestScoresCard";
 import { AcademicActivityTable } from "@/components/AcademicActivityTable";
-import { SprintTasksTable } from "@/components/SprintTasksTable";
-import { WorksBoard } from "@/components/works/WorksBoard";
-import { WorksSummary } from "@/components/works/WorksSummary";
 import { BooksTable } from "@/components/BooksTable";
 import { SkillsTable } from "@/components/SkillsTable";
 import { GrowthZonesBlock } from "@/components/GrowthZonesBlock";
@@ -36,7 +32,6 @@ export function StudentDashboard({
     loading,
     updateStudent,
     updateAcademicActivities,
-    updateSprintTasks,
     refreshStudents,
   } = useStudents();
   const student = getStudent(studentId);
@@ -123,6 +118,12 @@ export function StudentDashboard({
                 Monthly Review
               </Link>
               <Link
+                href={`/admin/students/${studentId}/works`}
+                className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
+              >
+                Проекты
+              </Link>
+              <Link
                 href={`/admin/students/${studentId}/vision`}
                 className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
               >
@@ -172,7 +173,7 @@ export function StudentDashboard({
           }
         />
 
-        <ScoreCircles student={student} />
+        <ScoreCircles student={student} useTermGrades={accessMode !== "parent"} />
       </ZoneBand>
 
       {perms.canGenerateParentLink ? <ParentAccessLinkButton studentId={studentId} /> : null}
@@ -204,7 +205,7 @@ export function StudentDashboard({
           id="sec-academic"
           number="1"
           title="Академическая динамика"
-          description="GPA, SAT/IELTS и академическая активность"
+          description="GPA по четвертям, экзамены и академическая активность"
         >
           <div className="space-y-4">
             <TermGradesChart
@@ -213,15 +214,6 @@ export function StudentDashboard({
               onTermSystemChange={
                 perms.canEditGpa
                   ? (termSystem) => patchStudent({ termSystem })
-                  : undefined
-              }
-            />
-            <GpaTable
-              gpa={student.gpa}
-              editable={perms.canEditGpa}
-              onChange={
-                perms.canEditGpa
-                  ? (gpa) => updateStudent(studentId, { gpa })
                   : undefined
               }
             />
@@ -248,50 +240,10 @@ export function StudentDashboard({
         </Section>
       </ZoneBand>
 
-      <ZoneBand tone="other">
-        <Section
-          id="sec-sprints"
-          number="2"
-          title="Спринты по групповой работе"
-          description="Общие спринты программы. Список тем может меняться."
-        >
-          <SprintTasksTable
-            tasks={student.sprintTasks}
-            canEditMeta={perms.canEditSprintMeta}
-            canToggleCompletion={perms.canToggleSprintCompletion}
-            canEditArtifacts={perms.canEditSprintArtifacts}
-            onChange={
-              perms.canToggleSprintCompletion ||
-              perms.canEditSprintArtifacts ||
-              perms.canEditSprintMeta
-                ? (sprintTasks) => updateSprintTasks(studentId, sprintTasks)
-                : undefined
-            }
-          />
-        </Section>
-      </ZoneBand>
-
       <ZoneBand tone="growth">
         <Section
-          id="sec-projects"
-          number="3"
-          title="Проекты и исследования"
-          description={
-            accessMode === "admin"
-              ? "Этапы, сроки и ваши комментарии — ученик и родители их видят"
-              : "Свои проекты и научные работы — по этапам, с комментариями ментора"
-          }
-        >
-          {accessMode === "admin" ? (
-            <WorksBoard studentId={studentId} mode="admin" />
-          ) : (
-            <WorksSummary studentId={studentId} />
-          )}
-        </Section>
-
-        <Section
           id="sec-books"
-          number="4"
+          number="2"
           title="Книги"
           description="Рекомендации программы и личный список чтения"
         >
@@ -306,7 +258,7 @@ export function StudentDashboard({
           />
         </Section>
 
-        <Section id="sec-skills" number="5" title="Навыки" description="Навыки для освоения">
+        <Section id="sec-skills" number="3" title="Навыки" description="Навыки для освоения">
           <SkillsTable
             skills={student.skills}
             editable={perms.canEditSkills}
@@ -322,7 +274,7 @@ export function StudentDashboard({
       {accessMode !== "student" ? (
       <ZoneBand tone="other">
         <Section
-          number="6"
+          number="4"
           title="Зоны роста"
           description="Что нужно улучшить — заполняет ментор"
         >

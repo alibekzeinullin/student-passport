@@ -13,7 +13,14 @@ function latestGpa(student: StudentProfile): number | null {
   return values.length ? values[0] : null;
 }
 
-function gpaScore(student: StudentProfile): number {
+/** Последний подтверждённый GPA из «Академической динамики» (если передан) — иначе старое поле. */
+export interface GpaOverride {
+  gpa: number;
+  scaleMax: number;
+}
+
+function gpaScore(student: StudentProfile, override?: GpaOverride | null): number {
+  if (override) return clamp((override.gpa / override.scaleMax) * 100);
   const gpa = latestGpa(student);
   if (gpa === null) return 0;
   // 5.0 scale → 100 баллов
@@ -93,9 +100,12 @@ function skillsScore(student: StudentProfile): number {
  * База: GPA 35%, академ активность 25%, проекты 20%,
  * навыки 15%, книги 5%. Тесты дают бонус до +5 без штрафа.
  */
-export function calculateAcademicSuccessScore(student: StudentProfile): number {
+export function calculateAcademicSuccessScore(
+  student: StudentProfile,
+  gpaOverride?: GpaOverride | null,
+): number {
   const base =
-    gpaScore(student) * 0.35 +
+    gpaScore(student, gpaOverride) * 0.35 +
     academicActivitiesScore(student) * 0.25 +
     projectsScore(student) * 0.2 +
     skillsScore(student) * 0.15 +
