@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 import type { Book, BookStatus } from "@/lib/types";
 import {
@@ -11,6 +11,16 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Field";
 import { TableScroll } from "@/components/ui/TableScroll";
+import {
+  acceptedCount,
+  fetchBookReports,
+  fetchBookReportsByParentToken,
+  fetchMyBookRank,
+  peekBookReports,
+  type BookRank,
+  type BookReport,
+} from "@/lib/book-reports";
+import { BooksRankStrip, ReportCell, ReportPanel, type BooksMode } from "@/components/books/BookReportBits";
 
 const STATUSES: BookStatus[] = ["В планах", "Читаю", "Прочитано"];
 
@@ -18,17 +28,62 @@ interface BooksTableProps {
   books: Book[];
   editable?: boolean;
   onChange?: (books: Book[]) => void;
+  /** Для отзывов и рейтинга */
+  studentId: string;
+  mode: BooksMode;
+  parentToken?: string;
 }
 
 export function BooksTable({
   books,
   editable = false,
   onChange,
+  studentId,
+  mode,
+  parentToken,
 }: BooksTableProps) {
   const [showRec, setShowRec] = useState(false);
+  const [reports, setReports] = useState<BookReport[]>(() => (mode !== "parent" ? (peekBookReports(studentId) ?? []) : []));
+  const [rank, setRank] = useState<BookRank | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const fetchAll = useCallback(
+    () =>
+      Promise.all([
+        (mode === "parent" ? fetchBookReportsByParentToken(parentToken ?? "") : fetchBookReports(studentId)).catch(
+          () => null, // таблица ещё не создана — просто без отзывов
+        ),
+        mode === "student" ? fetchMyBookRank().catch(() => null) : Promise.resolve(null),
+      ]),
+    [mode, parentToken, studentId],
+  );
+
+  const loadReports = async () => {
+    const [list, r] = await fetchAll();
+    if (list) setReports(list);
+    setRank(r);
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAll().then(([list, r]) => {
+      if (cancelled) return;
+      if (list) setReports(list);
+      setRank(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchAll]);
+
+  const reportFor = (bookId: string) => reports.find((r) => r.bookId === bookId);
+  const pending = reports.filter((r) => r.status === "submitted").length;
+
   const updateRow = (id: string, patch: Partial<Book>) => {
     if (!onChange) return;
     onChange(books.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+    // Отметил «Прочитано» — сразу предлагаем написать отзыв
+    if (patch.status === "Прочитано" && mode === "student" && !reportFor(id)) setOpenId(id);
   };
 
   const addRow = () => {
@@ -70,10 +125,11 @@ export function BooksTable({
 
   return (
     <div className="space-y-4">
+      <BooksRankStrip mode={mode} accepted={acceptedCount(reports)} pending={pending} rank={rank} />
       <Card>
         <CardHeader
           title="Мой список книг"
-          subtitle="Личный трекинг чтения"
+          subtitle="Прочитал — напиши короткий отзыв, ментор засчитает книгу в рейтинг"
           action={
             editable ? (
               <Button type="button" variant="secondary" onClick={addRow}>
@@ -84,12 +140,13 @@ export function BooksTable({
         />
         <CardBody className="p-0">
           <TableScroll>
-            <table className="min-w-[32rem] w-full text-left text-sm">
+            <table className="min-w-[40rem] w-full text-left text-sm">
               <thead className="bg-light-gray/40 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Название</th>
                   <th className="px-5 py-3 font-semibold">Автор</th>
                   <th className="px-5 py-3 font-semibold">Статус</th>
+                  <th className="px-5 py-3 font-semibold">Зачёт</th>
                   {editable ? <th className="px-5 py-3 font-semibold" /> : null}
                 </tr>
               </thead>
@@ -97,7 +154,7 @@ export function BooksTable({
                 {books.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={editable ? 4 : 3}
+                      colSpan={editable ? 5 : 4}
                       className="px-5 py-8 text-center text-muted"
                     >
                       Личный список пока пуст — добавьте книгу или выберите в рекомендациях ниже
@@ -106,9 +163,11 @@ export function BooksTable({
                 ) : (
                   books.map((item) => {
                     const done = item.status === "Прочитано";
+                    const report = reportFor(item.id);
+                    const open = openId === item.id;
                     return (
+                      <Fragment key={item.id}>
                       <tr
-                        key={item.id}
                         className={`border-t align-top transition-colors ${
                           done
                             ? "border-emerald-400/30 bg-emerald-400/[0.07]"
@@ -169,6 +228,15 @@ export function BooksTable({
                             </span>
                           )}
                         </td>
+                        <td className="px-5 py-3 align-middle">
+                          <ReportCell
+                            book={item}
+                            report={report}
+                            mode={mode}
+                            open={open}
+                            onToggle={() => setOpenId(open ? null : item.id)}
+                          />
+                        </td>
                         {editable ? (
                           <td className="px-5 py-3">
                             <Button
@@ -181,6 +249,24 @@ export function BooksTable({
                           </td>
                         ) : null}
                       </tr>
+                      {open ? (
+                        <tr className="border-t border-light-gray/50">
+                          <td colSpan={editable ? 5 : 4} className="px-5 pb-4 pt-1">
+                            <ReportPanel
+                              key={`${item.id}-${report?.status ?? "none"}`}
+                              book={item}
+                              report={report}
+                              mode={mode}
+                              studentId={studentId}
+                              onDone={async () => {
+                                await loadReports();
+                                setOpenId(null);
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      ) : null}
+                      </Fragment>
                     );
                   })
                 )}

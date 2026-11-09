@@ -136,6 +136,9 @@ export function StudentReportView({
         >
           <BooksTable
             books={student.books}
+            studentId={student.id}
+            mode={editable ? "admin" : "parent"}
+            parentToken={student.parentAccessToken}
             editable={editable}
             onChange={editable ? (books) => patch({ books }) : undefined}
           />

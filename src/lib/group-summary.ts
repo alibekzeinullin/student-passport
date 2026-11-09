@@ -3,6 +3,7 @@ import { homeworkRating, reflectionAverage, type MeetingWithNotes } from "@/lib/
 import type { Deadline } from "@/lib/deadlines";
 import type { TermGrade } from "@/lib/term-grades";
 import { essaySummary, type EssaySubmission } from "@/lib/essays";
+import type { BookReport } from "@/lib/book-reports";
 
 export interface Range {
   from: string; // YYYY-MM-DD включительно
@@ -20,6 +21,8 @@ export interface StudentRow {
   hwAvg: number | null;
   essaysInPeriod: number;
   essaysTotal: number;
+  booksInPeriod: number;
+  booksTotal: number;
   deadlinesSubmitted: Deadline[];
   deadlinesMissed: Deadline[];
   gpa: number | null;
@@ -35,6 +38,8 @@ export interface GroupTotals {
   hwAvg: number | null;
   essays: number;
   essaysTotal: number;
+  books: number;
+  booksTotal: number;
   deadlinesSubmitted: number;
   deadlinesMissed: number;
   reflectionAvg: number | null;
@@ -76,6 +81,7 @@ export function buildGroupSummary(
   grades: TermGrade[],
   essays: EssaySubmission[],
   range: Range,
+  books: BookReport[] = [],
 ): { rows: StudentRow[]; totals: GroupTotals } {
   const active = students.filter((s) => s.status !== "paused");
   const today = iso(new Date());
@@ -102,6 +108,8 @@ export function buildGroupSummary(
       hwAvg: avg(own.map(homeworkRating).filter((v): v is number => v !== null)),
       essaysInPeriod: ownEssays.filter((e) => e.status === "accepted" && inRange(e.reviewedAt, range)).length,
       essaysTotal: essaySummary(ownEssays).accepted,
+      booksInPeriod: books.filter((b) => b.studentId === s.id && b.status === "accepted" && inRange(b.reviewedAt, range)).length,
+      booksTotal: books.filter((b) => b.studentId === s.id && b.status === "accepted").length,
       deadlinesSubmitted: ownDeadlines.filter((d) => d.status === "submitted"),
       deadlinesMissed: ownDeadlines.filter((d) => d.status === "planned" && d.dueDate < today),
       gpa: last?.gpa ?? null,
@@ -128,6 +136,8 @@ export function buildGroupSummary(
     hwAvg: avg(pm.map(homeworkRating).filter((v): v is number => v !== null)),
     essays: rows.reduce((s, r) => s + r.essaysInPeriod, 0),
     essaysTotal: rows.reduce((s, r) => s + r.essaysTotal, 0),
+    books: rows.reduce((s, r) => s + r.booksInPeriod, 0),
+    booksTotal: rows.reduce((s, r) => s + r.booksTotal, 0),
     deadlinesSubmitted: rows.reduce((s, r) => s + r.deadlinesSubmitted.length, 0),
     deadlinesMissed: rows.reduce((s, r) => s + r.deadlinesMissed.length, 0),
     reflectionAvg: avg(reflections),

@@ -43,6 +43,7 @@ import {
 } from "@/lib/achievements";
 import { useCountUp } from "@/lib/use-count-up";
 import { fetchSubmissions, fetchSubmissionsByParentToken, peekSubmissions, type EssaySubmission } from "@/lib/essays";
+import { fetchBookReports, fetchBookReportsByParentToken, peekBookReports, type BookReport } from "@/lib/book-reports";
 import { fetchTermGrades, fetchTermGradesByParentToken, type TermGrade } from "@/lib/term-grades";
 import { BadgesPanel } from "@/components/BadgesPanel";
 import { fetchWorks, peekWorks, type StudentWork } from "@/lib/works";
@@ -91,6 +92,9 @@ export function StudentOverview({
     mode !== "parent" ? (peekSubmissions(student.id) ?? null) : null,
   );
   const [grades, setGrades] = useState<TermGrade[] | null>(null);
+  const [bookReports, setBookReports] = useState<BookReport[] | null>(() =>
+    mode !== "parent" ? (peekBookReports(student.id) ?? null) : null,
+  );
   const [works, setWorks] = useState<StudentWork[] | null>(() => (mode === "student" ? (peekWorks(student.id) ?? null) : null));
   const [extrasReady, setExtrasReady] = useState(false);
 
@@ -140,10 +144,12 @@ export function StudentOverview({
     void Promise.allSettled([
       mode === "parent" ? fetchSubmissionsByParentToken(parentToken ?? "") : fetchSubmissions(student.id),
       mode === "parent" ? fetchTermGradesByParentToken(parentToken ?? "") : fetchTermGrades(student.id),
-    ]).then(([e, g]) => {
+      mode === "parent" ? fetchBookReportsByParentToken(parentToken ?? "") : fetchBookReports(student.id),
+    ]).then(([e, g, b]) => {
       if (cancelled) return;
       if (e.status === "fulfilled") setEssays(e.value);
       if (g.status === "fulfilled") setGrades(g.value);
+      if (b.status === "fulfilled") setBookReports(b.value);
       setExtrasReady(true);
     });
     return () => {
@@ -283,6 +289,7 @@ export function StudentOverview({
         meetings={meetings}
         deadlines={deadlines}
         essays={essays}
+        bookReports={bookReports}
         grades={grades}
         ready={loaded && extrasReady}
         mode={mode}
@@ -780,6 +787,7 @@ function MotivationCard({
   deadlines,
   essays,
   grades,
+  bookReports,
   ready,
   mode,
 }: {
@@ -788,12 +796,13 @@ function MotivationCard({
   deadlines: Deadline[];
   essays: EssaySubmission[] | null;
   grades: TermGrade[] | null;
+  bookReports: BookReport[] | null;
   ready: boolean;
   mode: Mode;
 }) {
   const streak = attendanceStreak(meetings);
   const squares = recentAttendance(meetings, 10);
-  const badges = computeBadges(student, meetings, deadlines, { essays, grades });
+  const badges = computeBadges(student, meetings, deadlines, { essays, grades, bookReports });
   const progress = useCountUp(1200, 300, `streak-${student.id}`);
 
   return (

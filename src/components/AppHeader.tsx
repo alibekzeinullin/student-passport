@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 /** Основные разделы ментора (кроме «Ученики» и «Посещаемость»). */
 const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
   { href: "/admin/essays", label: "Эссе" },
+  { href: "/admin/books", label: "Книги" },
   { href: "/admin/summary", label: "Отчёт" },
 ];
 

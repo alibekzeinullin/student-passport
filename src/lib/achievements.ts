@@ -1,3 +1,4 @@
+import { BOOK_TIERS, acceptedCount, type BookReport } from "@/lib/book-reports";
 import type { StudentProfile } from "@/lib/types";
 import type { Deadline } from "@/lib/deadlines";
 import { homeworkRating, type Attendance, type Meeting } from "@/lib/meetings";
@@ -53,6 +54,8 @@ export interface Badge {
 
 export interface BadgeExtras {
   essays?: EssaySubmission[] | null;
+  /** Отзывы на книги: в зачёт идут только подтверждённые ментором */
+  bookReports?: BookReport[] | null;
   grades?: TermGrade[] | null;
 }
 
@@ -123,7 +126,7 @@ export function computeBadges(
     if (r < 9) break;
     hwStreak += 1;
   }
-  const booksRead = student.books.filter((b) => b.status === "Прочитано").length;
+  const booksRead = acceptedCount(extras.bookReports);
   const skillsDone = student.skills.filter((s) => s.status === "Освоен").length;
   const submitted = deadlines.filter((d) => d.status === "submitted");
   const competitions =
@@ -203,7 +206,16 @@ export function computeBadges(
     { id: "prize", group: "competitions", title: "Призёр", hint: "Стать призёром или победителем", earned: prize, icon: "crown", rare: true },
 
     { id: "passport", group: "profile", title: "Паспорт заполнен", hint: "Фото, проект, книга и навык в работе", earned: passportParts === 4, icon: "check", progress: p(passportParts, 4) },
-    { id: "books5", group: "profile", title: "Книжный червь", hint: "Прочитать 5 книг", earned: booksRead >= 5, icon: "book", progress: p(booksRead, 5) },
+    ...BOOK_TIERS.map((t) => ({
+      id: `books${t.goal}`,
+      group: "profile" as const,
+      title: t.title,
+      hint: `${t.goal} книг засчитано ментором (с отзывом)`,
+      earned: booksRead >= t.goal,
+      icon: "book" as const,
+      progress: p(booksRead, t.goal),
+      rare: t.rare,
+    })),
     { id: "skills3", group: "profile", title: "Прокачка", hint: "Освоить 3 навыка", earned: skillsDone >= 3, icon: "rocket", progress: p(skillsDone, 3) },
     { id: "project", group: "profile", title: "Проект запущен", hint: "Завершить свой проект", earned: projectDone, icon: "rocket" },
   ];
@@ -223,10 +235,16 @@ export function computeBadges(
  * Из ступенчатых (эссе 10/25/50/100) — только высшую полученную и следующую.
  */
 export function pickShowcase(badges: Badge[], earnedLimit = 6, nextLimit = 3): { earned: Badge[]; next: Badge[] } {
-  const tiers = badges.filter((b) => /^essays\d+$/.test(b.id));
-  const topTier = [...tiers].reverse().find((b) => b.earned);
-  const nextTier = tiers.find((b) => !b.earned);
-  const hiddenTier = (b: Badge) => /^essays\d+$/.test(b.id) && b !== topTier && b !== nextTier;
+  // Ступени: показываем только высшую полученную и следующую
+  const shown = new Set<Badge>();
+  for (const re of [/^essays\d+$/, /^books\d+$/]) {
+    const tiers = badges.filter((b) => re.test(b.id));
+    const top = [...tiers].reverse().find((b) => b.earned);
+    const next = tiers.find((b) => !b.earned);
+    if (top) shown.add(top);
+    if (next) shown.add(next);
+  }
+  const hiddenTier = (b: Badge) => /^(essays|books)\d+$/.test(b.id) && !shown.has(b);
   const streakHidden = (b: Badge) => b.id === "streak4" && badges.find((x) => x.id === "streak10")?.earned;
 
   const earned = badges

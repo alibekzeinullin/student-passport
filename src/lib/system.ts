@@ -21,6 +21,8 @@ export const CHECKS: { label: string; table: string; column?: string; file: stri
   { label: "Проекты и исследования", table: "student_works", file: "migration-works.sql" },
   { label: "Удаление из ленты", table: "opportunities", column: "hidden", file: "migration-feed.sql" },
   { label: "Результаты олимпиад", table: "student_deadlines", column: "result", file: "migration-achievements.sql" },
+  { label: "Летние программы", table: "opportunities", column: "program_type", file: "migration-summer.sql" },
+  { label: "Отзывы на книги", table: "book_reports", file: "migration-books.sql" },
 ];
 
 export interface CheckResult {
@@ -53,6 +55,7 @@ export const BACKUP_TABLES = [
   "essay_submissions",
   "meeting_templates",
   "student_works",
+  "book_reports",
   "opportunities",
   "activity_log",
 ] as const;

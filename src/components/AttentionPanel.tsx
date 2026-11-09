@@ -17,6 +17,7 @@ import { currentMonthYearLabel } from "@/lib/monthly-progress";
 import { mondayOf, todayLocalIso } from "@/lib/attendance";
 import { fetchUnverifiedGrades, peekFetchUnverifiedGrades, type TermGrade } from "@/lib/term-grades";
 import { fetchSubmissions, peekSubmissions } from "@/lib/essays";
+import { fetchBookReports, peekBookReports } from "@/lib/book-reports";
 import { fetchInvites, peekFetchInvites, hasIndividualThisWeek, inviteKey, studentParity, type Invite } from "@/lib/schedule";
 
 type Severity = "high" | "medium" | "low";
@@ -172,6 +173,10 @@ export function AttentionPanel({ students }: { students: StudentProfile[] }) {
     () => (peekSubmissions() ?? []).filter((e) => e.status === "submitted").length,
   );
 
+  const [booksPending, setBooksPending] = useState(
+    () => (peekBookReports() ?? []).filter((r) => r.status === "submitted").length,
+  );
+
   useEffect(() => {
     let cancelled = false;
     const monday = mondayOf(todayLocalIso());
@@ -185,6 +190,10 @@ export function AttentionPanel({ students }: { students: StudentProfile[] }) {
     });
     fetchSubmissions().then(
       (list) => !cancelled && setEssaysPending(list.filter((e) => e.status === "submitted").length),
+      () => undefined,
+    );
+    fetchBookReports().then(
+      (list) => !cancelled && setBooksPending(list.filter((r) => r.status === "submitted").length),
       () => undefined,
     );
     return () => {
@@ -221,6 +230,19 @@ export function AttentionPanel({ students }: { students: StudentProfile[] }) {
             <span className="size-2 shrink-0 rounded-full bg-gold" aria-hidden />
             <span className="flex-1">
               Эссе ждут проверки: <span className="font-medium text-gold">{essaysPending}</span>
+            </span>
+            <span className="text-muted" aria-hidden>→</span>
+          </Link>
+        ) : null}
+
+        {booksPending > 0 ? (
+          <Link
+            href="/admin/books"
+            className="mt-2 flex items-center gap-3 rounded-2xl border border-gold/30 bg-gold/[0.07] px-3 py-2.5 text-sm text-navy transition hover:bg-gold/[0.12]"
+          >
+            <span className="size-2 shrink-0 rounded-full bg-gold" aria-hidden />
+            <span className="flex-1">
+              Книги ждут подтверждения: <span className="font-medium text-gold">{booksPending}</span>
             </span>
             <span className="text-muted" aria-hidden>→</span>
           </Link>

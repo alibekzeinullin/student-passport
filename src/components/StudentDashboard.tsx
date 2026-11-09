@@ -244,10 +244,13 @@ export function StudentDashboard({
           id="sec-books"
           number="2"
           title="Книги"
-          description="Рекомендации программы и личный список чтения"
+          description="Список чтения, отзывы и книжный рейтинг"
         >
           <BooksTable
             books={student.books}
+            studentId={student.id}
+            mode={accessMode}
+            parentToken={student.parentAccessToken}
             editable={perms.canEditBooks}
             onChange={
               perms.canEditBooks

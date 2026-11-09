@@ -7,6 +7,7 @@ import { fetchMeetingsWithNotes, peekFetchMeetingsWithNotes, type MeetingWithNot
 import { fetchDeadlines, peekFetchDeadlines, type Deadline } from "@/lib/deadlines";
 import { fetchAllTermGrades, type TermGrade } from "@/lib/term-grades";
 import { fetchSubmissions, peekSubmissions, type EssaySubmission } from "@/lib/essays";
+import { fetchBookReports, peekBookReports, type BookReport } from "@/lib/book-reports";
 import { buildGroupSummary, previousRange, type Range } from "@/lib/group-summary";
 import { currentMonthYearLabel } from "@/lib/monthly-progress";
 import { Button } from "@/components/ui/Button";
@@ -52,15 +53,17 @@ export default function GroupSummaryPage() {
   const [deadlines, setDeadlines] = useState<Deadline[]>(() => peekFetchDeadlines() ?? []);
   const [grades, setGrades] = useState<TermGrade[]>([]);
   const [essays, setEssays] = useState<EssaySubmission[]>(() => peekSubmissions() ?? []);
+  const [books, setBooks] = useState<BookReport[]>(() => peekBookReports() ?? []);
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.allSettled([fetchMeetingsWithNotes(), fetchDeadlines(), fetchAllTermGrades(), fetchSubmissions()]).then(([m, d, g, e]) => {
+    void Promise.allSettled([fetchMeetingsWithNotes(), fetchDeadlines(), fetchAllTermGrades(), fetchSubmissions(), fetchBookReports()]).then(([m, d, g, e, b]) => {
       if (cancelled) return;
       if (m.status === "fulfilled") setMeetings(m.value);
       if (d.status === "fulfilled") setDeadlines(d.value);
       if (g.status === "fulfilled") setGrades(g.value);
       if (e.status === "fulfilled") setEssays(e.value);
+      if (b.status === "fulfilled") setBooks(b.value);
     });
     return () => {
       cancelled = true;
@@ -70,12 +73,12 @@ export default function GroupSummaryPage() {
   const range = useMemo(() => monthRange(offset, span), [offset, span]);
   const prev = useMemo(() => previousRange(range), [range]);
   const { rows, totals } = useMemo(
-    () => buildGroupSummary(students, meetings, deadlines, grades, essays, range),
-    [students, meetings, deadlines, grades, essays, range],
+    () => buildGroupSummary(students, meetings, deadlines, grades, essays, range, books),
+    [students, meetings, deadlines, grades, essays, range, books],
   );
   const before = useMemo(
-    () => buildGroupSummary(students, meetings, deadlines, grades, essays, prev).totals,
-    [students, meetings, deadlines, grades, essays, prev],
+    () => buildGroupSummary(students, meetings, deadlines, grades, essays, prev, books).totals,
+    [students, meetings, deadlines, grades, essays, prev, books],
   );
 
   const wins = rows.flatMap((r) => r.deadlinesSubmitted.map((d) => `${r.name} — ${d.title}`));
@@ -178,6 +181,7 @@ export default function GroupSummaryPage() {
                 <th className="px-2 py-3 text-center font-medium">Групп.</th>
                 <th className="px-2 py-3 text-center font-medium">Домашка</th>
                 <th className="px-2 py-3 text-center font-medium">Эссе</th>
+                <th className="px-2 py-3 text-center font-medium">Книги</th>
                 <th className="px-2 py-3 text-center font-medium">Заявки</th>
                 <th className="px-4 py-3 text-right font-medium">GPA</th>
               </tr>
@@ -196,6 +200,10 @@ export default function GroupSummaryPage() {
                   <td className="px-2 py-2.5 text-center tabular-nums text-navy">
                     {r.essaysInPeriod ? `+${r.essaysInPeriod}` : "0"}
                     <span className="text-xs text-muted"> · {r.essaysTotal}</span>
+                  </td>
+                  <td className="px-2 py-2.5 text-center tabular-nums text-navy">
+                    {r.booksInPeriod ? `+${r.booksInPeriod}` : "0"}
+                    <span className="text-xs text-muted"> · {r.booksTotal}</span>
                   </td>
                   <td className="px-2 py-2.5 text-center tabular-nums text-navy">
                     {r.deadlinesSubmitted.length}
