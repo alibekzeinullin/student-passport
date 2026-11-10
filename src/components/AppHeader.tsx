@@ -63,7 +63,7 @@ export function AppHeader() {
   const showSwitch = Boolean(user && user.role === "admin" && canOpenGroups(user));
 
   return (
-    <header className="border-b border-white/[0.07] bg-[#121b29]/70 text-navy backdrop-blur-md">
+    <header className="relative z-40 border-b border-white/[0.07] bg-[#121b29]/70 text-navy backdrop-blur-md">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3 py-3">
           <div className="flex min-w-0 items-center gap-5">
