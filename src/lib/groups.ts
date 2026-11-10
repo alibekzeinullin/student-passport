@@ -9,6 +9,7 @@ export interface StreamRow {
   name: string;
   starts_on: string | null;
   ends_on: string | null;
+  weeks_total?: number | null;
 }
 
 export interface GroupRow {
@@ -84,7 +85,7 @@ export function friendly(msg: string): string {
 export async function loadGroupsData(): Promise<GroupsData> {
   const supabase = createClient();
   const [streams, groups, links, members, roster] = await Promise.all([
-    supabase.from("streams").select("id, course_id, name, starts_on, ends_on").eq("course_id", "sat").order("created_at"),
+    supabase.from("streams").select("*").eq("course_id", "sat").order("created_at"),
     supabase.from("groups").select("id, course_id, stream_id, name, city, note, archived").eq("course_id", "sat").order("name"),
     supabase.from("group_staff").select("id, group_id, user_id, role, starts_on, ends_on").order("starts_on"),
     supabase.from("staff_members").select("user_id, full_name, active, staff_roles(role)").order("full_name"),
@@ -110,8 +111,15 @@ export async function loadGroupsData(): Promise<GroupsData> {
   };
 }
 
-export async function createStream(name: string, startsOn: string | null) {
-  const { error } = await createClient().from("streams").insert({ course_id: "sat", name: name.trim(), starts_on: startsOn || null });
+export async function createStream(name: string, startsOn: string | null, weeksTotal: number | null = null) {
+  const row: Record<string, unknown> = { course_id: "sat", name: name.trim(), starts_on: startsOn || null };
+  if (weeksTotal) row.weeks_total = weeksTotal; // колонка появляется с migration-sat-2.sql
+  const { error } = await createClient().from("streams").insert(row);
+  fail(error);
+}
+
+export async function updateStream(id: string, patch: { name?: string; starts_on?: string | null; weeks_total?: number | null }) {
+  const { error } = await createClient().from("streams").update(patch).eq("id", id);
   fail(error);
 }
 

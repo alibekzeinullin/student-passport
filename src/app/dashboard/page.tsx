@@ -57,7 +57,7 @@ export default function DashboardPage() {
           </div>
         ) : null}
         {studentId && current === MENTORING ? <StudentDashboard studentId={studentId} accessMode="student" /> : null}
-        {course?.course_id === "sat" ? <SatCourseTab course={course} /> : null}
+        {course?.course_id === "sat" && studentId ? <SatCourseTab course={course} studentId={studentId} /> : null}
       </div>
     </RequireAuth>
   );

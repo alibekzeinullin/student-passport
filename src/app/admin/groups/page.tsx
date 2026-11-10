@@ -21,6 +21,7 @@ import {
   transferEnrollment,
   updateEnrollment,
   updateGroup,
+  updateStream,
   upcomingLinks,
   type GroupRow,
   type GroupsData,
@@ -29,6 +30,18 @@ import {
   type StudentHit,
 } from "@/lib/groups";
 import { canManageSat, canOpenGroups, GROUP_STAFF_LABELS, type GroupStaffRole } from "@/lib/staff";
+import {
+  addSlot,
+  endSlot,
+  EXAMPLE_SLOTS,
+  hhmm,
+  loadRosterStats,
+  loadSlots,
+  WEEKDAYS,
+  WEEKDAYS_FULL,
+  type RosterStat,
+  type SlotRow,
+} from "@/lib/lessons";
 
 const NO_STREAM = "__none";
 
@@ -45,6 +58,8 @@ function daysUntil(iso: string | null): number | null {
 export default function GroupsPage() {
   const { user } = useAuth();
   const [data, setData] = useState<GroupsData | null>(null);
+  const [slots, setSlots] = useState<SlotRow[]>([]);
+  const [stats, setStats] = useState<Map<string, RosterStat>>(() => new Map());
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [streamFilter, setStreamFilter] = useState<string>("all");
@@ -57,7 +72,10 @@ export default function GroupsPage() {
 
   const load = useCallback(async () => {
     try {
-      setData(await loadGroupsData());
+      const [next, nextSlots, nextStats] = await Promise.all([loadGroupsData(), loadSlots(), loadRosterStats()]);
+      setData(next);
+      setSlots(nextSlots);
+      setStats(nextStats);
       setError("");
     } catch (err) {
       setError((err as Error).message);
@@ -150,8 +168,8 @@ export default function GroupsPage() {
 
         {form === "stream" ? (
           <StreamForm
-            onSubmit={async (name, startsOn) => {
-              if (await run(() => createStream(name, startsOn), `Поток «${name}» создан`)) setForm("none");
+            onSubmit={async (name, startsOn, weeks) => {
+              if (await run(() => createStream(name, startsOn, weeks), `Поток «${name}» создан`)) setForm("none");
             }}
           />
         ) : null}
@@ -198,6 +216,13 @@ export default function GroupsPage() {
           <p className="text-muted">Загрузка…</p>
         ) : null}
 
+        {data && manager && streamFilter !== "all" && streamFilter !== NO_STREAM ? (
+          (() => {
+            const st = data.streams.find((x) => x.id === streamFilter);
+            return st ? <StreamEditor key={st.id} stream={st} run={run} /> : null;
+          })()
+        ) : null}
+
         {data && groups.length === 0 ? (
           <div className="sp-glass rounded-3xl border px-5 py-8 text-center text-sm text-muted">
             {data.groups.length === 0
@@ -218,6 +243,8 @@ export default function GroupsPage() {
                   streamName={streamName(g.stream_id)}
                   staffName={staffName}
                   roster={rosterByGroup.get(g.id) ?? []}
+                  slots={slots.filter((x) => x.group_id === g.id && (!x.valid_to || x.valid_to >= today))}
+                  stats={stats}
                   canEdit={manager || myGroupIds.has(g.id)}
                   manager={manager}
                   mine={myGroupIds.has(g.id)}
@@ -243,12 +270,13 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StreamForm({ onSubmit }: { onSubmit: (name: string, startsOn: string | null) => Promise<void> }) {
+function StreamForm({ onSubmit }: { onSubmit: (name: string, startsOn: string | null, weeks: number | null) => Promise<void> }) {
   const [name, setName] = useState("");
   const [startsOn, setStartsOn] = useState("");
+  const [weeks, setWeeks] = useState("12");
   const [busy, setBusy] = useState(false);
   return (
-    <section className="sp-rise grid gap-4 rounded-3xl border border-gold/25 bg-[#162030] px-5 py-5 sm:grid-cols-3 sm:px-6">
+    <section className="sp-rise grid gap-4 rounded-3xl border border-gold/25 bg-[#162030] px-5 py-5 sm:grid-cols-4 sm:px-6">
       <div>
         <Label htmlFor="sf-name">Название потока</Label>
         <Input id="sf-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Поток 3" />
@@ -257,13 +285,17 @@ function StreamForm({ onSubmit }: { onSubmit: (name: string, startsOn: string | 
         <Label htmlFor="sf-start">Начало (необязательно)</Label>
         <Input id="sf-start" type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} />
       </div>
+      <div>
+        <Label htmlFor="sf-weeks">Недель в курсе</Label>
+        <Input id="sf-weeks" value={weeks} inputMode="numeric" onChange={(e) => setWeeks(e.target.value.replace(/\D/g, "").slice(0, 3))} />
+      </div>
       <div className="flex items-end">
         <Button
           type="button"
           disabled={busy || !name.trim()}
           onClick={async () => {
             setBusy(true);
-            await onSubmit(name, startsOn || null);
+            await onSubmit(name, startsOn || null, Number(weeks) || null);
             setBusy(false);
           }}
         >
@@ -340,12 +372,16 @@ function GroupCard({
   onToggle,
   run,
   today,
+  slots,
+  stats,
 }: {
   group: GroupRow;
   data: GroupsData;
   streamName: string;
   staffName: (id: string) => string;
   roster: RosterRow[];
+  slots: SlotRow[];
+  stats: Map<string, RosterStat>;
   canEdit: boolean;
   manager: boolean;
   mine: boolean;
@@ -371,6 +407,11 @@ function GroupCard({
             {mine ? <span className="text-xs text-gold">моя группа</span> : null}
             {group.archived ? <span className="text-xs text-muted">в архиве</span> : null}
           </span>
+          {slots.length ? (
+            <span className="mt-1 block text-sm text-navy/80">
+              {slots.map((x) => `${WEEKDAYS[x.weekday - 1]} ${hhmm(x.starts_at)}${x.title ? ` ${x.title}` : ""}`).join(" · ")}
+            </span>
+          ) : null}
           <span className="mt-1 block text-sm text-muted">
             Учитель: <span className="text-navy">{teachers.join(", ") || "не назначен"}</span>
             <span className="mx-2">·</span>
@@ -394,7 +435,9 @@ function GroupCard({
         <div className="space-y-5 border-t border-white/[0.07] px-5 py-5 sm:px-6">
           {manager ? <StaffPanel group={group} data={data} staffName={staffName} run={run} today={today} /> : null}
 
-          <StudentsTable group={group} data={data} roster={roster} canEdit={canEdit} run={run} today={today} />
+          {canEdit || slots.length ? <SchedulePanel group={group} slots={slots} canEdit={canEdit && !group.archived} run={run} today={today} /> : null}
+
+          <StudentsTable group={group} data={data} roster={roster} canEdit={canEdit} run={run} today={today} stats={stats} />
 
           {canEdit && !group.archived ? <AddStudent group={group} roster={data.roster} run={run} today={today} /> : null}
 
@@ -494,6 +537,7 @@ function StudentsTable({
   canEdit,
   run,
   today,
+  stats,
 }: {
   group: GroupRow;
   data: GroupsData;
@@ -501,6 +545,7 @@ function StudentsTable({
   canEdit: boolean;
   run: Run;
   today: string;
+  stats: Map<string, RosterStat>;
 }) {
   const [transferId, setTransferId] = useState<string | null>(null);
 
@@ -509,12 +554,14 @@ function StudentsTable({
   }
   return (
     <div className="overflow-x-auto rounded-2xl border border-white/10">
-      <table className="w-full min-w-[760px] text-sm">
+      <table className="w-full min-w-[880px] text-sm">
         <thead>
           <tr className="border-b border-white/[0.07] text-left text-xs uppercase tracking-[0.12em] text-muted">
             <th className="px-4 py-2.5 font-normal">Ученик</th>
             <th className="px-4 py-2.5 font-normal">Цель</th>
             <th className="px-4 py-2.5 font-normal">Дата SAT</th>
+            <th className="px-4 py-2.5 font-normal">Посещ.</th>
+            <th className="px-4 py-2.5 font-normal">ДЗ</th>
             <th className="px-4 py-2.5 font-normal">В группе с</th>
             <th className="px-4 py-2.5" />
           </tr>
@@ -524,6 +571,7 @@ function StudentsTable({
             <StudentRow
               key={r.enrollment_id}
               row={r}
+              stat={stats.get(r.student_id)}
               group={group}
               groups={data.groups}
               canEdit={canEdit}
@@ -541,6 +589,7 @@ function StudentsTable({
 
 function StudentRow({
   row,
+  stat,
   group,
   groups,
   canEdit,
@@ -550,6 +599,7 @@ function StudentRow({
   today,
 }: {
   row: RosterRow;
+  stat: RosterStat | undefined;
   group: GroupRow;
   groups: GroupRow[];
   canEdit: boolean;
@@ -597,7 +647,9 @@ function StudentRow({
           )}
           {left !== null ? <span className={`block text-xs ${left < 0 ? "text-muted" : "text-gold"}`}>{left >= 0 ? `через ${left} дн.` : "прошла"}</span> : null}
         </td>
-        <td className="px-4 py-2.5 text-muted">{fmtDate(row.starts_on)}</td>
+        <td className="px-4 py-2.5 text-navy">{pct(stat?.attendance_pct)}</td>
+        <td className="px-4 py-2.5 text-navy">{pct(stat?.homework_pct)}</td>
+        <td className="whitespace-nowrap px-4 py-2.5 text-muted">{fmtDate(row.starts_on)}</td>
         <td className="px-4 py-2.5">
           {canEdit ? (
             <div className="flex flex-wrap justify-end gap-1.5">
@@ -635,7 +687,7 @@ function StudentRow({
       </tr>
       {transferOpen ? (
         <tr className="border-b border-white/[0.04] bg-white/[0.02]">
-          <td colSpan={5} className="px-4 py-3">
+          <td colSpan={7} className="px-4 py-3">
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <Label>В группу</Label>
@@ -830,5 +882,136 @@ function GroupSettings({ group, data, run }: { group: GroupRow; data: GroupsData
         </div>
       </div>
     </details>
+  );
+}
+
+function pct(v: number | null | undefined): string {
+  return v === null || v === undefined ? "—" : `${v}%`;
+}
+
+function StreamEditor({ stream, run }: { stream: GroupsData["streams"][number]; run: Run }) {
+  const [startsOn, setStartsOn] = useState(stream.starts_on ?? "");
+  const [weeks, setWeeks] = useState(stream.weeks_total ? String(stream.weeks_total) : "");
+  const dirty = (startsOn || null) !== stream.starts_on || (Number(weeks) || null) !== (stream.weeks_total ?? null);
+  return (
+    <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-white/10 px-4 py-3">
+      <p className="w-full text-xs uppercase tracking-[0.12em] text-muted sm:w-auto sm:self-center">Поток «{stream.name}»</p>
+      <div>
+        <Label htmlFor="se-start">Начало</Label>
+        <Input id="se-start" type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} className="w-44" />
+      </div>
+      <div>
+        <Label htmlFor="se-weeks">Недель</Label>
+        <Input id="se-weeks" value={weeks} inputMode="numeric" onChange={(e) => setWeeks(e.target.value.replace(/\D/g, "").slice(0, 3))} className="w-24" />
+      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={!dirty}
+        onClick={() => void run(() => updateStream(stream.id, { starts_on: startsOn || null, weeks_total: Number(weeks) || null }), `Поток «${stream.name}» сохранён`)}
+      >
+        Сохранить
+      </Button>
+      <p className="text-xs text-muted">Ученики видят «неделя N из M» от даты начала.</p>
+    </div>
+  );
+}
+
+function SchedulePanel({
+  group,
+  slots,
+  canEdit,
+  run,
+  today,
+}: {
+  group: GroupRow;
+  slots: SlotRow[];
+  canEdit: boolean;
+  run: Run;
+  today: string;
+}) {
+  const [weekday, setWeekday] = useState("2");
+  const [time, setTime] = useState("17:00");
+  const [duration, setDuration] = useState("90");
+  const [title, setTitle] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <div className="rounded-2xl border border-white/10 px-4 py-4">
+      <p className="text-xs uppercase tracking-[0.12em] text-muted">Расписание</p>
+      {slots.length ? (
+        <ul className="mt-3 space-y-1.5 text-sm">
+          {slots.map((x) => (
+            <li key={x.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="w-28 text-navy">{WEEKDAYS_FULL[x.weekday - 1]}</span>
+              <span className="text-navy">
+                {hhmm(x.starts_at)} · {x.duration_min} мин
+              </span>
+              <span className="text-muted">{x.title || "занятие"}</span>
+              {canEdit ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!window.confirm(`Убрать «${WEEKDAYS_FULL[x.weekday - 1]} ${hhmm(x.starts_at)}» из расписания? Прошедшие занятия и отметки останутся.`)) return;
+                    void run(() => endSlot(x, today), "Расписание обновлено");
+                  }}
+                  className="text-xs text-burgundy hover:underline"
+                >
+                  убрать
+                </button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-muted">Расписания пока нет.</p>
+      )}
+
+      {canEdit ? (
+        <>
+          <div className="mt-3 grid gap-3 sm:grid-cols-5">
+            <Select value={weekday} onChange={(e) => setWeekday(e.target.value)} aria-label="День недели">
+              {WEEKDAYS_FULL.map((d, i) => (
+                <option key={d} value={String(i + 1)}>
+                  {d}
+                </option>
+              ))}
+            </Select>
+            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label="Время" />
+            <Input value={duration} inputMode="numeric" onChange={(e) => setDuration(e.target.value.replace(/\D/g, "").slice(0, 3))} aria-label="Длительность, минут" placeholder="90" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Предмет" placeholder="Math / Verbal / Практис" />
+            <Button
+              type="button"
+              disabled={busy || !time || Number(duration) < 15}
+              onClick={async () => {
+                setBusy(true);
+                const ok = await run(
+                  () => addSlot(group.id, { weekday: Number(weekday), starts_at: time, duration_min: Number(duration), title: title.trim() }),
+                  `В расписание «${group.name}» добавлено: ${WEEKDAYS_FULL[Number(weekday) - 1]} ${time}`,
+                );
+                if (ok) setTitle("");
+                setBusy(false);
+              }}
+            >
+              В расписание
+            </Button>
+          </div>
+          {slots.length === 0 ? (
+            <button
+              type="button"
+              onClick={() =>
+                void run(async () => {
+                  for (const x of EXAMPLE_SLOTS) await addSlot(group.id, x);
+                }, `«${group.name}»: расписание по примеру — Вт 17:00 Math, Чт 18:30 Verbal, Пт 17:00 Практис`)
+              }
+              className="mt-3 rounded-full border border-gold/50 px-4 py-2 text-xs text-gold hover:bg-gold/10"
+            >
+              Заполнить примером: Вт Math · Чт Verbal · Пт Практис
+            </button>
+          ) : null}
+          <p className="mt-2 text-xs text-muted">Занятия появятся на странице «Занятия». Изменение расписания пересоздаёт будущие занятия, уже отмеченные не трогает.</p>
+        </>
+      ) : null}
+    </div>
   );
 }

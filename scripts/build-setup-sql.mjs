@@ -22,6 +22,7 @@ const ORDER = [
   "migration-summer.sql",
   "migration-books.sql",
   "migration-sat-1.sql",
+  "migration-sat-2.sql",
 ];
 
 const header = `-- Digital Passport TODAY Scholars — ВСЯ база одним файлом

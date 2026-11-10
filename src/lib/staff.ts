@@ -82,7 +82,7 @@ export function canManageSat(user: AuthUser | null | undefined): boolean {
 /** Стартовая страница после входа. */
 export function homeForRole(role: UserRole | undefined): string {
   if (role === "admin") return "/admin";
-  if (role === "staff") return "/admin/groups";
+  if (role === "staff") return "/admin/lessons";
   return "/dashboard";
 }
 
