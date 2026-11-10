@@ -16,3 +16,4 @@ $PSQL -c "delete from enrollments"
 $PSQL -f ../setup-all.sql > /dev/null
 $PSQL -tA -f sat-1-rights.sql | tail -1
 $PSQL -tA -f sat-2-rights.sql | tail -1
+$PSQL -tA -f sat-3-rights.sql | tail -1

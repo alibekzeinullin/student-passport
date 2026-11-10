@@ -18,6 +18,7 @@ const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
 /** Реже нужные разделы — под «Ещё». */
 const ADMIN_MORE: { href: string; label: string; show?: (u: AuthUser) => boolean }[] = [
   { href: "/admin/lessons", label: "SAT · занятия", show: canOpenGroups },
+  { href: "/admin/results", label: "SAT · результаты", show: canOpenGroups },
   { href: "/admin/groups", label: "SAT · группы", show: canOpenGroups },
   { href: "/admin/team", label: "Команда", show: isHead },
   { href: "/admin/accounts", label: "Аккаунты" },
@@ -83,9 +84,14 @@ export function AppHeader() {
                 {user.role === "admin" ? "Ученики" : user.role === "staff" ? "Занятия" : "Кабинет"}
               </NavLink>
               {user.role === "staff" ? (
-                <NavLink href="/admin/groups" active={pathname.startsWith("/admin/groups")}>
-                  Группы
-                </NavLink>
+                <>
+                  <NavLink href="/admin/results" active={pathname.startsWith("/admin/results")}>
+                    Результаты
+                  </NavLink>
+                  <NavLink href="/admin/groups" active={pathname.startsWith("/admin/groups")}>
+                    Группы
+                  </NavLink>
+                </>
               ) : null}
               {user.role === "admin" ? (
                 <>
