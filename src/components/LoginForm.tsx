@@ -1,5 +1,6 @@
 "use client";
 
+import { homeForRole } from "@/lib/staff";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -38,7 +39,7 @@ export function LoginForm() {
         setError(result.error ?? "Ошибка входа");
         return;
       }
-      router.push(result.user?.role === "admin" ? "/admin" : "/dashboard");
+      router.push(homeForRole(result.user?.role));
     } finally {
       setBusy(false);
     }
@@ -53,7 +54,7 @@ export function LoginForm() {
         setError(result.error ?? "Ошибка регистрации");
         return;
       }
-      router.push(result.user?.role === "admin" ? "/admin" : "/dashboard");
+      router.push(homeForRole(result.user?.role));
     } finally {
       setBusy(false);
     }

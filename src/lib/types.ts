@@ -1,4 +1,4 @@
-export type UserRole = "student" | "admin" | "parent";
+export type UserRole = "student" | "admin" | "staff" | "parent";
 
 export type AccessMode = "student" | "admin" | "parent";
 
@@ -230,6 +230,8 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   studentId?: string;
+  /** Роли сотрудника (руководитель, ментор, SAT…); у ученика пусто */
+  staffRoles?: string[];
   /** Временный пароль от ментора — попросить сменить при входе */
   mustChangePassword?: boolean;
 }

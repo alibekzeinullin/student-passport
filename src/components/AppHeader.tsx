@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
+import { canOpenGroups, homeForRole, isHead, STAFF_ROLE_LABELS, type StaffRole } from "@/lib/staff";
+import type { AuthUser } from "@/lib/types";
 
 /** Основные разделы ментора (кроме «Ученики» и «Посещаемость»). */
 const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
@@ -14,7 +16,9 @@ const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
 ];
 
 /** Реже нужные разделы — под «Ещё». */
-const ADMIN_MORE: { href: string; label: string }[] = [
+const ADMIN_MORE: { href: string; label: string; show?: (u: AuthUser) => boolean }[] = [
+  { href: "/admin/groups", label: "SAT · группы", show: canOpenGroups },
+  { href: "/admin/team", label: "Команда", show: isHead },
   { href: "/admin/accounts", label: "Аккаунты" },
   { href: "/admin/templates", label: "Шаблоны встреч" },
   { href: "/admin/activity", label: "История" },
@@ -23,6 +27,7 @@ const ADMIN_MORE: { href: string; label: string }[] = [
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Админ / Ментор",
+  staff: "Сотрудник",
   student: "Ученик",
   parent: "Родитель / Гость",
 };
@@ -38,11 +43,12 @@ export function AppHeader() {
     router.push("/");
   };
 
-  const homeHref = user
-    ? user.role === "admin"
-      ? "/admin"
-      : "/dashboard"
-    : "/";
+  const homeHref = user ? homeForRole(user.role) : "/";
+  const roleLabel = user
+    ? user.role !== "student" && user.staffRoles?.length
+      ? user.staffRoles.map((r) => STAFF_ROLE_LABELS[r as StaffRole] ?? r).join(", ")
+      : (ROLE_LABELS[user.role] ?? user.role)
+    : "";
 
   return (
     <header className="border-b border-white/[0.07] bg-[#121b29]/70 text-navy backdrop-blur-md">
@@ -73,7 +79,7 @@ export function AppHeader() {
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <nav aria-label="Разделы" className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
               <NavLink href={homeHref} active={pathname === homeHref || (user.role === "admin" && pathname.startsWith("/admin/students"))}>
-                {user.role === "admin" ? "Ученики" : "Кабинет"}
+                {user.role === "admin" ? "Ученики" : user.role === "staff" ? "Группы SAT" : "Кабинет"}
               </NavLink>
               {user.role === "admin" ? (
                 <>
@@ -96,16 +102,18 @@ export function AppHeader() {
                   </NavLink>
                 </>
               ) : null}
-              <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
-                Возможности
-              </NavLink>
-              {user.role === "admin" ? <MoreMenu pathname={pathname} /> : null}
+              {user.role !== "staff" ? (
+                <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
+                  Возможности
+                </NavLink>
+              ) : null}
+              {user.role === "admin" ? <MoreMenu pathname={pathname} user={user} /> : null}
             </nav>
             <div className="flex items-center gap-3">
             <div className="hidden min-w-0 text-right sm:block">
               <p className="text-sm font-medium">{user.name}</p>
               <p className="text-xs text-muted">
-                {ROLE_LABELS[user.role] ?? user.role}
+                {roleLabel}
               </p>
             </div>
             <Button
@@ -147,8 +155,9 @@ function NavLink({
   );
 }
 
-function MoreMenu({ pathname }: { pathname: string }) {
-  const active = ADMIN_MORE.some((i) => pathname.startsWith(i.href));
+function MoreMenu({ pathname, user }: { pathname: string; user: AuthUser }) {
+  const items = ADMIN_MORE.filter((i) => !i.show || i.show(user));
+  const active = items.some((i) => pathname.startsWith(i.href));
   return (
     <details className="group relative">
       <summary
@@ -159,7 +168,7 @@ function MoreMenu({ pathname }: { pathname: string }) {
         Ещё <span aria-hidden className="text-[10px] transition group-open:rotate-180">▼</span>
       </summary>
       <div className="absolute right-0 z-30 mt-2 w-48 rounded-2xl border border-white/10 bg-[#172235] p-1.5 shadow-xl">
-        {ADMIN_MORE.map((item) => (
+        {items.map((item) => (
           <Link
             key={item.href}
             href={item.href}

@@ -61,12 +61,19 @@ async function loadAuthUser(): Promise<AuthUser | null> {
   }
 
   const typed = profile as DbProfile;
+  let staffRoles: string[] = [];
+  if (typed.role !== "student") {
+    // Таблица появляется с migration-sat-1.sql; до этого просто нет ролей
+    const { data: roles } = await supabase.from("staff_roles").select("role").eq("user_id", user.id);
+    staffRoles = ((roles as { role: string }[] | null) ?? []).map((r) => r.role).sort();
+  }
   return {
     id: typed.id,
     name: typed.full_name || user.email || "User",
     email: user.email ?? "",
     role: typed.role,
     studentId: typed.student_id ?? undefined,
+    staffRoles,
     mustChangePassword: Boolean(user.user_metadata?.must_change_password),
   };
 }
@@ -92,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           prev.role === next.role &&
           prev.studentId === next.studentId &&
           prev.name === next.name &&
+          (prev.staffRoles ?? []).join() === (next.staffRoles ?? []).join() &&
           prev.mustChangePassword === next.mustChangePassword
         ) {
           return prev;

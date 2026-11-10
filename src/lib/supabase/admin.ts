@@ -25,8 +25,15 @@ export class HttpError extends Error {
   }
 }
 
-/** Проверяет, что запрос пришёл от залогиненного админа. */
-export async function requireAdmin(request: Request): Promise<SupabaseClient> {
+export interface Caller {
+  admin: SupabaseClient;
+  userId: string;
+  name: string;
+  roles: string[];
+}
+
+/** Кто прислал запрос: пользователь по токену + профиль + роли сотрудника. */
+export async function getCaller(request: Request): Promise<Caller & { profileRole: string; active: boolean }> {
   const admin = createAdminClient();
   if (!admin) {
     throw new HttpError(503, "no_service_key", "SUPABASE_SERVICE_ROLE_KEY не задан");
@@ -40,13 +47,51 @@ export async function requireAdmin(request: Request): Promise<SupabaseClient> {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("role")
+    .select("role, full_name")
     .eq("id", data.user.id)
     .maybeSingle();
-  if ((profile as { role?: string } | null)?.role !== "admin") {
+  const p = profile as { role?: string; full_name?: string } | null;
+
+  // Таблицы сотрудников появляются с migration-sat-1.sql — до неё работаем как раньше
+  let roles: string[] = [];
+  let active = true;
+  const { data: member, error: mErr } = await admin
+    .from("staff_members")
+    .select("active, staff_roles(role)")
+    .eq("user_id", data.user.id)
+    .maybeSingle();
+  if (!mErr && member) {
+    const m = member as { active: boolean; staff_roles: { role: string }[] | null };
+    active = m.active;
+    roles = (m.staff_roles ?? []).map((r) => r.role);
+  }
+
+  return {
+    admin,
+    userId: data.user.id,
+    name: p?.full_name || data.user.email || "",
+    roles,
+    profileRole: p?.role ?? "",
+    active,
+  };
+}
+
+/** Проверяет, что запрос пришёл от залогиненного админа (ментор или руководитель). */
+export async function requireAdmin(request: Request): Promise<SupabaseClient> {
+  const caller = await getCaller(request);
+  if (caller.profileRole !== "admin" || !caller.active) {
     throw new HttpError(403, "forbidden", "Только для ментора");
   }
-  return admin;
+  return caller.admin;
+}
+
+/** Только руководитель (страница «Команда»). */
+export async function requireHead(request: Request): Promise<Caller> {
+  const caller = await getCaller(request);
+  if (!caller.active || !caller.roles.includes("head")) {
+    throw new HttpError(403, "forbidden", "Только для руководителя");
+  }
+  return caller;
 }
 
 export function errorResponse(err: unknown): Response {

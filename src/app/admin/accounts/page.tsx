@@ -229,13 +229,14 @@ function CreateForm({
   const [className, setClassName] = useState("");
   const [school, setSchool] = useState("");
   const [educationSystem, setEducationSystem] = useState("Национальная");
+  const [course, setCourse] = useState<"mentoring" | "sat">("mentoring");
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     setBusy(true);
     onError("");
     try {
-      const data = await api<{ login: string; password: string }>("POST", { fullName, login, className, school, educationSystem });
+      const data = await api<{ login: string; password: string }>("POST", { fullName, login, className, school, educationSystem, course });
       await onCreated({ name: fullName, login: data.login, password: data.password });
     } catch (err) {
       onError((err as Error).message);
@@ -285,6 +286,16 @@ function CreateForm({
             <option key={s} value={s}>{s}</option>
           ))}
         </Select>
+      </div>
+      <div>
+        <Label htmlFor="acc-course">Курс</Label>
+        <Select id="acc-course" value={course} onChange={(e) => setCourse(e.target.value as "mentoring" | "sat")}>
+          <option value="mentoring">Менторство</option>
+          <option value="sat">Только SAT</option>
+        </Select>
+        {course === "sat" ? (
+          <p className="mt-1 text-xs text-muted">Добавьте ученика в группу на странице «SAT · группы». В менторском реестре его не будет.</p>
+        ) : null}
       </div>
       <div className="flex items-end">
         <Button type="button" disabled={busy || !fullName.trim() || !login.trim()} onClick={() => void submit()}>

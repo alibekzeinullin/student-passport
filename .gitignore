@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# локальный e2e-стек (tests/e2e/README.md)
+/tests/e2e/auth
+/tests/e2e/postgrest
+/tests/e2e/migrations/
+/tests/e2e/*.pem
+/tests/e2e/keys.env
+/tests/e2e/gotrue.env
+/tests/e2e/next.env
+/tests/e2e/old-setup.sql
+/tests/e2e/shots/
+/tests/e2e/*.log

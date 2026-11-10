@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { RequireAuth } from "@/components/RequireAuth";
 import { useAuth } from "@/context/AuthContext";
@@ -11,6 +11,7 @@ import { Label, Select } from "@/components/ui/Field";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { MonthlyBulkButton } from "@/components/MonthlyBulkButton";
 import { AttentionPanel } from "@/components/AttentionPanel";
+import { createClient } from "@/lib/supabase/client";
 import {
   buildMeetingsCsv,
   downloadTextFile,
@@ -55,7 +56,28 @@ function SortHeader({
 
 export default function AdminPage() {
   const { user } = useAuth();
-  const { students, loading, deleteStudent, updateStudent } = useStudents();
+  const { students: allStudents, loading, deleteStudent, updateStudent } = useStudents();
+  // Ученики только SAT (без менторства) не показываются в менторском реестре
+  const [satOnlyIds, setSatOnlyIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    let cancelled = false;
+    void createClient()
+      .from("enrollments")
+      .select("student_id, course_id")
+      .is("ends_on", null)
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return;
+        const courses = new Map<string, Set<string>>();
+        (data as { student_id: string; course_id: string }[]).forEach((e) => {
+          courses.set(e.student_id, (courses.get(e.student_id) ?? new Set()).add(e.course_id));
+        });
+        setSatOnlyIds(new Set([...courses].filter(([, c]) => !c.has("mentoring")).map(([id]) => id)));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [allStudents.length]);
+  const students = useMemo(() => allStudents.filter((s) => !satOnlyIds.has(s.id)), [allStudents, satOnlyIds]);
   const [classFilter, setClassFilter] = useState<string>(ALL);
   const [statusFilter, setStatusFilter] = useState<"active" | "paused" | "all">("active");
   const [togglingId, setTogglingId] = useState<string | null>(null);

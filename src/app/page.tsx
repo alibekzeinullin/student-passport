@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { LoginForm } from "@/components/LoginForm";
+import { homeForRole } from "@/lib/staff";
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -13,6 +14,8 @@ export default function HomePage() {
     if (loading || !user) return;
     if (user.role === "admin") {
       router.replace("/admin");
+    } else if (user.role === "staff") {
+      router.replace(homeForRole(user.role));
     } else if (user.role === "student") {
       router.replace("/dashboard");
     } else {

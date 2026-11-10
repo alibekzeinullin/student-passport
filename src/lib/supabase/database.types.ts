@@ -1,4 +1,4 @@
-export type DbRole = "student" | "admin";
+export type DbRole = "student" | "admin" | "staff";
 
 export interface DbProfile {
   id: string;

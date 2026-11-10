@@ -1,0 +1,96 @@
+# Ежедневная резервная копия базы Supabase.
+# Каждую ночь в 03:00 по Астане: pg_dump → сжатие → шифрование → артефакт на 90 дней.
+# Заодно база получает запрос каждую ночь и не «засыпает» на бесплатном тарифе.
+#
+# Один раз: GitHub → репозиторий → Settings → Secrets and variables → Actions → New repository secret
+#   SUPABASE_DB_URL  — строка подключения «Session pooler» (Supabase → Connect → Session pooler),
+#                      с вашим паролем базы вместо [YOUR-PASSWORD]
+#   BACKUP_PASSWORD  — любой длинный пароль для шифрования копий (сохраните его отдельно!)
+# Как восстановить — docs/BACKUP.md
+
+name: Резервная копия базы
+
+on:
+  schedule:
+    - cron: "0 21 * * *" # 21:00 UTC = 03:00 Астана
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Проверить секреты
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_PASSWORD" ]; then
+            echo "::error::Добавьте секреты SUPABASE_DB_URL и BACKUP_PASSWORD (см. docs/BACKUP.md)"
+            exit 1
+          fi
+
+      - name: Установить pg_dump 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Разбудить базу и снять копию
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          BIN=/usr/lib/postgresql/17/bin
+          STAMP=$(TZ=Asia/Almaty date +%Y-%m-%d)
+          mkdir -p out
+          # Будим базу (на случай паузы) и проверяем подключение
+          for i in 1 2 3; do
+            if $BIN/psql "$SUPABASE_DB_URL" -tAc "select 1" >/dev/null; then break; fi
+            echo "База не ответила, повтор через 30 с…"; sleep 30
+          done
+          # 1) Схема public целиком: таблицы, функции, права и данные
+          $BIN/pg_dump "$SUPABASE_DB_URL" --schema=public --no-owner --no-privileges --format=plain \
+            > "out/public-$STAMP.sql"
+          # 2) Аккаунты (логины и хэши паролей) — только данные
+          $BIN/pg_dump "$SUPABASE_DB_URL" --data-only --table=auth.users --table=auth.identities \
+            --no-owner --no-privileges > "out/auth-$STAMP.sql"
+          # Счётчики строк — для проверки, что копия не пустая
+          $BIN/psql "$SUPABASE_DB_URL" -tA -F ';' -c "
+            select relname, n_live_tup from pg_stat_user_tables
+            where schemaname = 'public' order by relname" > "out/row-counts-$STAMP.txt"
+          size=$(stat -c %s "out/public-$STAMP.sql")
+          echo "Размер копии: $size байт"
+          if [ "$size" -lt 10000 ]; then echo "::error::Копия подозрительно маленькая"; exit 1; fi
+          grep -q "CREATE TABLE public.students" "out/public-$STAMP.sql" || { echo "::error::В копии нет таблицы students"; exit 1; }
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+
+      - name: Сжать и зашифровать
+        env:
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          tar -czf "backup-$STAMP.tar.gz" -C out .
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 -o "backup-$STAMP.tar.gz.gpg" "backup-$STAMP.tar.gz" <<< "$BACKUP_PASSWORD"
+          rm -rf out "backup-$STAMP.tar.gz"
+          ls -lh "backup-$STAMP.tar.gz.gpg"
+
+      - name: Сохранить на 90 дней
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.STAMP }}
+          path: backup-${{ env.STAMP }}.tar.gz.gpg
+          retention-days: 90
+          compression-level: 0
+          if-no-files-found: error

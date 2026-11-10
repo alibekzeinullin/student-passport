@@ -44,12 +44,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
 <summary>Отдельные файлы (для справки)</summary>
 
 `setup-all.sql` собирается командой `node scripts/build-setup-sql.mjs` из файлов в таком порядке:
-schema.sql → migration-monthly-vision.sql → migration-delete-student.sql → migration-security.sql → migration-meetings.sql → migration-platform.sql → migration-pause.sql → migration-attendance.sql → migration-schedule.sql → migration-avatars.sql → migration-student-edit.sql → migration-activity.sql → migration-workflow.sql (эссе и шаблоны встреч).
+schema.sql → migration-monthly-vision.sql → migration-delete-student.sql → migration-security.sql → migration-meetings.sql → migration-platform.sql → migration-pause.sql → migration-attendance.sql → migration-schedule.sql → migration-avatars.sql → migration-student-edit.sql → migration-activity.sql → migration-workflow.sql (эссе и шаблоны встреч) → … → migration-books.sql → migration-sat-1.sql (SAT: сотрудники, роли, группы; откат — rollback-sat-1.sql).
 
 </details>
 
 ## Резервные копии
 
+- Автоматически: каждую ночь GitHub Actions сохраняет зашифрованную копию на 90 дней — настройка в `docs/BACKUP.md`.
 - На сайте: **Ещё → База и копии → «Скачать всё (.zip)»** — CSV по каждой таблице + полный backup.json. Делайте раз в месяц.
 - В Supabase: **Database → Backups** (на бесплатном тарифе может быть недоступно для скачивания).
 

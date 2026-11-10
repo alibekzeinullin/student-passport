@@ -3,19 +3,26 @@
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import type { UserRole } from "@/lib/types";
+import type { AuthUser, UserRole } from "@/lib/types";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
+import { homeForRole } from "@/lib/staff";
 
 export function RequireAuth({
   role,
+  allow,
   children,
 }: {
-  role?: UserRole;
+  /** Одна роль или несколько допустимых */
+  role?: UserRole | UserRole[];
+  /** Дополнительная проверка (например, только руководитель) */
+  allow?: (user: AuthUser) => boolean;
   children: ReactNode;
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const roles = role ? (Array.isArray(role) ? role : [role]) : null;
+  const permitted = (u: AuthUser) => (!roles || roles.includes(u.role)) && (!allow || allow(u));
 
   useEffect(() => {
     if (loading) return;
@@ -23,15 +30,10 @@ export function RequireAuth({
       router.replace("/");
       return;
     }
-    if (role && user.role !== role) {
-      if (user.role === "admin") {
-        router.replace("/admin");
-      } else if (user.role === "student") {
-        router.replace("/dashboard");
-      } else {
-        router.replace("/");
-      }
+    if (!permitted(user)) {
+      router.replace(homeForRole(user.role));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, loading, role, router, pathname]);
 
   if (loading) {
@@ -42,7 +44,7 @@ export function RequireAuth({
     );
   }
   if (!user) return null;
-  if (role && user.role !== role) return null;
+  if (!permitted(user)) return null;
   if (user.mustChangePassword) return <ForcePasswordChange />;
 
   return <>{children}</>;

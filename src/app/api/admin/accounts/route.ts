@@ -1,17 +1,8 @@
 import { errorResponse, HttpError, requireAdmin } from "@/lib/supabase/admin";
 import { emailToLogin, loginToEmail, type AccountRow } from "@/lib/accounts";
-import { randomInt } from "node:crypto";
+import { generatePassword } from "@/lib/passwords";
 
 export const dynamic = "force-dynamic";
-
-/** Временный пароль: легко продиктовать, без похожих символов (0/O, 1/l). */
-function generatePassword(): string {
-  const words = ["sky", "sun", "star", "moon", "river", "peak", "wind", "leaf", "wave", "fox", "owl", "bear"];
-  const caps = "ABCDEFGHJKMNPQRSTUVWXYZ";
-  const word = words[randomInt(words.length)];
-  const digits = String(randomInt(1000, 10000));
-  return `${caps[randomInt(caps.length)]}${word}-${digits}`;
-}
 
 interface StudentRow {
   id: string;
@@ -87,6 +78,8 @@ export async function POST(request: Request) {
       className?: string;
       school?: string;
       educationSystem?: string;
+      /** mentoring — менторство (по умолчанию), sat — только SAT (группу назначают в «SAT · группы») */
+      course?: "mentoring" | "sat";
     };
     const fullName = body.fullName?.trim() ?? "";
     const login = body.login?.trim().toLowerCase() ?? "";
@@ -118,6 +111,17 @@ export async function POST(request: Request) {
       }
       throw error;
     }
+    if (body.course !== "sat" && data.user) {
+      // Зачисление на менторство (таблица появляется с migration-sat-1.sql; без неё — пропускаем)
+      const { data: profile } = await admin.from("profiles").select("student_id").eq("id", data.user.id).maybeSingle();
+      const studentId = (profile as { student_id?: string | null } | null)?.student_id;
+      if (studentId) {
+        const { error: eErr } = await admin.from("enrollments").insert({ student_id: studentId, course_id: "mentoring" });
+        if (eErr && !eErr.message.includes("does not exist") && !eErr.message.includes("Could not find")) {
+          console.error("mentoring enrollment", eErr);
+        }
+      }
+    }
     return Response.json({ userId: data.user?.id, login: emailToLogin(loginToEmail(login)), password });
   } catch (err) {
     return errorResponse(err);
@@ -135,8 +139,8 @@ export async function PATCH(request: Request) {
     if (getErr || !target.user) throw new HttpError(404, "not_found", "Аккаунт не найден");
 
     const { data: profile } = await admin.from("profiles").select("role").eq("id", body.userId).maybeSingle();
-    if ((profile as { role?: string } | null)?.role === "admin") {
-      throw new HttpError(403, "forbidden", "Пароль ментора здесь не сбрасывается");
+    if ((profile as { role?: string } | null)?.role !== "student") {
+      throw new HttpError(403, "forbidden", "Здесь сбрасываются только пароли учеников — сотрудников см. «Команда»");
     }
 
     const password = generatePassword();
