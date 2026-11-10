@@ -214,6 +214,7 @@ with sync_playwright() as p:
     login(page, "timur", "Stud-1234")
     page.wait_for_url(BASE + "/dashboard")
     expect(page.get_by_role("tab", name="Менторство")).to_be_visible()
+    ok(page.get_by_role("link", name="Эссе", exact=True).count() == 1, "у ученика менторства «Эссе» в меню есть")
     page.get_by_role("tab", name="SAT").click()
     expect(page.get_by_role("tab", name="SAT")).to_have_attribute("aria-selected", "true")
     expect(page.get_by_role("tab", name="Менторство")).to_have_attribute("aria-selected", "false")
@@ -230,6 +231,13 @@ with sync_playwright() as p:
     page.wait_for_url(BASE + "/dashboard")
     expect(page.get_by_text("До официальной сдачи SAT")).to_be_visible()
     ok(page.get_by_role("tab").count() == 0, "у SAT-only ученика нет вкладки менторства")
+    for name in ["Эссе", "Проекты", "Возможности"]:
+        ok(page.get_by_role("link", name=name, exact=True).count() == 0, f"у SAT-only ученика нет «{name}» в меню")
+    page.goto(BASE + "/dashboard/essays")
+    page.wait_for_url(BASE + "/dashboard")
+    page.goto(BASE + "/opportunities")
+    page.wait_for_url(BASE + "/dashboard")
+    ok(True, "SAT-only ученика с менторских страниц возвращает в кабинет")
     logout(page)
 
     # 10. Руководитель: перевод, замена, отключение

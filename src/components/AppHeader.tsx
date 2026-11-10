@@ -124,15 +124,19 @@ export function AppHeader() {
                   <NavLink href="/dashboard" active={pathname === "/dashboard"}>
                     Кабинет
                   </NavLink>
-                  <NavLink href="/dashboard/essays" active={pathname.startsWith("/dashboard/essays")}>
-                    Эссе
-                  </NavLink>
-                  <NavLink href="/dashboard/works" active={pathname.startsWith("/dashboard/works")}>
-                    Проекты
-                  </NavLink>
-                  <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
-                    Возможности
-                  </NavLink>
+                  {user.hasMentoring !== false ? (
+                    <>
+                      <NavLink href="/dashboard/essays" active={pathname.startsWith("/dashboard/essays")}>
+                        Эссе
+                      </NavLink>
+                      <NavLink href="/dashboard/works" active={pathname.startsWith("/dashboard/works")}>
+                        Проекты
+                      </NavLink>
+                      <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
+                        Возможности
+                      </NavLink>
+                    </>
+                  ) : null}
                 </>
               ) : null}
               {user.role === "admin" ? <MoreMenu pathname={pathname} user={user} /> : null}

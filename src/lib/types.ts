@@ -232,6 +232,8 @@ export interface AuthUser {
   studentId?: string;
   /** Роли сотрудника (руководитель, ментор, SAT…); у ученика пусто */
   staffRoles?: string[];
+  /** Ученик ходит на менторство (или ни на что не зачислен — все прежние ученики). Только SAT — false */
+  hasMentoring?: boolean;
   /** Временный пароль от ментора — попросить сменить при входе */
   mustChangePassword?: boolean;
 }

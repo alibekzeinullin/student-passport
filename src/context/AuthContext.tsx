@@ -67,6 +67,18 @@ async function loadAuthUser(): Promise<AuthUser | null> {
     const { data: roles } = await supabase.from("staff_roles").select("role").eq("user_id", user.id);
     staffRoles = ((roles as { role: string }[] | null) ?? []).map((r) => r.role).sort();
   }
+  let hasMentoring = true;
+  if (typed.role === "student" && typed.student_id) {
+    // Таблица зачислений появляется с migration-sat-1.sql; без неё — все ученики менторские
+    const { data: enr, error: enrErr } = await supabase
+      .from("enrollments")
+      .select("course_id")
+      .eq("student_id", typed.student_id)
+      .is("ends_on", null);
+    if (!enrErr && enr && enr.length > 0) {
+      hasMentoring = (enr as { course_id: string }[]).some((e) => e.course_id === "mentoring");
+    }
+  }
   return {
     id: typed.id,
     name: typed.full_name || user.email || "User",
@@ -74,6 +86,7 @@ async function loadAuthUser(): Promise<AuthUser | null> {
     role: typed.role,
     studentId: typed.student_id ?? undefined,
     staffRoles,
+    hasMentoring,
     mustChangePassword: Boolean(user.user_metadata?.must_change_password),
   };
 }
@@ -99,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           prev.role === next.role &&
           prev.studentId === next.studentId &&
           prev.name === next.name &&
+          prev.hasMentoring === next.hasMentoring &&
           (prev.staffRoles ?? []).join() === (next.staffRoles ?? []).join() &&
           prev.mustChangePassword === next.mustChangePassword
         ) {

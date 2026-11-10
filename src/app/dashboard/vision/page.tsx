@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { RequireAuth } from "@/components/RequireAuth";
+import { canOpenMentoring } from "@/lib/staff";
 import { VisionMapView } from "@/components/VisionMapView";
 import { useAuth } from "@/context/AuthContext";
 import { useStudents } from "@/context/StudentsContext";
@@ -17,7 +18,7 @@ export default function StudentVisionPage() {
   const [draft, setDraft] = useState<typeof student>(undefined);
 
   return (
-    <RequireAuth role="student">
+    <RequireAuth role="student" allow={canOpenMentoring}>
       <div className="sp-rise mx-auto min-w-0 max-w-6xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
         <Link href="/dashboard" className="text-sm text-muted underline-offset-2 hover:text-navy hover:underline">
           ← В кабинет

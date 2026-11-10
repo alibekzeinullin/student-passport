@@ -79,6 +79,11 @@ export function canManageSat(user: AuthUser | null | undefined): boolean {
   return isHead(user) || Boolean(user?.staffRoles?.includes("sat_senior_teacher"));
 }
 
+/** Менторские разделы (эссе, проекты, Vision, возможности): сотрудникам и ученикам менторства, не ученикам «только SAT». */
+export function canOpenMentoring(user: AuthUser | null | undefined): boolean {
+  return Boolean(user) && (user?.role !== "student" || user?.hasMentoring !== false);
+}
+
 /** Стартовая страница после входа. */
 export function homeForRole(role: UserRole | undefined): string {
   if (role === "admin") return "/admin";

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { RequireAuth } from "@/components/RequireAuth";
+import { canOpenMentoring } from "@/lib/staff";
 import { WorksBoard } from "@/components/works/WorksBoard";
 import { useAuth } from "@/context/AuthContext";
 
 export default function StudentWorksPage() {
   const { user } = useAuth();
   return (
-    <RequireAuth role="student">
+    <RequireAuth role="student" allow={canOpenMentoring}>
       <div className="sp-rise mx-auto min-w-0 max-w-4xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
         <Link href="/dashboard" className="text-sm text-muted underline-offset-2 hover:text-navy hover:underline">
           ← В кабинет
