@@ -337,12 +337,14 @@ function StudentPanel({ student, results, run, onClose }: { student: RosterRow; 
           <Button
             type="button"
             disabled={!body.trim()}
-            onClick={async () => {
-              if (await run(() => addComment(student.student_id, visibility, body), "Комментарий добавлен")) {
+            onClick={() =>
+              void run(async () => {
+                await addComment(student.student_id, visibility, body);
+                // очищаем сразу, до перезагрузки — чтобы не стереть уже начатый следующий комментарий
                 setBody("");
                 setVersion((v) => v + 1);
-              }
-            }}
+              }, "Комментарий добавлен")
+            }
           >
             Добавить
           </Button>

@@ -15,15 +15,23 @@ const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
   { href: "/admin/summary", label: "Отчёт" },
 ];
 
+/** Разделы SAT — одинаковые для руководителя и сотрудников SAT. */
+const SAT_MAIN: { href: string; label: string }[] = [
+  { href: "/admin/lessons", label: "Занятия" },
+  { href: "/admin/results", label: "Результаты" },
+  { href: "/admin/groups", label: "Группы" },
+];
+
+function isSatPath(pathname: string): boolean {
+  return SAT_MAIN.some((i) => pathname.startsWith(i.href));
+}
+
 /** Реже нужные разделы — под «Ещё». */
-const ADMIN_MORE: { href: string; label: string; show?: (u: AuthUser) => boolean }[] = [
-  { href: "/admin/lessons", label: "SAT · занятия", show: canOpenGroups },
-  { href: "/admin/results", label: "SAT · результаты", show: canOpenGroups },
-  { href: "/admin/groups", label: "SAT · группы", show: canOpenGroups },
+const ADMIN_MORE: { href: string; label: string; show?: (u: AuthUser) => boolean; mentoringOnly?: boolean }[] = [
   { href: "/admin/team", label: "Команда", show: isHead },
   { href: "/admin/accounts", label: "Аккаунты" },
-  { href: "/admin/templates", label: "Шаблоны встреч" },
-  { href: "/admin/activity", label: "История" },
+  { href: "/admin/templates", label: "Шаблоны встреч", mentoringOnly: true },
+  { href: "/admin/activity", label: "История", mentoringOnly: true },
   { href: "/admin/system", label: "База и копии" },
 ];
 
@@ -52,49 +60,53 @@ export function AppHeader() {
       : (ROLE_LABELS[user.role] ?? user.role)
     : "";
 
+  const showSwitch = Boolean(user && user.role === "admin" && canOpenGroups(user));
+
   return (
     <header className="border-b border-white/[0.07] bg-[#121b29]/70 text-navy backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
-        <div className="min-w-0">
-          <Link
-            href={isParentGuest ? "/" : homeHref}
-            className="flex min-w-0 items-center gap-3"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-shield.png" alt="" width={34} height={40} className="h-10 w-auto shrink-0" />
-            <span className="min-w-0">
-              <span className="block text-sm font-medium tracking-[0.12em] sm:text-[15px]">
-                TODAY SCHOLARS
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 py-3">
+          <div className="flex min-w-0 items-center gap-5">
+            <Link href={isParentGuest ? "/" : homeHref} className="flex min-w-0 items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-shield.png" alt="" width={34} height={40} className="h-10 w-auto shrink-0" />
+              <span className="min-w-0">
+                <span className="block whitespace-nowrap text-sm font-medium tracking-[0.12em] sm:text-[15px]">TODAY SCHOLARS</span>
+                <span className="block text-xs font-light text-muted sm:text-sm">Digital Passport</span>
               </span>
-              <span className="block text-xs font-light text-muted sm:text-sm">
-                Digital Passport
-              </span>
-            </span>
-          </Link>
+            </Link>
+            {showSwitch ? <SectionSwitch sat={isSatPath(pathname)} /> : null}
+          </div>
+
+          {isParentGuest ? (
+            <p className="shrink-0 text-[11px] text-muted sm:text-xs">Родитель · просмотр</p>
+          ) : user ? (
+            <div className="flex items-center gap-3">
+              <div className="hidden min-w-0 text-right sm:block">
+                <p className="text-sm font-medium">{user.name}</p>
+                <p className="text-xs text-muted">{roleLabel}</p>
+              </div>
+              <Button variant="secondary" className="shrink-0" onClick={handleLogout}>
+                Выйти
+              </Button>
+            </div>
+          ) : null}
         </div>
 
-        {isParentGuest ? (
-          <p className="shrink-0 text-[11px] text-muted sm:text-xs">
-            Родитель · просмотр
-          </p>
-        ) : user ? (
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <nav aria-label="Разделы" className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-              <NavLink href={homeHref} active={pathname === homeHref || (user.role === "admin" && pathname.startsWith("/admin/students"))}>
-                {user.role === "admin" ? "Ученики" : user.role === "staff" ? "Занятия" : "Кабинет"}
-              </NavLink>
-              {user.role === "staff" ? (
-                <>
-                  <NavLink href="/admin/results" active={pathname.startsWith("/admin/results")}>
-                    Результаты
+        {!isParentGuest && user ? (
+          <div className="-mb-px">
+            <nav aria-label="Разделы" className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+              {user.role === "staff" || (user.role === "admin" && isSatPath(pathname)) ? (
+                SAT_MAIN.map((item) => (
+                  <NavLink key={item.href} href={item.href} active={pathname.startsWith(item.href)}>
+                    {item.label}
                   </NavLink>
-                  <NavLink href="/admin/groups" active={pathname.startsWith("/admin/groups")}>
-                    Группы
-                  </NavLink>
-                </>
-              ) : null}
-              {user.role === "admin" ? (
+                ))
+              ) : user.role === "admin" ? (
                 <>
+                  <NavLink href="/admin" active={pathname === "/admin" || pathname.startsWith("/admin/students")}>
+                    Ученики
+                  </NavLink>
                   <NavLink href="/admin/attendance" active={pathname.startsWith("/admin/attendance")}>
                     Посещаемость
                   </NavLink>
@@ -103,39 +115,28 @@ export function AppHeader() {
                       {item.label}
                     </NavLink>
                   ))}
+                  <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
+                    Возможности
+                  </NavLink>
                 </>
               ) : user.role === "student" ? (
-<>
+                <>
+                  <NavLink href="/dashboard" active={pathname === "/dashboard"}>
+                    Кабинет
+                  </NavLink>
                   <NavLink href="/dashboard/essays" active={pathname.startsWith("/dashboard/essays")}>
                     Эссе
                   </NavLink>
                   <NavLink href="/dashboard/works" active={pathname.startsWith("/dashboard/works")}>
                     Проекты
                   </NavLink>
+                  <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
+                    Возможности
+                  </NavLink>
                 </>
-              ) : null}
-              {user.role !== "staff" ? (
-                <NavLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
-                  Возможности
-                </NavLink>
               ) : null}
               {user.role === "admin" ? <MoreMenu pathname={pathname} user={user} /> : null}
             </nav>
-            <div className="flex items-center gap-3">
-            <div className="hidden min-w-0 text-right sm:block">
-              <p className="text-sm font-medium">{user.name}</p>
-              <p className="text-xs text-muted">
-                {roleLabel}
-              </p>
-            </div>
-            <Button
-              variant="secondary"
-              className="ml-auto shrink-0 sm:ml-0"
-              onClick={handleLogout}
-            >
-              Выйти
-            </Button>
-            </div>
           </div>
         ) : null}
       </div>
@@ -156,7 +157,7 @@ function NavLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`border-b-2 py-1.5 transition ${
+      className={`border-b-2 pb-2.5 pt-1 transition ${
         active
           ? "border-gold text-navy"
           : "border-transparent text-muted hover:text-navy"
@@ -168,12 +169,13 @@ function NavLink({
 }
 
 function MoreMenu({ pathname, user }: { pathname: string; user: AuthUser }) {
-  const items = ADMIN_MORE.filter((i) => !i.show || i.show(user));
+  const sat = isSatPath(pathname);
+  const items = ADMIN_MORE.filter((i) => (!i.show || i.show(user)) && !(sat && i.mentoringOnly));
   const active = items.some((i) => pathname.startsWith(i.href));
   return (
     <details className="group relative">
       <summary
-        className={`flex cursor-pointer list-none items-center gap-1 border-b-2 py-1.5 transition [&::-webkit-details-marker]:hidden ${
+        className={`flex cursor-pointer list-none items-center gap-1 border-b-2 pb-2.5 pt-1 transition [&::-webkit-details-marker]:hidden ${
           active ? "border-gold text-navy" : "border-transparent text-muted hover:text-navy"
         }`}
       >
@@ -195,5 +197,29 @@ function MoreMenu({ pathname, user }: { pathname: string; user: AuthUser }) {
         ))}
       </div>
     </details>
+  );
+}
+
+/** Переключатель «Менторство | SAT» для руководителя: у каждого направления — свои разделы. */
+function SectionSwitch({ sat }: { sat: boolean }) {
+  return (
+    <div role="tablist" aria-label="Направление" className="flex rounded-full border border-white/10 bg-white/[0.03] p-0.5 text-xs">
+      {(
+        [
+          ["/admin", "Менторство", !sat],
+          ["/admin/lessons", "SAT", sat],
+        ] as const
+      ).map(([href, label, on]) => (
+        <Link
+          key={href}
+          href={href}
+          role="tab"
+          aria-selected={on}
+          className={`rounded-full px-3.5 py-1.5 font-semibold tracking-wide transition ${on ? "bg-gold text-gold-ink" : "text-muted hover:text-navy"}`}
+        >
+          {label}
+        </Link>
+      ))}
+    </div>
   );
 }
