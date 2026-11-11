@@ -78,8 +78,23 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
           .order("last_name", { ascending: true });
 
         if (error) throw error;
+        // Менторская часть — только ученики менторства: «только SAT» живут в разделе SAT
+        const satOnly = new Set<string>();
+        const { data: enr, error: enrErr } = await supabase
+          .from("enrollments")
+          .select("student_id, course_id")
+          .is("ends_on", null);
+        if (!enrErr && enr) {
+          const courses = new Map<string, Set<string>>();
+          (enr as { student_id: string; course_id: string }[]).forEach((e) => {
+            courses.set(e.student_id, (courses.get(e.student_id) ?? new Set()).add(e.course_id));
+          });
+          courses.forEach((c, id) => {
+            if (!c.has("mentoring")) satOnly.add(id);
+          });
+        }
         setStudents(
-          ((data as DbStudent[]) ?? []).map(mapDbStudentToProfile),
+          ((data as DbStudent[]) ?? []).filter((row) => !satOnly.has(row.id)).map(mapDbStudentToProfile),
         );
       } else if (userRole === "student" && userStudentId) {
         const { data, error } = await supabase

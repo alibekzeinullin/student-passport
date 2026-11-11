@@ -151,6 +151,10 @@ with sync_playwright() as p:
     page.wait_for_timeout(800)
     ok(page.get_by_text("Сатова").count() == 0, "SAT-only ученик скрыт из менторского реестра")
     ok(page.get_by_text("Ахметов").count() > 0, "ученик менторство+SAT остаётся в реестре")
+    page.goto(BASE + "/admin/attendance")
+    expect(page.get_by_text("Дуйсенова", exact=False).first).to_be_visible()
+    page.wait_for_timeout(800)
+    ok(page.get_by_text("Сатова", exact=False).count() == 0, "SAT-only ученика нет в менторской посещаемости")
     logout(page)
 
     # 8. Учитель
