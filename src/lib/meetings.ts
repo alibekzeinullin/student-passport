@@ -63,6 +63,10 @@ export interface MeetingMentorNotes {
   reflectionGoal: number | null;
   reflectionValue: number | null;
   reflectionComment: string;
+  /** Отчёт о встрече для родителей — уходит только в месячный отчёт */
+  parentWin: string;
+  parentFocus: string;
+  parentHelp: string;
 }
 
 export interface MeetingWithNotes extends Meeting {
@@ -76,6 +80,9 @@ export const EMPTY_NOTES: MeetingMentorNotes = {
   reflectionGoal: null,
   reflectionValue: null,
   reflectionComment: "",
+  parentWin: "",
+  parentFocus: "",
+  parentHelp: "",
 };
 
 export interface DbMeeting {
@@ -99,6 +106,9 @@ interface DbMeetingNotes {
   reflection_goal: number | null;
   reflection_value: number | null;
   reflection_comment: string;
+  parent_win?: string | null;
+  parent_focus?: string | null;
+  parent_help?: string | null;
 }
 
 export const MEETING_COLUMNS =
@@ -128,6 +138,9 @@ function mapNotes(row: DbMeetingNotes | undefined): MeetingMentorNotes {
     reflectionGoal: row.reflection_goal,
     reflectionValue: row.reflection_value,
     reflectionComment: row.reflection_comment ?? "",
+    parentWin: row.parent_win ?? "",
+    parentFocus: row.parent_focus ?? "",
+    parentHelp: row.parent_help ?? "",
   };
 }
 
@@ -256,6 +269,9 @@ export async function saveMeeting(
       reflection_goal: clampRating(notes.reflectionGoal),
       reflection_value: clampRating(notes.reflectionValue),
       reflection_comment: notes.reflectionComment,
+      parent_win: notes.parentWin.trim(),
+      parent_focus: notes.parentFocus.trim(),
+      parent_help: notes.parentHelp.trim(),
     });
   if (notesError) throw notesError;
 
