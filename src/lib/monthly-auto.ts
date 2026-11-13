@@ -21,7 +21,7 @@ export function previousMonthPrefix(now = new Date()): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-async function all<T>(admin: SupabaseClient, table: string, columns = "*"): Promise<T[]> {
+export async function all<T>(admin: SupabaseClient, table: string, columns = "*"): Promise<T[]> {
   const rows: T[] = [];
   for (let from = 0; from < 100000; from += 1000) {
     const { data, error } = await admin.from(table).select(columns).range(from, from + 999);

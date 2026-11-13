@@ -24,6 +24,7 @@ const ORDER = [
   "migration-sat-1.sql",
   "migration-sat-2.sql",
   "migration-sat-3.sql",
+  "migration-parent-reports.sql",
 ];
 
 const header = `-- Digital Passport TODAY Scholars — ВСЯ база одним файлом

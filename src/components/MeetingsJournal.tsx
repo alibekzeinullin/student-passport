@@ -444,6 +444,16 @@ function MeetingCard({
           {meeting.homework ? (
             <Detail label="Домашнее задание" text={meeting.homework} />
           ) : null}
+          {showMentorNotes && (meeting.notes.parentWin || meeting.notes.parentFocus || meeting.notes.parentHelp) ? (
+            <div className="rounded-xl bg-gold/[0.07] px-3 py-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">Для родителей 🔒 (в месячный отчёт)</p>
+              <ul className="mt-1 space-y-0.5 text-navy">
+                {meeting.notes.parentWin ? <li>Получилось: {meeting.notes.parentWin}</li> : null}
+                {meeting.notes.parentFocus ? <li>Работаем над: {meeting.notes.parentFocus}</li> : null}
+                {meeting.notes.parentHelp ? <li>Помочь дома: {meeting.notes.parentHelp}</li> : null}
+              </ul>
+            </div>
+          ) : null}
           {showMentorNotes && self !== null ? (
             <div className="rounded-xl bg-navy/5 px-3 py-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -710,6 +720,34 @@ function MeetingForm({
           />
         </div>
       </FormBlock>
+
+      {/* Отчёт для родителей — только индивидуальные встречи */}
+      {meeting.format === "individual" ? (
+        <FormBlock title="Отчёт о встрече для родителей" privateNote="уйдёт в месячный отчёт">
+          <p className="-mt-1 text-xs text-muted">
+            По одной-две фразы. Родители увидят это только в месячном отчёте, который вы отправите со страницы «Родителям».
+          </p>
+          {(
+            [
+              ["parentWin", "Что получилось", "Сам выбрал тему проекта, увереннее рассказывает"],
+              ["parentFocus", "Над чем работаем", "Структура эссе — вступление и вывод"],
+              ["parentHelp", "Чем помочь дома (необязательно)", "Спросите, как продвигается проект"],
+            ] as const
+          ).map(([key, label, placeholder]) => (
+            <div key={key}>
+              <Label>{label}</Label>
+              <FieldTools value={notes[key]} onChange={(v) => patchNotes({ [key]: v })} />
+              <Textarea
+                value={notes[key]}
+                onChange={(e) => patchNotes({ [key]: e.target.value })}
+                placeholder={placeholder}
+                className="min-h-12"
+                aria-label={label}
+              />
+            </div>
+          ))}
+        </FormBlock>
+      ) : null}
 
       {/* 5. Самооценка */}
       <FormBlock title="5. Самооценка" privateNote="только вы">

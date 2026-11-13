@@ -13,6 +13,7 @@ const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
   { href: "/admin/essays", label: "Эссе" },
   { href: "/admin/books", label: "Книги" },
   { href: "/admin/summary", label: "Отчёт" },
+  { href: "/admin/reports", label: "Родителям" },
 ];
 
 /** Разделы SAT — одинаковые для руководителя и сотрудников SAT. */

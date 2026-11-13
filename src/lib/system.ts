@@ -27,6 +27,7 @@ export const CHECKS: { label: string; table: string; column?: string; file: stri
   { label: "SAT: потоки, группы, зачисления", table: "enrollments", file: "migration-sat-1.sql" },
   { label: "SAT: расписание и занятия", table: "lesson_marks", file: "migration-sat-2.sql" },
   { label: "SAT: моки, практисы, комментарии", table: "sat_comments", file: "migration-sat-3.sql" },
+  { label: "Отчёты родителям и Telegram", table: "parent_reports", file: "migration-parent-reports.sql" },
 ];
 
 export interface CheckResult {
@@ -79,6 +80,8 @@ export const BACKUP_TABLES = [
   "practices",
   "practice_results",
   "sat_comments",
+  "student_telegram",
+  "parent_reports",
 ] as const;
 
 async function fetchAll(table: string): Promise<Record<string, unknown>[] | null> {
