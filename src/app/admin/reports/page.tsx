@@ -30,6 +30,7 @@ interface StudentData {
   telegram: { linked: boolean; title: string; code: string | null };
   facts: ReportFacts;
   notes: MeetingParentNote[];
+  next: string | null;
   report: ReportRow | null;
 }
 
@@ -365,6 +366,7 @@ function StudentCard({
     facts: s.facts,
     notes: s.notes,
     link: s.parentLink,
+    next: s.next,
   });
   const filledNotes = s.notes.filter((n) => n.win || n.focus || n.help);
   const sent = s.report?.status === "sent";

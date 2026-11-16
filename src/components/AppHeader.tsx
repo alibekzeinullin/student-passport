@@ -31,6 +31,7 @@ function isSatPath(pathname: string): boolean {
 const ADMIN_MORE: { href: string; label: string; show?: (u: AuthUser) => boolean; mentoringOnly?: boolean }[] = [
   { href: "/admin/team", label: "Команда", show: isHead },
   { href: "/admin/accounts", label: "Аккаунты" },
+  { href: "/admin/plan", label: "План года", mentoringOnly: true },
   { href: "/admin/templates", label: "Шаблоны встреч", mentoringOnly: true },
   { href: "/admin/activity", label: "История", mentoringOnly: true },
   { href: "/admin/system", label: "База и копии" },
