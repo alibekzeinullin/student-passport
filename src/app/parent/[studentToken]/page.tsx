@@ -16,6 +16,7 @@ import { logParentVisit } from "@/lib/activity";
 import { StudentOverview } from "@/components/StudentOverview";
 import { TermGradesChart } from "@/components/TermGradesChart";
 import { WorksBoard } from "@/components/works/WorksBoard";
+import { ParentPlanSection } from "@/components/ParentPlanSection";
 
 export default function ParentHubPage({
   params,
@@ -97,6 +98,8 @@ export default function ParentHubPage({
         </span>
         <span className="text-gold transition group-hover:translate-x-1" aria-hidden>→</span>
       </Link>
+
+      <ParentPlanSection className={student.className} />
 
       <StudentOverview student={student} mode="parent" parentToken={studentToken} />
 

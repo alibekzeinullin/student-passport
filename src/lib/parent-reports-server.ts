@@ -7,6 +7,7 @@ import { mapDeadline, type DbDeadline } from "@/lib/deadlines";
 import { mapSubmission, type DbSubmission } from "@/lib/essays";
 import { collectMonthFacts } from "@/lib/monthly-draft";
 import { all } from "@/lib/monthly-auto";
+import { nextStepText, type PlanEntry, PLAN_COLUMNS } from "@/lib/program-plan";
 import { buildReportMessage, type MeetingParentNote, type ReportFacts } from "@/lib/parent-report";
 
 export interface ReportRow {
@@ -32,6 +33,8 @@ export interface StudentReportData {
   telegram: { linked: boolean; title: string; code: string | null };
   facts: ReportFacts;
   notes: MeetingParentNote[];
+  /** «Что дальше» из плана года */
+  next: string | null;
   report: ReportRow | null;
 }
 
@@ -69,6 +72,9 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
     all<TelegramRow>(admin, "student_telegram", "student_id, chat_id, chat_title, link_code"),
     all<ReportRow>(admin, "parent_reports"),
   ]);
+  // план года может быть ещё не создан — тогда просто без «Что дальше»
+  const { data: planData } = await admin.from("program_plan").select(PLAN_COLUMNS).order("start_month");
+  const plan = (planData as PlanEntry[] | null) ?? [];
   const meetings = meetingsRaw.map(mapMeeting);
   const monthMeetings = meetings.filter((m) => m.meetingDate.startsWith(month) && m.format === "individual");
 
@@ -128,6 +134,7 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
           deadlinesSubmitted: facts.submittedDeadlines.map((d) => d.title),
         },
         notes,
+        next: nextStepText(plan, month, student.className),
         report: reportBy.get(student.id) ?? null,
       } satisfies StudentReportData;
     })
@@ -144,5 +151,6 @@ export function messageFor(data: StudentReportData, month: string, draft: { over
     facts: data.facts,
     notes: data.notes,
     link: data.parentLink,
+    next: data.next,
   });
 }

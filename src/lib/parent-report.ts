@@ -45,6 +45,8 @@ export interface ReportInput {
   facts: ReportFacts;
   notes: MeetingParentNote[];
   link: string;
+  /** «Что дальше» из плана года (готовый текст) */
+  next?: string | null;
 }
 
 function lines(text: string): string[] {
@@ -104,6 +106,11 @@ export function buildReportMessage(input: ReportInput): string {
     if (!items.length) continue;
     out.push("", `${NUM[n] ?? `${n + 1}.`} ${title}:`);
     items.forEach((i) => out.push(`— ${i}`));
+    n += 1;
+  }
+
+  if (input.next?.trim()) {
+    out.push("", `${NUM[n] ?? `${n + 1}.`} Что дальше:`, input.next.trim());
     n += 1;
   }
 
