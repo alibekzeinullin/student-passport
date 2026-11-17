@@ -12,6 +12,8 @@ from playwright.sync_api import sync_playwright, expect, Page
 
 os.environ["no_proxy"] = os.environ["NO_PROXY"] = "localhost,127.0.0.1,e2e.supabase.co"
 E2E_DIR = os.environ.get("E2E_DIR", os.path.dirname(os.path.abspath(__file__)))
+if "ANON" not in os.environ:  # ключ из keys.env, если не экспортирован
+    os.environ["ANON"] = next(l.split("=", 1)[1].strip() for l in open(E2E_DIR + "/keys.env") if l.startswith("ANON="))
 BASE = "http://localhost:3000"
 LOG = E2E_DIR + "/fake-telegram.log"
 TOKEN = "123:TESTTOKEN"
@@ -19,6 +21,7 @@ SECRET = hashlib.sha256(f"webhook:{TOKEN}".encode()).hexdigest()[:48]
 results: list[str] = []
 NOW = datetime.now(ZoneInfo("Asia/Almaty"))
 MONTH = f"{NOW.year}-{NOW.month:02d}"
+OCT = f"{NOW.year if NOW.month > 1 else NOW.year - 1}-{(NOW.month - 2) % 12 + 1:02d}"  # прошлый месяц
 CHAT = -100777
 
 
@@ -192,6 +195,29 @@ with sync_playwright() as p:
     expect(page.get_by_role("button", name=re.compile("Дуйсенова Айлин"))).to_be_visible()
     expect(page.get_by_role("button", name=re.compile("Ахметов Тимур"))).to_have_count(0)
     page.screenshot(path=E2E_DIR + "/shots/reports.png", full_page=True)
+
+    # 7. «Вставить всем»: сразу сохраняется, отправленных не трогает, переживает перезагрузку и смену месяца
+    page.get_by_role("button", name="Все", exact=True).click()
+    page.locator("#group-all").fill("Общий текст ноября")
+    page.get_by_role("button", name="Вставить всем, у кого пусто").click()
+    expect(page.get_by_text("Все уже заполнены или отправлены — ничего не изменено.")).to_be_visible()
+    ok(sql(f"select group_note from parent_reports where id='{rid}'") == "Разбирали, как выбрать тему проекта", "отправленный отчёт не тронут")
+    page.locator("#rep-month").select_option(OCT)
+    page.locator("#group-all").fill("Общий текст октября")
+    page.get_by_role("button", name="Вставить всем, у кого пусто").click()
+    expect(page.get_by_text(re.compile(r"сохранён у \d+ учеников"))).to_be_visible()
+    page.reload()
+    page.locator("#rep-month").select_option(OCT)
+    page.get_by_role("button", name=re.compile("Ахметов Тимур")).click()
+    tc = page.locator("section", has=page.get_by_role("button", name=re.compile("Ахметов Тимур")))
+    expect(tc.get_by_label("Групповые встречи")).to_have_value("Общий текст октября")
+    expect(tc.locator("pre")).to_contain_text("Общий текст октября")
+    ok(sql(f"select count(*) from parent_reports where month='{OCT}' and group_note='Общий текст октября'") == sql("select count(*) from students s where not exists (select 1 from enrollments e where e.student_id=s.id and e.ends_on is null and e.course_id<>'mentoring' and not exists (select 1 from enrollments e2 where e2.student_id=s.id and e2.course_id='mentoring' and e2.ends_on is null))"), "октябрь сохранён у всех учеников менторства")
+    # несохранённая правка помечается
+    tc.get_by_label("Общее впечатление за месяц").fill("Черновик Тимура")
+    expect(tc.get_by_text("· не сохранено")).to_be_visible()
+    tc.get_by_role("button", name="Сохранить").click()
+    expect(tc.get_by_role("button", name="Сохранено")).to_be_visible()
 
     ok(not errors, f"нет ошибок JS на страницах: {errors}")
     browser.close()

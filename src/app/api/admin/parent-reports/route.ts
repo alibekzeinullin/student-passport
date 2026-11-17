@@ -34,6 +34,9 @@ export async function GET(request: Request) {
       throw err;
     }
 
+    // статус бота — отдельным запросом (?bot=1), чтобы не ходить в Telegram при каждой загрузке
+    if (new URL(request.url).searchParams.get("bot") !== "1") return Response.json({ month, students });
+
     let bot: { configured: boolean; username: string | null; webhook: boolean; error: string | null } = {
       configured: Boolean(botToken()),
       username: null,
@@ -48,14 +51,14 @@ export async function GET(request: Request) {
         bot.error = (err as Error).message;
       }
     }
-    return Response.json({ month, students, bot });
+    return Response.json({ month, bot });
   } catch (err) {
     return errorResponse(err);
   }
 }
 
 interface Body {
-  action?: "save" | "send" | "link-code" | "unlink" | "setup-bot";
+  action?: "save" | "send" | "link-code" | "unlink" | "setup-bot" | "fill-group";
   studentId?: string;
   month?: string;
   overall?: string;
@@ -73,6 +76,25 @@ export async function POST(request: Request) {
       await setWebhook(`${origin(request)}/api/telegram/webhook`);
       const me = await getMe();
       return Response.json({ ok: true, username: me.username });
+    }
+
+    if (body.action === "fill-group") {
+      // «Вставить всем, у кого пусто»: сразу сохраняем в черновики, кроме отправленных и уже заполненных
+      const month = body.month ?? "";
+      if (!MONTH_RE.test(month)) throw new HttpError(400, "bad_month", "Нужен месяц YYYY-MM");
+      const text = body.groupNote?.trim() ?? "";
+      if (!text) throw new HttpError(400, "empty", "Напишите текст про групповые встречи");
+      const list = await loadReportsData(admin, month, origin(request));
+      const targets = list.filter((s) => s.report?.status !== "sent" && !(s.report?.group_note ?? "").trim());
+      if (targets.length) {
+        const rows = targets.map((s) => {
+          const draft = { overall: s.report?.overall ?? "", groupNote: text, help: s.report?.help ?? "" };
+          return { student_id: s.studentId, month, overall: draft.overall, group_note: text, help: draft.help, message: messageFor(s, month, draft) };
+        });
+        const { error } = await admin.from("parent_reports").upsert(rows, { onConflict: "student_id,month" });
+        if (error) throw error;
+      }
+      return Response.json({ filled: targets.map((s) => s.studentId) });
     }
 
     const studentId = body.studentId ?? "";
@@ -113,7 +135,9 @@ export async function POST(request: Request) {
     if (saveErr) throw saveErr;
     const reportId = (saved as { id: string }).id;
 
-    if (body.action === "save") return Response.json({ ok: true, reportId });
+    const fresh = async () => (await loadReportsData(admin, month, origin(request), studentId))[0] ?? null;
+
+    if (body.action === "save") return Response.json({ ok: true, reportId, student: await fresh() });
 
     if (body.action === "send") {
       const { data: tg } = await admin.from("student_telegram").select("chat_id").eq("student_id", studentId).maybeSingle();
@@ -130,7 +154,7 @@ export async function POST(request: Request) {
         .update({ status: "sent", sent_at: new Date().toISOString(), telegram_message_id: sent.message_id })
         .eq("id", reportId);
       if (error) throw error;
-      return Response.json({ ok: true, reportId });
+      return Response.json({ ok: true, reportId, student: await fresh() });
     }
 
     throw new HttpError(400, "bad_request", "Неизвестное действие");

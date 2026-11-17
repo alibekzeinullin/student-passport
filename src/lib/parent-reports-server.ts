@@ -53,30 +53,78 @@ interface NotesRow {
 }
 
 /** Ученики менторства (не на паузе и не «только SAT»). */
-async function mentoringStudents(admin: SupabaseClient): Promise<(DbStudent & { status?: string | null })[]> {
-  const students = await all<DbStudent & { status?: string | null }>(admin, "students");
-  const enr = await all<{ student_id: string; course_id: string; ends_on: string | null }>(admin, "enrollments", "student_id, course_id, ends_on");
+async function mentoringStudents(admin: SupabaseClient, onlyStudent?: string): Promise<(DbStudent & { status?: string | null })[]> {
+  let q = admin.from("students").select("*");
+  if (onlyStudent) q = q.eq("id", onlyStudent);
+  const [{ data, error }, enr] = await Promise.all([
+    q,
+    all<{ student_id: string; course_id: string; ends_on: string | null }>(admin, "enrollments", "student_id, course_id, ends_on"),
+  ]);
+  if (error) throw error;
+  const students = (data as (DbStudent & { status?: string | null })[]) ?? [];
   const courses = new Map<string, Set<string>>();
   enr.filter((e) => !e.ends_on).forEach((e) => courses.set(e.student_id, (courses.get(e.student_id) ?? new Set()).add(e.course_id)));
   return students.filter((s) => s.status !== "paused" && (!courses.has(s.id) || courses.get(s.id)?.has("mentoring")));
 }
 
-export async function loadReportsData(admin: SupabaseClient, month: string, origin: string, onlyStudent?: string): Promise<StudentReportData[]> {
-  let students = await mentoringStudents(admin);
-  if (onlyStudent) students = students.filter((s) => s.id === onlyStudent);
+/** Все строки выборки порциями по 1000 (у Supabase лимит на ответ). */
+async function paged<T>(make: () => { range: (a: number, b: number) => PromiseLike<{ data: unknown; error: { message: string } | null }> }): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; from < 50000; from += 1000) {
+    const { data, error } = await make().range(from, from + 999);
+    if (error) {
+      if (/does not exist|schema cache|could not find/i.test(error.message)) return rows;
+      throw error;
+    }
+    const chunk = (data as T[]) ?? [];
+    rows.push(...chunk);
+    if (chunk.length < 1000) break;
+  }
+  return rows;
+}
 
-  const [meetingsRaw, deadlinesRaw, essaysRaw, telegram, reports] = await Promise.all([
-    all<DbMeeting>(admin, "meetings", MEETING_COLUMNS),
-    all<DbDeadline>(admin, "student_deadlines"),
-    all<DbSubmission>(admin, "essay_submissions"),
-    all<TelegramRow>(admin, "student_telegram", "student_id, chat_id, chat_title, link_code"),
-    all<ReportRow>(admin, "parent_reports"),
+function monthBounds(month: string): { from: string; to: string } {
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+  return { from: `${month}-01`, to: `${next}-01` };
+}
+
+export async function loadReportsData(admin: SupabaseClient, month: string, origin: string, onlyStudent?: string): Promise<StudentReportData[]> {
+  const students = await mentoringStudents(admin, onlyStudent);
+  const { from, to } = monthBounds(month);
+
+  // только данные выбранного месяца — раньше читалась вся история, отсюда и задержки
+  const [meetingsRaw, deadlinesRaw, essaysRaw, telegram, reports, planRes] = await Promise.all([
+    paged<DbMeeting>(() => {
+      const q = admin.from("meetings").select(MEETING_COLUMNS).gte("meeting_date", from).lt("meeting_date", to);
+      return onlyStudent ? q.eq("student_id", onlyStudent) : q;
+    }),
+    paged<DbDeadline>(() => {
+      const q = admin.from("student_deadlines").select("*").gte("due_date", from).lt("due_date", to);
+      return onlyStudent ? q.eq("student_id", onlyStudent) : q;
+    }),
+    paged<DbSubmission>(() => {
+      const q = admin
+        .from("essay_submissions")
+        .select("*")
+        .or(`and(submitted_at.gte.${from},submitted_at.lt.${to}),and(reviewed_at.gte.${from},reviewed_at.lt.${to})`);
+      return onlyStudent ? q.eq("student_id", onlyStudent) : q;
+    }),
+    paged<TelegramRow>(() => {
+      const q = admin.from("student_telegram").select("student_id, chat_id, chat_title, link_code");
+      return onlyStudent ? q.eq("student_id", onlyStudent) : q;
+    }),
+    paged<ReportRow>(() => {
+      const q = admin.from("parent_reports").select("*").eq("month", month);
+      return onlyStudent ? q.eq("student_id", onlyStudent) : q;
+    }),
+    // план года может быть ещё не создан — тогда просто без «Что дальше»
+    admin.from("program_plan").select(PLAN_COLUMNS).order("start_month"),
   ]);
-  // план года может быть ещё не создан — тогда просто без «Что дальше»
-  const { data: planData } = await admin.from("program_plan").select(PLAN_COLUMNS).order("start_month");
-  const plan = (planData as PlanEntry[] | null) ?? [];
+  const plan = (planRes.data as PlanEntry[] | null) ?? [];
   const meetings = meetingsRaw.map(mapMeeting);
-  const monthMeetings = meetings.filter((m) => m.meetingDate.startsWith(month) && m.format === "individual");
+  const monthMeetings = meetings.filter((m) => m.format === "individual");
 
   const notesById = new Map<string, NotesRow>();
   const ids = monthMeetings.map((m) => m.id);
@@ -92,7 +140,7 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
   const deadlines = deadlinesRaw.map(mapDeadline);
   const essays = essaysRaw.map(mapSubmission);
   const tgBy = new Map(telegram.map((t) => [t.student_id, t]));
-  const reportBy = new Map(reports.filter((r) => r.month === month).map((r) => [r.student_id, r]));
+  const reportBy = new Map(reports.map((r) => [r.student_id, r]));
 
   return students
     .map((row) => {

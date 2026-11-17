@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Button } from "@/components/ui/Button";
 import { Label, Select, Textarea } from "@/components/ui/Field";
@@ -47,6 +47,16 @@ interface Draft {
   help: string;
 }
 
+const EMPTY: Draft = { overall: "", groupNote: "", help: "" };
+
+function savedDraft(s: StudentData): Draft {
+  return { overall: s.report?.overall ?? "", groupNote: s.report?.group_note ?? "", help: s.report?.help ?? "" };
+}
+
+function sameDraft(a: Draft, b: Draft): boolean {
+  return a.overall.trim() === b.overall.trim() && a.groupNote.trim() === b.groupNote.trim() && a.help.trim() === b.help.trim();
+}
+
 function monthOptions(): string[] {
   const now = new Date();
   return Array.from({ length: 4 }, (_, i) => {
@@ -63,61 +73,165 @@ function fmtStamp(iso: string): string {
   return new Date(iso).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+type Action = "save" | "send" | "link-code" | "unlink";
+
 export default function ParentReportsPage() {
   const [month, setMonth] = useState(defaultReportMonth());
   const [students, setStudents] = useState<StudentData[] | null>(null);
+  const [loading, setLoading] = useState(true);
   const [bot, setBot] = useState<BotStatus | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const [groupText, setGroupText] = useState("");
   const [filter, setFilter] = useState<"all" | "todo" | "sent">("all");
-  const loadedMonth = useRef("");
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const req = useRef(0);
+  const draftsRef = useRef(drafts);
+  const studentsRef = useRef(students);
+  useEffect(() => {
+    draftsRef.current = drafts;
+    studentsRef.current = students;
+  }, [drafts, students]);
 
-  const load = useCallback(async () => {
+  // Данные месяца. Ответ на старый запрос (если месяц успели сменить) отбрасываем.
+  const load = useCallback(async (m: string) => {
+    const id = ++req.current;
+    setLoading(true);
+    setError("");
     try {
-      const data = await callApi<{ students: StudentData[]; bot: BotStatus }>(`${API}?month=${month}`, "GET");
+      const data = await callApi<{ students: StudentData[] }>(`${API}?month=${m}`, "GET");
+      if (id !== req.current) return;
       setStudents(data.students);
-      setBot(data.bot);
-      // несохранённые правки других учеников не теряем; при смене месяца — берём из базы
-      const keep = loadedMonth.current === month;
-      loadedMonth.current = month;
-      setDrafts((prev) =>
-        Object.fromEntries(
-          data.students.map((s) => [
-            s.studentId,
-            (keep && prev[s.studentId]) || { overall: s.report?.overall ?? "", groupNote: s.report?.group_note ?? "", help: s.report?.help ?? "" },
-          ]),
-        ),
-      );
-      setError("");
+      setDrafts(Object.fromEntries(data.students.map((s) => [s.studentId, savedDraft(s)])));
     } catch (err) {
-      setError((err as Error).message);
+      if (id === req.current) setError((err as Error).message);
+    } finally {
+      if (id === req.current) setLoading(false);
     }
-  }, [month]);
+  }, []);
+
+  const loadBot = useCallback(async () => {
+    try {
+      const data = await callApi<{ bot: BotStatus }>(`${API}?month=${month}&bot=1`, "GET");
+      setBot(data.bot);
+    } catch {
+      setBot({ configured: false, username: null, webhook: false, error: "Не удалось проверить бота" });
+    }
+    // статус бота нужен один раз при открытии страницы
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void Promise.resolve().then(() => {
-      if (!cancelled) void load();
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [load]);
+    void Promise.resolve().then(() => loadBot());
+  }, [loadBot]);
 
-  const post = async (body: Record<string, unknown>, done?: string, reload = true) => {
+  useEffect(() => {
+    void Promise.resolve().then(() => load(month));
+  }, [load, month]);
+
+  const dirtyIds = useMemo(
+    () => (students ?? []).filter((s) => drafts[s.studentId] && !sameDraft(drafts[s.studentId], savedDraft(s))).map((s) => s.studentId),
+    [students, drafts],
+  );
+
+  // не потерять несохранённое при закрытии вкладки
+  useEffect(() => {
+    if (!dirtyIds.length) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirtyIds.length]);
+
+  const changeMonth = (m: string) => {
+    if (dirtyIds.length && !window.confirm(`Есть несохранённые правки (${dirtyIds.length}). Перейти на другой месяц без сохранения?`)) return;
+    setOpenIds(new Set());
+    setMonth(m);
+  };
+
+  /** Обновить одного ученика из ответа сервера, не трогая остальных. */
+  const replaceStudent = useCallback((fresh: StudentData) => {
+    setStudents((prev) => (prev ?? []).map((s) => (s.studentId === fresh.studentId ? fresh : s)));
+    setDrafts((prev) => ({ ...prev, [fresh.studentId]: savedDraft(fresh) }));
+  }, []);
+
+  const act = useCallback(
+    async (kind: Action, studentId: string) => {
+      const s = studentsRef.current?.find((x) => x.studentId === studentId);
+      if (!s) return;
+      if (kind === "send" && !window.confirm(`Отправить отчёт в группу «${s.telegram.title || s.name}»?`)) return;
+      if (kind === "unlink" && !window.confirm("Отвязать Telegram-группу от ученика?")) return;
+      setBusy(studentId);
+      setError("");
+      setNotice("");
+      try {
+        const body = { action: kind, studentId, month, ...(draftsRef.current[studentId] ?? EMPTY) };
+        const res = await callApi<{ student?: StudentData; code?: string }>(API, "POST", body);
+        if (res.student) replaceStudent(res.student);
+        if (kind === "link-code" && res.code) {
+          setStudents((prev) => (prev ?? []).map((x) => (x.studentId === studentId ? { ...x, telegram: { ...x.telegram, code: res.code ?? null } } : x)));
+        }
+        if (kind === "unlink") {
+          setStudents((prev) => (prev ?? []).map((x) => (x.studentId === studentId ? { ...x, telegram: { linked: false, title: "", code: null } } : x)));
+        }
+        setNotice(
+          kind === "save" ? `${s.name}: черновик сохранён` : kind === "send" ? `${s.name}: отчёт отправлен в Telegram` : kind === "unlink" ? "Группа отвязана" : "",
+        );
+      } catch (err) {
+        setError(`${s.name}: ${(err as Error).message}`);
+      } finally {
+        setBusy(null);
+      }
+    },
+    [month, replaceStudent],
+  );
+
+  const setDraft = useCallback((id: string, d: Draft) => setDrafts((prev) => ({ ...prev, [id]: d })), []);
+  const toggleOpen = useCallback(
+    (id: string) =>
+      setOpenIds((prev) => {
+        const n = new Set(prev);
+        if (n.has(id)) n.delete(id);
+        else n.add(id);
+        return n;
+      }),
+    [],
+  );
+
+  const fillGroup = async (text: string): Promise<boolean> => {
     setError("");
     setNotice("");
+    setBusy("fill");
     try {
-      const res = await callApi<Record<string, unknown>>(API, "POST", body);
-      if (done) setNotice(done);
-      if (reload) await load();
-      return res;
+      const res = await callApi<{ filled: string[] }>(API, "POST", { action: "fill-group", month, groupNote: text });
+      const filled = new Set(res.filled);
+      setStudents((prev) =>
+        (prev ?? []).map((s) =>
+          filled.has(s.studentId)
+            ? { ...s, report: { ...(s.report ?? { id: "", overall: "", help: "", status: "draft", sent_at: null, read_at: null, question_at: null }), group_note: text } }
+            : s,
+        ),
+      );
+      // в открытых правках, где поле было пустым, тоже подставляем
+      setDrafts((prev) => {
+        const n = { ...prev };
+        filled.forEach((id) => {
+          n[id] = { ...(n[id] ?? EMPTY), groupNote: n[id]?.groupNote.trim() ? n[id].groupNote : text };
+        });
+        return n;
+      });
+      const skipped = (studentsRef.current?.length ?? 0) - res.filled.length;
+      setNotice(
+        res.filled.length
+          ? `Текст про групповые встречи сохранён у ${res.filled.length} учеников${skipped ? `. Пропущено ${skipped}: уже отправлено или текст уже есть` : ""}.`
+          : "Все уже заполнены или отправлены — ничего не изменено.",
+      );
+      return true;
     } catch (err) {
       setError((err as Error).message);
-      return null;
+      return false;
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -128,25 +242,32 @@ export default function ParentReportsPage() {
       ),
     [students, filter],
   );
-  const sentCount = (students ?? []).filter((s) => s.report?.status === "sent").length;
-  const readCount = (students ?? []).filter((s) => s.report?.read_at).length;
-  const linkedCount = (students ?? []).filter((s) => s.telegram.linked).length;
-  const readyToSend = (students ?? []).filter((s) => s.telegram.linked && s.report?.status !== "sent");
+  const all = students ?? [];
+  const sentCount = all.filter((s) => s.report?.status === "sent").length;
+  const readCount = all.filter((s) => s.report?.read_at).length;
+  const linkedCount = all.filter((s) => s.telegram.linked).length;
+  const readyToSend = all.filter((s) => s.telegram.linked && s.report?.status !== "sent");
 
   const sendAll = async () => {
     if (!window.confirm(`Отправить отчёт за ${monthNominative(month)} в ${readyToSend.length} групп(ы)? Перед этим проверьте тексты.`)) return;
     setBusy("all");
+    setError("");
     let ok = 0;
     for (const s of readyToSend) {
-      const d = drafts[s.studentId] ?? { overall: "", groupNote: "", help: "" };
-      const res = await post({ action: "send", studentId: s.studentId, month, ...d }, undefined, false);
-      if (res) ok += 1;
-      else break;
+      try {
+        const res = await callApi<{ student?: StudentData }>(API, "POST", { action: "send", studentId: s.studentId, month, ...(draftsRef.current[s.studentId] ?? EMPTY) });
+        if (res.student) replaceStudent(res.student);
+        ok += 1;
+      } catch (err) {
+        setError(`${s.name}: ${(err as Error).message}`);
+        break;
+      }
     }
     setBusy(null);
     setNotice(`Отправлено: ${ok} из ${readyToSend.length}`);
-    await load();
   };
+
+  const locked = loading || busy !== null;
 
   return (
     <RequireAuth role="admin">
@@ -161,7 +282,7 @@ export default function ParentReportsPage() {
           </div>
           <div className="w-48">
             <Label htmlFor="rep-month">Месяц</Label>
-            <Select id="rep-month" value={month} onChange={(e) => setMonth(e.target.value)}>
+            <Select id="rep-month" value={month} disabled={busy !== null} onChange={(e) => changeMonth(e.target.value)}>
               {monthOptions().map((m) => (
                 <option key={m} value={m}>
                   {monthNominative(m)} {m.slice(0, 4)}
@@ -174,48 +295,32 @@ export default function ParentReportsPage() {
         {error ? <div className="rounded-2xl border border-burgundy/30 bg-burgundy/10 px-4 py-3 text-sm text-burgundy">{error}</div> : null}
         {notice ? <div className="rounded-2xl border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-gold">{notice}</div> : null}
 
-        {bot ? <BotCard bot={bot} onSetup={() => post({ action: "setup-bot" }, "Бот подключён к сайту")} /> : null}
+        {bot ? (
+          <BotCard
+            bot={bot}
+            onSetup={async () => {
+              setError("");
+              try {
+                await callApi(API, "POST", { action: "setup-bot" });
+                setNotice("Бот подключён к сайту");
+                await loadBot();
+              } catch (err) {
+                setError((err as Error).message);
+              }
+            }}
+          />
+        ) : null}
 
         {students ? (
-          <>
+          <div className={`space-y-6 transition-opacity ${loading ? "pointer-events-none opacity-50" : ""}`} aria-busy={loading}>
             <div className="grid gap-3 sm:grid-cols-4">
-              <Stat label="Учеников" value={String(students.length)} />
+              <Stat label="Учеников" value={String(all.length)} />
               <Stat label="Группа подключена" value={`${linkedCount}`} />
               <Stat label="Отправлено" value={`${sentCount}`} />
               <Stat label="Прочитали" value={`${readCount}`} />
             </div>
 
-            <section className="sp-glass space-y-3 rounded-3xl border px-5 py-5 sm:px-6">
-              <Label htmlFor="group-all">Групповые встречи за месяц — общий текст</Label>
-              <FieldTools value={groupText} onChange={setGroupText} />
-              <Textarea
-                id="group-all"
-                value={groupText}
-                onChange={(e) => setGroupText(e.target.value)}
-                placeholder={"Каждая строка — отдельный пункт. Например:\nРазбирали, как выбрать тему проекта\nПотренировали короткие выступления по 2 минуты"}
-                className="min-h-24"
-              />
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={!groupText.trim()}
-                  onClick={() =>
-                    setDrafts((prev) =>
-                      Object.fromEntries(
-                        Object.entries(prev).map(([id, d]) => [
-                          id,
-                          students.find((s) => s.studentId === id)?.report?.status === "sent" || d.groupNote.trim() ? d : { ...d, groupNote: groupText },
-                        ]),
-                      ),
-                    )
-                  }
-                >
-                  Вставить всем, у кого пусто
-                </Button>
-                <p className="text-xs text-muted">Потом у каждого можно поправить. Не забудьте сохранить или отправить.</p>
-              </div>
-            </section>
+            <GroupAllBox key={month} month={month} disabled={locked} busy={busy === "fill"} onFill={fillGroup} />
 
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex rounded-full border border-white/10 p-1 text-sm">
@@ -231,56 +336,70 @@ export default function ParentReportsPage() {
                     type="button"
                     aria-pressed={filter === id}
                     onClick={() => setFilter(id)}
-                    className={`rounded-full px-4 py-1.5 transition ${filter === id ? "bg-gold font-semibold text-gold-ink" : "text-muted hover:text-navy"}`}
+                    className={`rounded-full px-4 py-1.5 ${filter === id ? "bg-gold font-semibold text-gold-ink" : "text-muted hover:text-navy"}`}
                   >
                     {label}
                   </button>
                 ))}
               </div>
+              {dirtyIds.length ? <span className="text-xs text-gold">Не сохранено: {dirtyIds.length}</span> : null}
               {readyToSend.length && bot?.webhook ? (
-                <Button type="button" className="ml-auto" disabled={busy !== null} onClick={() => void sendAll()}>
+                <Button type="button" className="ml-auto" disabled={locked} onClick={() => void sendAll()}>
                   {busy === "all" ? "Отправляю…" : `Отправить всем подключённым · ${readyToSend.length}`}
                 </Button>
               ) : null}
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {list.map((s) => (
                 <StudentCard
                   key={s.studentId}
                   s={s}
                   month={month}
-                  draft={drafts[s.studentId] ?? { overall: "", groupNote: "", help: "" }}
-                  setDraft={(d) => setDrafts((prev) => ({ ...prev, [s.studentId]: d }))}
+                  draft={drafts[s.studentId] ?? EMPTY}
+                  dirty={dirtyIds.includes(s.studentId)}
+                  open={openIds.has(s.studentId)}
                   busy={busy === s.studentId}
+                  locked={locked}
                   botReady={Boolean(bot?.webhook)}
                   botName={bot?.username ?? null}
-                  onSave={async () => {
-                    setBusy(s.studentId);
-                    await post({ action: "save", studentId: s.studentId, month, ...drafts[s.studentId] }, `${s.name}: черновик сохранён`);
-                    setBusy(null);
-                  }}
-                  onSend={async () => {
-                    if (!window.confirm(`Отправить отчёт в группу «${s.telegram.title || s.name}»?`)) return;
-                    setBusy(s.studentId);
-                    await post({ action: "send", studentId: s.studentId, month, ...drafts[s.studentId] }, `${s.name}: отчёт отправлен в Telegram`);
-                    setBusy(null);
-                  }}
-                  onLinkCode={() => post({ action: "link-code", studentId: s.studentId })}
-                  onUnlink={() => {
-                    if (!window.confirm("Отвязать Telegram-группу от ученика?")) return;
-                    void post({ action: "unlink", studentId: s.studentId }, "Группа отвязана");
-                  }}
+                  onToggle={toggleOpen}
+                  onDraft={setDraft}
+                  onAction={act}
                 />
               ))}
               {list.length === 0 ? <p className="text-sm text-muted">Никого под этот фильтр.</p> : null}
             </div>
-          </>
-        ) : !error ? (
+          </div>
+        ) : loading ? (
           <p className="text-muted">Загрузка…</p>
         ) : null}
       </div>
     </RequireAuth>
+  );
+}
+
+/** Общий текст про групповые встречи — своё состояние, чтобы набор текста не перерисовывал всех учеников. */
+function GroupAllBox({ month, disabled, busy, onFill }: { month: string; disabled: boolean; busy: boolean; onFill: (text: string) => Promise<boolean> }) {
+  const [text, setText] = useState("");
+  return (
+    <section className="sp-glass space-y-3 rounded-3xl border px-5 py-5 sm:px-6">
+      <Label htmlFor="group-all">Групповые встречи за {monthNominative(month)} — общий текст</Label>
+      <FieldTools value={text} onChange={setText} />
+      <Textarea
+        id="group-all"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={"Каждая строка — отдельный пункт. Например:\nРазбирали, как выбрать тему проекта\nПотренировали короткие выступления по 2 минуты"}
+        className="min-h-24"
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="secondary" disabled={!text.trim() || disabled} onClick={() => void onFill(text.trim())}>
+          {busy ? "Сохраняю…" : "Вставить всем, у кого пусто"}
+        </Button>
+        <p className="text-xs text-muted">Сразу сохраняется в черновики. Отправленные и уже заполненные не трогаем — у каждого потом можно поправить.</p>
+      </div>
+    </section>
   );
 }
 
@@ -330,56 +449,49 @@ function BotCard({ bot, onSetup }: { bot: BotStatus; onSetup: () => void }) {
   );
 }
 
-function StudentCard({
+const StudentCard = memo(function StudentCard({
   s,
   month,
   draft,
-  setDraft,
+  dirty,
+  open,
   busy,
+  locked,
   botReady,
   botName,
-  onSave,
-  onSend,
-  onLinkCode,
-  onUnlink,
+  onToggle,
+  onDraft,
+  onAction,
 }: {
   s: StudentData;
   month: string;
   draft: Draft;
-  setDraft: (d: Draft) => void;
+  dirty: boolean;
+  open: boolean;
   busy: boolean;
+  locked: boolean;
   botReady: boolean;
   botName: string | null;
-  onSave: () => Promise<void>;
-  onSend: () => Promise<void>;
-  onLinkCode: () => Promise<unknown>;
-  onUnlink: () => void;
+  onToggle: (id: string) => void;
+  onDraft: (id: string, d: Draft) => void;
+  onAction: (kind: Action, id: string) => Promise<void>;
 }) {
-  const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const message = buildReportMessage({
-    firstName: s.firstName,
-    month,
-    overall: draft.overall,
-    groupNote: draft.groupNote,
-    help: draft.help,
-    facts: s.facts,
-    notes: s.notes,
-    link: s.parentLink,
-    next: s.next,
-  });
   const filledNotes = s.notes.filter((n) => n.win || n.focus || n.help);
   const sent = s.report?.status === "sent";
+  const set = (patch: Partial<Draft>) => onDraft(s.studentId, { ...draft, ...patch });
 
   return (
-    <section className={`sp-glass rounded-3xl border ${sent ? "border-emerald-400/20" : ""}`}>
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-left sm:px-6">
+    <section className={`sp-glass rounded-3xl border ${sent ? "border-emerald-400/20" : dirty ? "border-gold/40" : ""}`}>
+      <button type="button" onClick={() => onToggle(s.studentId)} aria-expanded={open} className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-left sm:px-6">
         <span className="min-w-0 flex-1">
           <span className="text-lg text-navy">{s.name}</span>
           <span className="ml-2 text-sm text-muted">{s.className}</span>
           <span className="mt-1 block text-xs text-muted">
             Отчётов о встречах: {filledNotes.length} из {s.notes.length}
             {draft.overall.trim() ? " · впечатление есть" : " · впечатление не написано"}
+            {draft.groupNote.trim() ? " · групповые есть" : " · групповые пусто"}
+            {dirty ? <span className="text-gold"> · не сохранено</span> : null}
           </span>
         </span>
         <span className="flex flex-wrap gap-1.5 text-xs">
@@ -390,7 +502,7 @@ function StudentCard({
           {s.report?.read_at ? <span className="rounded-full bg-emerald-400/15 px-2.5 py-1 text-emerald-300">прочитали</span> : null}
           {s.report?.question_at ? <span className="rounded-full bg-gold/15 px-2.5 py-1 text-gold">есть вопрос</span> : null}
         </span>
-        <span aria-hidden className={`text-[10px] text-muted transition ${open ? "rotate-180" : ""}`}>
+        <span aria-hidden className={`text-[10px] text-muted ${open ? "rotate-180" : ""}`}>
           ▼
         </span>
       </button>
@@ -422,39 +534,22 @@ function StudentCard({
               )}
             </div>
 
-            <DraftField
-              label="Общее впечатление за месяц"
-              value={draft.overall}
-              onChange={(v) => setDraft({ ...draft, overall: v })}
-              placeholder="Месяц сильный — стала самостоятельнее, сама выходит с идеями…"
-            />
-            <DraftField
-              label="Групповые встречи"
-              value={draft.groupNote}
-              onChange={(v) => setDraft({ ...draft, groupNote: v })}
-              placeholder="Каждая строка — пункт"
-            />
-            <DraftField
-              label="Чем помочь дома — дополнительно"
-              value={draft.help}
-              onChange={(v) => setDraft({ ...draft, help: v })}
-              placeholder="Необязательно"
-            />
+            <DraftField label="Общее впечатление за месяц" value={draft.overall} onChange={(v) => set({ overall: v })} placeholder="Месяц сильный — стала самостоятельнее, сама выходит с идеями…" />
+            <DraftField label="Групповые встречи" value={draft.groupNote} onChange={(v) => set({ groupNote: v })} placeholder="Каждая строка — пункт" />
+            <DraftField label="Чем помочь дома — дополнительно" value={draft.help} onChange={(v) => set({ help: v })} placeholder="Необязательно" />
 
             <div>
               <p className="text-xs uppercase tracking-[0.12em] text-muted">Telegram-группа</p>
               {s.telegram.linked ? (
                 <p className="mt-1 text-sm text-navy">
                   {s.telegram.title || "Группа подключена"}{" "}
-                  <button type="button" onClick={onUnlink} className="ml-2 text-xs text-burgundy hover:underline">
+                  <button type="button" disabled={locked} onClick={() => void onAction("unlink", s.studentId)} className="ml-2 text-xs text-burgundy hover:underline">
                     отвязать
                   </button>
                 </p>
               ) : s.telegram.code ? (
                 <div className="mt-1 rounded-2xl bg-white/[0.04] px-3 py-2 text-sm text-navy">
-                  <p>
-                    1. Добавьте бота {botName ? <span className="font-mono text-gold">@{botName}</span> : "TODAY Scholars"} в группу ученика.
-                  </p>
+                  <p>1. Добавьте бота {botName ? <span className="font-mono text-gold">@{botName}</span> : "TODAY Scholars"} в группу ученика.</p>
                   <p>
                     2. Отправьте в группе: <span className="select-all font-mono text-gold">/connect {s.telegram.code}</span>
                   </p>
@@ -463,8 +558,8 @@ function StudentCard({
               ) : (
                 <button
                   type="button"
-                  disabled={!botReady}
-                  onClick={() => void onLinkCode()}
+                  disabled={!botReady || locked}
+                  onClick={() => void onAction("link-code", s.studentId)}
                   className="mt-1 rounded-full border border-white/15 px-3 py-1.5 text-xs text-navy hover:border-gold/60 disabled:opacity-50"
                 >
                   {botReady ? "Подключить группу — получить код" : "Сначала подключите бота (выше)"}
@@ -473,32 +568,52 @@ function StudentCard({
             </div>
           </div>
 
-          <div>
-            <p className="text-xs uppercase tracking-[0.12em] text-muted">Так увидят родители</p>
-            <pre className="mt-2 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 px-4 py-3 font-sans text-sm leading-relaxed text-navy">{message}</pre>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" disabled={busy} onClick={() => void onSave()}>
-                Сохранить
-              </Button>
-              {s.telegram.linked && botReady ? (
-                <Button type="button" disabled={busy} onClick={() => void onSend()}>
-                  {busy ? "Отправляю…" : sent ? "Отправить ещё раз" : "Отправить в группу"}
+          <Preview s={s} month={month} draft={draft}>
+            {(message) => (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" disabled={locked || !dirty} onClick={() => void onAction("save", s.studentId)}>
+                  {dirty ? "Сохранить" : "Сохранено"}
                 </Button>
-              ) : null}
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  void navigator.clipboard.writeText(message).then(() => setCopied(true));
-                }}
-              >
-                {copied ? "Скопировано ✓" : "Скопировать текст"}
-              </Button>
-            </div>
-          </div>
+                {s.telegram.linked && botReady ? (
+                  <Button type="button" disabled={locked} onClick={() => void onAction("send", s.studentId)}>
+                    {busy ? "Отправляю…" : sent ? "Отправить ещё раз" : "Отправить в группу"}
+                  </Button>
+                ) : null}
+                <Button type="button" variant="ghost" onClick={() => void navigator.clipboard.writeText(message).then(() => setCopied(true))}>
+                  {copied ? "Скопировано ✓" : "Скопировать текст"}
+                </Button>
+              </div>
+            )}
+          </Preview>
         </div>
       ) : null}
     </section>
+  );
+});
+
+/** Текст отчёта собирается только у раскрытой карточки. */
+function Preview({ s, month, draft, children }: { s: StudentData; month: string; draft: Draft; children: (message: string) => React.ReactNode }) {
+  const message = useMemo(
+    () =>
+      buildReportMessage({
+        firstName: s.firstName,
+        month,
+        overall: draft.overall,
+        groupNote: draft.groupNote,
+        help: draft.help,
+        facts: s.facts,
+        notes: s.notes,
+        link: s.parentLink,
+        next: s.next,
+      }),
+    [s, month, draft],
+  );
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-[0.12em] text-muted">Так увидят родители</p>
+      <pre className="mt-2 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 px-4 py-3 font-sans text-sm leading-relaxed text-navy">{message}</pre>
+      {children(message)}
+    </div>
   );
 }
 

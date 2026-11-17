@@ -9,6 +9,8 @@ from playwright.sync_api import sync_playwright, expect, Page
 
 os.environ["no_proxy"] = os.environ["NO_PROXY"] = "localhost,127.0.0.1,e2e.supabase.co"
 E2E_DIR = os.environ.get("E2E_DIR", os.path.dirname(os.path.abspath(__file__)))
+if "ANON" not in os.environ:  # ключ из keys.env, если не экспортирован
+    os.environ["ANON"] = next(l.split("=", 1)[1].strip() for l in open(E2E_DIR + "/keys.env") if l.startswith("ANON="))
 BASE = "http://localhost:3000"
 API = "https://e2e.supabase.co"
 ANON = os.environ["ANON"]
@@ -115,6 +117,7 @@ with sync_playwright() as p:
     page.get_by_role("button", name=re.compile("Ахметов Тимур")).click()
     tcard = page.locator("section", has=page.get_by_role("button", name=re.compile("Ахметов Тимур")))
     expect(tcard.locator("pre")).to_contain_text("Проектная работа по профессиям")
+    page.get_by_role("button", name=re.compile("Дуйсенова Айлин")).click()
     expect(card.locator("pre")).to_contain_text("Командный проект: решение реальной проблемы")
     ok("Проектная работа по профессиям" not in card.locator("pre").inner_text(), "9 класс не видит вариант для 10")
     page.get_by_role("button", name="Выйти").first.click()
