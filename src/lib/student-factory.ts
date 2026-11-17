@@ -36,6 +36,7 @@ export function buildStudentFromRegistration(
     termSystem: "quarters",
     status: "active",
     pausedAt: null,
+    pinned: false,
     indParity: null,
     email: input.email.toLowerCase(),
     parentAccessToken: randomToken(),

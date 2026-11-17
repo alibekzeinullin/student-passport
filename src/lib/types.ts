@@ -202,6 +202,8 @@ export interface StudentProfile {
   termSystem: TermSystem;
   status: StudentStatus;
   pausedAt: string | null;
+  /** Закреплён первым в списках (демо-ученик) */
+  pinned: boolean;
   /** Неделя индивидуальной встречи (чётность недели), null — не задана */
   indParity: 0 | 1 | null;
   avatarUrl?: string;

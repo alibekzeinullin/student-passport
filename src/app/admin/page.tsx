@@ -146,6 +146,8 @@ export default function AdminPage() {
 
     const dir = sortDir === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {
+      // закреплённые (демо-ученик) — всегда первыми
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       switch (sortKey) {
         case "class":
           return (
@@ -439,6 +441,16 @@ export default function AdminPage() {
                                 )}
                               </span>
                               {fullName}
+                              <button
+                                type="button"
+                                title={student.pinned ? "Открепить" : "Закрепить первым в списке"}
+                                aria-label={student.pinned ? `Открепить ${fullName}` : `Закрепить ${fullName}`}
+                                aria-pressed={student.pinned}
+                                onClick={() => void updateStudent(student.id, { pinned: !student.pinned }).catch(() => setError("Не удалось закрепить: нужна миграция supabase/migration-pinned.sql."))}
+                                className={`text-sm transition ${student.pinned ? "opacity-100" : "opacity-0 hover:opacity-70 focus:opacity-70 [tr:hover_&]:opacity-40"}`}
+                              >
+                                📌
+                              </button>
                             </span>
                             {student.status === "paused" ? (
                               <span className="ml-2 rounded-full border border-white/15 px-2 py-0.5 text-[11px] font-normal text-muted">

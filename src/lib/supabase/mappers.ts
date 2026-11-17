@@ -44,6 +44,7 @@ export function mapDbStudentToProfile(row: DbStudent): StudentProfile {
     termSystem: (row.term_system as TermSystem) || "quarters",
     status: (row.status as StudentStatus) || "active",
     pausedAt: row.paused_at ?? null,
+    pinned: Boolean(row.pinned),
     indParity: row.ind_parity === 0 || row.ind_parity === 1 ? row.ind_parity : null,
     avatarUrl: row.avatar_url ?? undefined,
     email: row.email ?? "",
@@ -98,6 +99,7 @@ export function mapProfileToDbPatch(
   if (patch.termSystem !== undefined) db.term_system = patch.termSystem;
   if (patch.status !== undefined) db.status = patch.status;
   if (patch.pausedAt !== undefined) db.paused_at = patch.pausedAt;
+  if (patch.pinned !== undefined) db.pinned = patch.pinned;
   if (patch.indParity !== undefined) db.ind_parity = patch.indParity;
   if (patch.email !== undefined) db.email = patch.email;
   if (patch.avatarUrl !== undefined) db.avatar_url = patch.avatarUrl ?? null;

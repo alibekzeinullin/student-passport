@@ -123,6 +123,7 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
     admin.from("program_plan").select(PLAN_COLUMNS).order("start_month"),
   ]);
   const plan = (planRes.data as PlanEntry[] | null) ?? [];
+  const pinnedIds = new Set(students.filter((s) => (s as { pinned?: boolean | null }).pinned).map((s) => s.id));
   const meetings = meetingsRaw.map(mapMeeting);
   const monthMeetings = meetings.filter((m) => m.format === "individual");
 
@@ -186,7 +187,7 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
         report: reportBy.get(student.id) ?? null,
       } satisfies StudentReportData;
     })
-    .sort((a, b) => a.name.localeCompare(b.name, "ru"));
+    .sort((a, b) => Number(pinnedIds.has(b.studentId)) - Number(pinnedIds.has(a.studentId)) || a.name.localeCompare(b.name, "ru"));
 }
 
 export function messageFor(data: StudentReportData, month: string, draft: { overall: string; groupNote: string; help: string }): string {

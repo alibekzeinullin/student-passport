@@ -19,6 +19,7 @@ export interface DbStudent {
   term_system?: string | null;
   status?: string | null;
   paused_at?: string | null;
+  pinned?: boolean | null;
   ind_parity?: number | null;
   email: string;
   avatar_url: string | null;
