@@ -27,6 +27,7 @@ const ORDER = [
   "migration-parent-reports.sql",
   "migration-program-plan.sql",
   "migration-pinned.sql",
+  "migration-mentor-reminders.sql",
 ];
 
 const header = `-- Digital Passport TODAY Scholars — ВСЯ база одним файлом

@@ -11,6 +11,7 @@ import { Label, Select } from "@/components/ui/Field";
 import { TableScroll } from "@/components/ui/TableScroll";
 import { MonthlyBulkButton } from "@/components/MonthlyBulkButton";
 import { AttentionPanel } from "@/components/AttentionPanel";
+import { ReportsReminderBanner } from "@/components/ReportsReminderBanner";
 import {
   buildMeetingsCsv,
   downloadTextFile,
@@ -239,6 +240,7 @@ export default function AdminPage() {
   return (
     <RequireAuth role="admin">
       <div className="sp-rise mx-auto min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+        <ReportsReminderBanner studentIds={activeStudents.map((s) => s.id)} />
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-gold">

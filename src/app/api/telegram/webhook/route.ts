@@ -58,6 +58,21 @@ export async function POST(request: Request) {
             await sendMessage(msg.chat.id, `Готово! Группа подключена к дневнику TODAY Scholars: ${name}. Сюда будут приходить итоги месяца.`);
           }
         }
+      } else if (msg.chat.type === "private" && /^\/start\s+r(\d{6})\b/.test(text)) {
+        // ментор подключает личные напоминания (ссылка со страницы «Родителям»)
+        const code = text.match(/^\/start\s+r(\d{6})/)?.[1] ?? "";
+        const { data: row } = await admin.from("mentor_telegram").select("user_id").eq("link_code", code).maybeSingle();
+        const userId = (row as { user_id: string } | null)?.user_id;
+        if (!userId) {
+          await sendMessage(msg.chat.id, "Ссылка устарела. Откройте на сайте «Родителям» → «Напоминания в Telegram» и нажмите «Подключить» ещё раз.");
+        } else {
+          await admin.from("mentor_telegram").update({ chat_id: null, linked_at: null }).eq("chat_id", msg.chat.id);
+          await admin.from("mentor_telegram").update({ chat_id: msg.chat.id, link_code: null, linked_at: new Date().toISOString() }).eq("user_id", userId);
+          await sendMessage(
+            msg.chat.id,
+            "Готово! В последние 3 дня месяца и в первые 5 дней следующего я буду напоминать, сколько отчётов родителям ещё не отправлено. Когда всё отправлено — молчу.",
+          );
+        }
       } else if (/^\/start\b/.test(text) && msg.chat.type === "private") {
         await sendMessage(
           msg.chat.id,

@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { Label, Select, Textarea } from "@/components/ui/Field";
 import { FieldTools } from "@/components/FieldTools";
 import { callApi } from "@/lib/api-client";
-import { buildReportMessage, defaultReportMonth, monthNominative, type MeetingParentNote, type ReportFacts } from "@/lib/parent-report";
+import { createClient } from "@/lib/supabase/client";
+import { almatyToday, buildReportMessage, defaultReportMonth, monthNominative, reminderMonth, type MeetingParentNote, type ReportFacts } from "@/lib/parent-report";
 
 const API = "/api/admin/parent-reports";
 
@@ -243,7 +244,6 @@ export default function ParentReportsPage() {
     [students, filter],
   );
   const all = students ?? [];
-  const sentCount = all.filter((s) => s.report?.status === "sent").length;
   const linkedCount = all.filter((s) => s.telegram.linked).length;
   const readyToSend = all.filter((s) => s.telegram.linked && s.report?.status !== "sent");
 
@@ -312,11 +312,18 @@ export default function ParentReportsPage() {
 
         {students ? (
           <div className={`space-y-6 transition-opacity ${loading ? "pointer-events-none opacity-50" : ""}`} aria-busy={loading}>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Stat label="Учеников" value={String(all.length)} />
-              <Stat label="Группа подключена" value={`${linkedCount}`} />
-              <Stat label="Отправлено" value={`${sentCount}`} />
-            </div>
+            <Checklist
+              month={month}
+              students={all}
+              linked={linkedCount}
+              onOpen={(id) => {
+                setFilter("all");
+                setOpenIds((prev) => new Set(prev).add(id));
+                window.setTimeout(() => document.getElementById(`rep-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+              }}
+            />
+
+            {bot?.webhook ? <MentorReminders month={month} /> : null}
 
             <GroupAllBox key={month} month={month} disabled={locked} busy={busy === "fill"} onFill={fillGroup} />
 
@@ -401,12 +408,124 @@ function GroupAllBox({ month, disabled, busy, onFill }: { month: string; disable
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+/** Чеклист месяца: кому отчёт уже ушёл, кому нет. Клик по имени открывает карточку. */
+function Checklist({ month, students, linked, onOpen }: { month: string; students: StudentData[]; linked: number; onOpen: (id: string) => void }) {
+  const sent = students.filter((s) => s.report?.status === "sent").length;
+  const pct = students.length ? Math.round((sent / students.length) * 100) : 0;
+  const done = students.length > 0 && sent === students.length;
   return (
-    <div className="sp-glass rounded-2xl border px-4 py-3">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-3xl font-light text-navy">{value}</p>
-    </div>
+    <section className="sp-glass rounded-3xl border px-5 py-5 sm:px-6" aria-labelledby="check-h">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <h3 id="check-h" className="text-lg text-navy">
+          Чеклист за {monthNominative(month)}: {done ? "все отчёты отправлены ✓" : `отправлено ${sent} из ${students.length}`}
+        </h3>
+        <p className="text-xs text-muted">Telegram-группа подключена: {linked} из {students.length}</p>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Отправлено">
+        <div className="h-full rounded-full bg-emerald-400/70 transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      <ul className="mt-4 grid gap-x-4 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
+        {students.map((s) => {
+          const isSent = s.report?.status === "sent";
+          return (
+            <li key={s.studentId}>
+              <button type="button" onClick={() => onOpen(s.studentId)} className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-sm hover:bg-white/[0.04]">
+                <span
+                  aria-hidden
+                  className={`grid h-4 w-4 shrink-0 place-items-center rounded border text-[10px] ${isSent ? "border-emerald-400/60 bg-emerald-400/20 text-emerald-300" : "border-white/25"}`}
+                >
+                  {isSent ? "✓" : ""}
+                </span>
+                <span className={isSent ? "text-muted line-through decoration-white/20" : "text-navy"}>{s.name}</span>
+                <span className="sr-only">{isSent ? "отправлено" : "не отправлено"}</span>
+                {!s.telegram.linked ? <span className="ml-auto text-[11px] text-muted">без группы</span> : null}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/** Личные напоминания ментору в Telegram в конце месяца. */
+function MentorReminders({ month }: { month: string }) {
+  const [linked, setLinked] = useState<boolean | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const check = useCallback(async () => {
+    const { data } = await createClient().from("mentor_telegram").select("chat_id").maybeSingle();
+    setLinked(Boolean((data as { chat_id: number | null } | null)?.chat_id));
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(check);
+  }, [check]);
+
+  const call = async (action: "link" | "unlink" | "test") => {
+    setBusy(true);
+    setMsg("");
+    try {
+      const res = await callApi<{ url?: string }>("/api/admin/mentor-telegram", "POST", { action, month });
+      if (action === "link" && res.url) {
+        setUrl(res.url);
+        window.open(res.url, "_blank", "noopener");
+      }
+      if (action === "unlink") {
+        setLinked(false);
+        setUrl(null);
+        setMsg("Напоминания отключены");
+      }
+      if (action === "test") setMsg("Отправил в Telegram — проверьте личные сообщения от бота");
+    } catch (err) {
+      setMsg((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const windowMonth = reminderMonth(almatyToday());
+  return (
+    <section className="rounded-3xl border border-white/10 px-5 py-4 sm:px-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-navy">Напоминания в Telegram {linked ? <span className="text-emerald-300">· включены</span> : null}</p>
+          <p className="text-xs text-muted">
+            Бот напишет вам лично в 9:00 в последние 3 дня месяца и 1–5 числа, если не все отчёты отправлены.
+            {windowMonth ? ` Сейчас — про отчёты за ${monthNominative(windowMonth)}.` : ""}
+          </p>
+        </div>
+        {linked ? (
+          <>
+            <Button type="button" variant="secondary" disabled={busy} onClick={() => void call("test")}>
+              Прислать сейчас
+            </Button>
+            <button type="button" disabled={busy} onClick={() => void call("unlink")} className="text-xs text-burgundy hover:underline">
+              отключить
+            </button>
+          </>
+        ) : (
+          <Button type="button" variant="secondary" disabled={busy} onClick={() => void call("link")}>
+            Подключить
+          </Button>
+        )}
+      </div>
+      {url && !linked ? (
+        <p className="mt-2 text-sm text-navy">
+          В Telegram откроется бот — нажмите «Start». Если не открылось:{" "}
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-gold underline">
+            открыть бота
+          </a>
+          .{" "}
+          <button type="button" onClick={() => void check()} className="text-xs text-muted underline">
+            я нажал Start — проверить
+          </button>
+        </p>
+      ) : null}
+      {msg ? <p className="mt-2 text-sm text-gold">{msg}</p> : null}
+    </section>
   );
 }
 
@@ -480,7 +599,7 @@ const StudentCard = memo(function StudentCard({
   const set = (patch: Partial<Draft>) => onDraft(s.studentId, { ...draft, ...patch });
 
   return (
-    <section className={`sp-glass rounded-3xl border ${sent ? "border-emerald-400/20" : dirty ? "border-gold/40" : ""}`}>
+    <section id={`rep-${s.studentId}`} className={`sp-glass scroll-mt-24 rounded-3xl border ${sent ? "border-emerald-400/20" : dirty ? "border-gold/40" : ""}`}>
       <button type="button" onClick={() => onToggle(s.studentId)} aria-expanded={open} className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 text-left sm:px-6">
         <span className="min-w-0 flex-1">
           <span className="text-lg text-navy">{s.name}</span>

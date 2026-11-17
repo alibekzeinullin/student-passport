@@ -29,6 +29,7 @@ export const CHECKS: { label: string; table: string; column?: string; file: stri
   { label: "SAT: моки, практисы, комментарии", table: "sat_comments", file: "migration-sat-3.sql" },
   { label: "Отчёты родителям и Telegram", table: "parent_reports", file: "migration-parent-reports.sql" },
   { label: "План года (фокусы месяцев)", table: "program_plan", file: "migration-program-plan.sql" },
+  { label: "Напоминания ментору в Telegram", table: "mentor_telegram", file: "migration-mentor-reminders.sql" },
 ];
 
 export interface CheckResult {

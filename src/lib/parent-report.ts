@@ -125,3 +125,25 @@ export function defaultReportMonth(now = new Date()): string {
   const d = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth() - back, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+/** Сегодня по Алматы: YYYY-MM-DD. */
+export function almatyToday(now = new Date()): string {
+  return new Date(now.getTime() + 5 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+/**
+ * За какой месяц напоминать: последние 3 дня месяца — за текущий, 1–5 число — за прошлый.
+ * В остальные дни — null (не напоминаем).
+ */
+export function reminderMonth(today: string): string | null {
+  const y = Number(today.slice(0, 4));
+  const m = Number(today.slice(5, 7));
+  const d = Number(today.slice(8, 10));
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  if (d >= last - 2) return today.slice(0, 7);
+  if (d <= 5) {
+    const prev = new Date(Date.UTC(y, m - 2, 1));
+    return `${prev.getUTCFullYear()}-${String(prev.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  return null;
+}

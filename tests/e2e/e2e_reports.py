@@ -126,8 +126,8 @@ with sync_playwright() as p:
     ok(len(hooks) == 1 and hooks[0]["url"].endswith("/api/telegram/webhook") and hooks[0]["secret_token"] == SECRET, "вебхук поставлен с секретом")
 
     # 2. Карточка Айлин: встречи собраны
-    page.get_by_role("button", name=re.compile("Дуйсенова Айлин")).click()
-    card = page.locator("section", has=page.get_by_role("button", name=re.compile("Дуйсенова Айлин")))
+    page.get_by_role("button", name=re.compile("^Дуйсенова Айлин9")).click()
+    card = page.locator("section", has=page.get_by_role("button", name=re.compile("^Дуйсенова Айлин9")))
     expect(card.get_by_text("Получилось: Сама выбрала тему эссе")).to_be_visible()
     expect(card.get_by_text("Отчёт о встрече не заполнен")).to_be_visible()
     preview = card.locator("pre")
@@ -148,7 +148,7 @@ with sync_playwright() as p:
 
     # 4. Привязка группы кодом
     # черновик Тимура (не сохранён) не должен пропасть после сохранения Айлин
-    timur_btn = page.get_by_role("button", name=re.compile("Ахметов Тимур"))
+    timur_btn = page.get_by_role("button", name=re.compile("^Ахметов Тимур10"))
     timur_btn.click()
     timur = page.locator("section", has=timur_btn)
     expect(timur.get_by_label("Групповые встречи")).to_have_value("Разбирали, как выбрать тему проекта")
@@ -167,7 +167,7 @@ with sync_playwright() as p:
 
     # 5. Отправка
     page.reload()
-    page.get_by_role("button", name=re.compile("Дуйсенова Айлин")).click()
+    page.get_by_role("button", name=re.compile("^Дуйсенова Айлин9")).click()
     expect(card.get_by_text("Айлин + родители").first).to_be_visible()
     expect(card.get_by_label("Общее впечатление за месяц")).to_have_value("Месяц сильный, стала самостоятельнее.")
     card.get_by_role("button", name="Отправить в группу").click()
@@ -183,8 +183,8 @@ with sync_playwright() as p:
 
     page.reload()
     page.get_by_role("button", name="Отправлено", exact=True).click()
-    expect(page.get_by_role("button", name=re.compile("Дуйсенова Айлин"))).to_be_visible()
-    expect(page.get_by_role("button", name=re.compile("Ахметов Тимур"))).to_have_count(0)
+    expect(page.get_by_role("button", name=re.compile("^Дуйсенова Айлин9"))).to_be_visible()
+    expect(page.get_by_role("button", name=re.compile("^Ахметов Тимур10"))).to_have_count(0)
     page.screenshot(path=E2E_DIR + "/shots/reports.png", full_page=True)
 
     # 7. «Вставить всем»: сразу сохраняется, отправленных не трогает, переживает перезагрузку и смену месяца
@@ -199,8 +199,8 @@ with sync_playwright() as p:
     expect(page.get_by_text(re.compile(r"сохранён у \d+ учеников"))).to_be_visible()
     page.reload()
     page.locator("#rep-month").select_option(OCT)
-    page.get_by_role("button", name=re.compile("Ахметов Тимур")).click()
-    tc = page.locator("section", has=page.get_by_role("button", name=re.compile("Ахметов Тимур")))
+    page.get_by_role("button", name=re.compile("^Ахметов Тимур10")).click()
+    tc = page.locator("section", has=page.get_by_role("button", name=re.compile("^Ахметов Тимур10")))
     expect(tc.get_by_label("Групповые встречи")).to_have_value("Общий текст октября")
     expect(tc.locator("pre")).to_contain_text("Общий текст октября")
     ok(sql(f"select count(*) from parent_reports where month='{OCT}' and group_note='Общий текст октября'") == sql("select count(*) from students s where not exists (select 1 from enrollments e where e.student_id=s.id and e.ends_on is null and e.course_id<>'mentoring' and not exists (select 1 from enrollments e2 where e2.student_id=s.id and e2.course_id='mentoring' and e2.ends_on is null))"), "октябрь сохранён у всех учеников менторства")

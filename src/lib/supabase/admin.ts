@@ -85,6 +85,15 @@ export async function requireAdmin(request: Request): Promise<SupabaseClient> {
   return caller.admin;
 }
 
+/** Как requireAdmin, но с данными того, кто спрашивает (id пользователя). */
+export async function requireAdminCaller(request: Request): Promise<Caller> {
+  const caller = await getCaller(request);
+  if (caller.profileRole !== "admin" || !caller.active) {
+    throw new HttpError(403, "forbidden", "Только для ментора");
+  }
+  return caller;
+}
+
 /** Только руководитель (страница «Команда»). */
 export async function requireHead(request: Request): Promise<Caller> {
   const caller = await getCaller(request);
