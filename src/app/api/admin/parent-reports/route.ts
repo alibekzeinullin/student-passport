@@ -143,12 +143,7 @@ export async function POST(request: Request) {
       const { data: tg } = await admin.from("student_telegram").select("chat_id").eq("student_id", studentId).maybeSingle();
       const chatId = (tg as { chat_id: number | null } | null)?.chat_id;
       if (!chatId) throw new HttpError(400, "no_chat", "Telegram-группа ученика не подключена");
-      const sent = await sendMessage(chatId, message, [
-        [
-          { text: "Прочитали 👍", callback_data: `r:${reportId}` },
-          { text: "Есть вопрос", callback_data: `q:${reportId}` },
-        ],
-      ]);
+      const sent = await sendMessage(chatId, message);
       const { error } = await admin
         .from("parent_reports")
         .update({ status: "sent", sent_at: new Date().toISOString(), telegram_message_id: sent.message_id })

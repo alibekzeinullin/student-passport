@@ -177,20 +177,11 @@ with sync_playwright() as p:
     text = sent[0]["text"]
     ok("Месяц сильный" in text and "Сама выбрала тему эссе" in text and "Разбирали, как выбрать тему проекта" in text, "в тексте всё нужное")
     ok("внутренний план" not in text, "внутреннего плана нет в отправленном")
-    buttons = [b["callback_data"] for row in sent[0]["reply_markup"]["inline_keyboard"] for b in row]
+    ok("reply_markup" not in sent[0], "без кнопок под отчётом")
     rid = sql(f"select id from parent_reports where student_id='{aylin}' and month='{MONTH}'")
-    ok(buttons == [f"r:{rid}", f"q:{rid}"], "кнопки «Прочитали» и «Есть вопрос»")
     ok(sql(f"select status from parent_reports where id='{rid}'") == "sent", "статус «отправлено»")
 
-    # 6. Кнопки из чужой группы игнорируются, из своей — отмечаются
-    webhook({"callback_query": {"id": "c1", "data": f"r:{rid}", "message": {"chat": {"id": -1009999, "type": "group"}}}})
-    ok(sql(f"select read_at is null from parent_reports where id='{rid}'") == "t", "кнопка из чужой группы не засчитана")
-    webhook({"callback_query": {"id": "c2", "data": f"r:{rid}", "message": {"chat": {"id": CHAT, "type": "group"}}}})
-    webhook({"callback_query": {"id": "c3", "data": f"q:{rid}", "message": {"chat": {"id": CHAT, "type": "group"}}}})
-    ok(sql(f"select read_at is not null and question_at is not null from parent_reports where id='{rid}'") == "t", "прочитали и вопрос отмечены")
     page.reload()
-    expect(page.get_by_text("прочитали").first).to_be_visible()
-    expect(page.get_by_text("есть вопрос").first).to_be_visible()
     page.get_by_role("button", name="Отправлено", exact=True).click()
     expect(page.get_by_role("button", name=re.compile("Дуйсенова Айлин"))).to_be_visible()
     expect(page.get_by_role("button", name=re.compile("Ахметов Тимур"))).to_have_count(0)

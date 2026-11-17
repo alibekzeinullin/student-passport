@@ -244,7 +244,6 @@ export default function ParentReportsPage() {
   );
   const all = students ?? [];
   const sentCount = all.filter((s) => s.report?.status === "sent").length;
-  const readCount = all.filter((s) => s.report?.read_at).length;
   const linkedCount = all.filter((s) => s.telegram.linked).length;
   const readyToSend = all.filter((s) => s.telegram.linked && s.report?.status !== "sent");
 
@@ -313,11 +312,10 @@ export default function ParentReportsPage() {
 
         {students ? (
           <div className={`space-y-6 transition-opacity ${loading ? "pointer-events-none opacity-50" : ""}`} aria-busy={loading}>
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-3">
               <Stat label="Учеников" value={String(all.length)} />
               <Stat label="Группа подключена" value={`${linkedCount}`} />
               <Stat label="Отправлено" value={`${sentCount}`} />
-              <Stat label="Прочитали" value={`${readCount}`} />
             </div>
 
             <GroupAllBox key={month} month={month} disabled={locked} busy={busy === "fill"} onFill={fillGroup} />
@@ -499,8 +497,6 @@ const StudentCard = memo(function StudentCard({
             {s.telegram.linked ? `Telegram: ${s.telegram.title || "группа"}` : "Группа не подключена"}
           </span>
           {sent ? <span className="rounded-full bg-emerald-400/15 px-2.5 py-1 text-emerald-300">отправлено {s.report?.sent_at ? fmtStamp(s.report.sent_at) : ""}</span> : null}
-          {s.report?.read_at ? <span className="rounded-full bg-emerald-400/15 px-2.5 py-1 text-emerald-300">прочитали</span> : null}
-          {s.report?.question_at ? <span className="rounded-full bg-gold/15 px-2.5 py-1 text-gold">есть вопрос</span> : null}
         </span>
         <span aria-hidden className={`text-[10px] text-muted ${open ? "rotate-180" : ""}`}>
           ▼
