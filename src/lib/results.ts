@@ -8,6 +8,8 @@ export interface TopicRow {
   section: "math" | "verbal";
   name: string;
   sort: number;
+  /** Ссылка на материалы практиса по теме (Google Drive и т.п.) */
+  practice_url?: string;
 }
 
 export interface MockRow {
@@ -75,7 +77,7 @@ export interface ResultsData {
 export async function loadResults(): Promise<ResultsData> {
   const supabase = createClient();
   const [topics, mocks, mr, practices, pr] = await Promise.all([
-    supabase.from("sat_topics").select("id, section, name, sort").eq("active", true).order("section").order("sort"),
+    supabase.from("sat_topics").select("id, section, name, sort, practice_url").eq("active", true).order("section").order("sort"),
     supabase.from("mocks").select("id, stream_id, title, mock_date").order("mock_date"),
     supabase.from("mock_results").select("mock_id, student_id, verbal, math, total"),
     supabase.from("practices").select("id, group_id, practice_date, topic_id, title, max_score").order("practice_date"),
@@ -93,6 +95,14 @@ export async function loadResults(): Promise<ResultsData> {
     practices: (practices.data as PracticeRow[]) ?? [],
     practiceResults: (pr.data as PracticeResultRow[]) ?? [],
   };
+}
+
+/** Ссылка «Практис по теме». Пустая — убрать. */
+export async function setTopicPracticeUrl(topicId: string, url: string) {
+  const clean = url.trim();
+  if (clean && !/^https?:\/\//i.test(clean)) throw new Error("Ссылка должна начинаться с https://");
+  const { error } = await createClient().from("sat_topics").update({ practice_url: clean }).eq("id", topicId);
+  fail(error);
 }
 
 export async function createMock(input: { streamId: string | null; title: string; date: string }) {
