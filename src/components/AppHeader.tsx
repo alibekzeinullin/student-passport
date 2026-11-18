@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { canOpenGroups, homeForRole, isHead, STAFF_ROLE_LABELS, type StaffRole } from "@/lib/staff";
 import type { AuthUser } from "@/lib/types";
+import { useSatTheme } from "@/lib/sat-theme";
 
 /** Основные разделы ментора (кроме «Ученики» и «Посещаемость»). */
 const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
@@ -49,6 +50,8 @@ export function AppHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const isParentGuest = pathname.startsWith("/parent/");
+  // разделы SAT (и все страницы сотрудника SAT) — в светлой теме
+  useSatTheme(Boolean(user) && (isSatPath(pathname) || (user?.role === "staff" && pathname.startsWith("/admin"))));
 
   const handleLogout = async () => {
     await logout();

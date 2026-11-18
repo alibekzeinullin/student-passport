@@ -23,6 +23,7 @@ import {
   pctTone,
   saveMockResults,
   savePracticeResults,
+  setTopicPracticeUrl,
   SECTION_LABELS,
   STATUS_LABELS,
   studentMocks,
@@ -124,7 +125,7 @@ export default function ResultsPage() {
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-gold">SAT</p>
           <h2 className="mt-1 text-3xl font-light tracking-tight text-navy sm:text-4xl">Результаты</h2>
           <p className="mt-2 max-w-2xl text-sm text-muted">
-            Прогресс каждого ученика относительно его собственной цели. Рейтинга между учениками нет.
+            Прогресс каждого ученика относительно его собственной цели. Ученик видит только своё место в группе по последнему моку — без чужих имён и баллов.
           </p>
         </div>
 
@@ -177,12 +178,62 @@ export default function ResultsPage() {
             ) : tab === "mocks" ? (
               <Mocks groupsData={groupsData} results={results} manager={manager} canEditGroup={canEditGroup} run={run} today={today} />
             ) : (
-              <Practices groupId={groupId} groupsData={groupsData} results={results} canEdit={canEditGroup(groupId)} run={run} today={today} />
+              <>
+                <Practices groupId={groupId} groupsData={groupsData} results={results} canEdit={canEditGroup(groupId)} run={run} today={today} />
+                {manager ? <TopicLinks results={results} run={run} /> : null}
+              </>
             )}
           </>
         )}
       </div>
     </RequireAuth>
+  );
+}
+
+// ---------------- Ссылки «Практис по теме» ----------------
+
+/** Руководитель SAT задаёт ссылку на материалы по каждой теме — у ученика это кнопка в «Что перерешать». */
+function TopicLinks({ results, run }: { results: ResultsData; run: Run }) {
+  const [open, setOpen] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const withLinks = results.topics.filter((t) => t.practice_url).length;
+  return (
+    <section className="sp-glass mt-6 rounded-3xl border px-5 py-4 sm:px-6">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center justify-between gap-3 text-left">
+        <span>
+          <span className="block text-navy">Ссылки «Практис по теме»</span>
+          <span className="block text-xs text-muted">
+            Ученик видит кнопку у темы в «Что перерешать». Заполнено: {withLinks} из {results.topics.length}
+          </span>
+        </span>
+        <span aria-hidden className={`text-[10px] text-muted ${open ? "rotate-180" : ""}`}>
+          ▼
+        </span>
+      </button>
+      {open ? (
+        <ul className="mt-4 space-y-2">
+          {results.topics.map((t) => {
+            const value = drafts[t.id] ?? t.practice_url ?? "";
+            const changed = value.trim() !== (t.practice_url ?? "");
+            return (
+              <li key={t.id} className="grid items-center gap-2 sm:grid-cols-[5rem_minmax(0,16rem)_minmax(0,1fr)_auto]">
+                <span className="text-xs font-semibold text-muted">{SECTION_LABELS[t.section]}</span>
+                <span className="truncate text-sm text-navy">{t.name}</span>
+                <Input value={value} onChange={(e) => setDrafts((d) => ({ ...d, [t.id]: e.target.value }))} placeholder="https://drive.google.com/…" aria-label={`Ссылка: ${t.name}`} />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!changed}
+                  onClick={() => void run(() => setTopicPracticeUrl(t.id, value), `Ссылка сохранена: ${t.name}`)}
+                >
+                  Сохранить
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 

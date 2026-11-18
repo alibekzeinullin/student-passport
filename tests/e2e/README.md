@@ -32,7 +32,7 @@ TELEGRAM_API_BASE=http://127.0.0.1:3999
 ENV
 (cd ../.. && set -a && . tests/e2e/next.env && set +a && npx next build && npx next start -p 3000 &)
 # 5. Сценарии (перед каждым повтором — bash reset.sh); этап 2 идёт после этапа 1 на той же базе
-mkdir -p shots && python3 e2e_sat1.py && python3 e2e_sat2.py && python3 e2e_sat3.py && python3 e2e_reports.py && python3 e2e_reminders.py && python3 e2e_plan.py
+mkdir -p shots && python3 e2e_sat1.py && python3 e2e_sat2.py && python3 e2e_sat3.py && python3 e2e_sat4.py && python3 e2e_reports.py && python3 e2e_reminders.py && python3 e2e_plan.py
 ```
 
 Что проверяется (35 шагов): руководитель создаёт поток и группы, сотрудника и сотрудников списком
@@ -67,3 +67,7 @@ mkdir -p shots && python3 e2e_sat1.py && python3 e2e_sat2.py && python3 e2e_sat3
 
 Эссе для родителей (`e2e_parent_essays.py`, 6 проверок): по родительской ссылке видны текст, оценки и комментарий проверенных
 эссе и прошлые версии, работы на проверке — без текста; блок «Эссе» в месячном отчёте со ссылкой `#essays`.
+
+SAT этап 4А (`e2e_sat4.py`, 13 проверок; после sat1–3): светлая тема SAT и тёмная менторства, office hours в расписании группы
+(не попадают в «Не отмечено»), домашка на занятии со ссылкой, ссылка «Практис по теме», у ученика — группа, расписание с длительностью,
+место по моку, официальный SAT (кратно 10), ачивки; права: чужие официальные результаты и место по моку недоступны.

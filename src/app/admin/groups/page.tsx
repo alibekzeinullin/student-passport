@@ -409,7 +409,7 @@ function GroupCard({
           </span>
           {slots.length ? (
             <span className="mt-1 block text-sm text-navy/80">
-              {slots.map((x) => `${WEEKDAYS[x.weekday - 1]} ${hhmm(x.starts_at)}${x.title ? ` ${x.title}` : ""}`).join(" · ")}
+              {slots.map((x) => `${WEEKDAYS[x.weekday - 1]} ${hhmm(x.starts_at)}${x.kind === "office_hours" ? " office hours" : ""}${x.title ? ` ${x.title}` : ""}`).join(" · ")}
             </span>
           ) : null}
           <span className="mt-1 block text-sm text-muted">
@@ -934,6 +934,7 @@ function SchedulePanel({
   const [time, setTime] = useState("17:00");
   const [duration, setDuration] = useState("90");
   const [title, setTitle] = useState("");
+  const [kind, setKind] = useState<"lesson" | "office_hours">("lesson");
   const [busy, setBusy] = useState(false);
 
   return (
@@ -947,7 +948,10 @@ function SchedulePanel({
               <span className="text-navy">
                 {hhmm(x.starts_at)} · {x.duration_min} мин
               </span>
-              <span className="text-muted">{x.title || "занятие"}</span>
+              {x.kind === "office_hours" ? (
+                <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-semibold text-violet-700">Office hours</span>
+              ) : null}
+              <span className="text-muted">{x.title || (x.kind === "office_hours" ? "" : "занятие")}</span>
               {canEdit ? (
                 <button
                   type="button"
@@ -969,7 +973,11 @@ function SchedulePanel({
 
       {canEdit ? (
         <>
-          <div className="mt-3 grid gap-3 sm:grid-cols-5">
+          <div className="mt-3 grid gap-3 sm:grid-cols-6">
+            <Select value={kind} onChange={(e) => setKind(e.target.value as "lesson" | "office_hours")} aria-label="Вид">
+              <option value="lesson">Занятие</option>
+              <option value="office_hours">Office hours</option>
+            </Select>
             <Select value={weekday} onChange={(e) => setWeekday(e.target.value)} aria-label="День недели">
               {WEEKDAYS_FULL.map((d, i) => (
                 <option key={d} value={String(i + 1)}>
@@ -979,15 +987,15 @@ function SchedulePanel({
             </Select>
             <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-label="Время" />
             <Input value={duration} inputMode="numeric" onChange={(e) => setDuration(e.target.value.replace(/\D/g, "").slice(0, 3))} aria-label="Длительность, минут" placeholder="90" />
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Предмет" placeholder="Math / Verbal / Практис" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Предмет" placeholder={kind === "office_hours" ? "Вопросы по Math" : "Math / Verbal / Практис"} />
             <Button
               type="button"
               disabled={busy || !time || Number(duration) < 15}
               onClick={async () => {
                 setBusy(true);
                 const ok = await run(
-                  () => addSlot(group.id, { weekday: Number(weekday), starts_at: time, duration_min: Number(duration), title: title.trim() }),
-                  `В расписание «${group.name}» добавлено: ${WEEKDAYS_FULL[Number(weekday) - 1]} ${time}`,
+                  () => addSlot(group.id, { weekday: Number(weekday), starts_at: time, duration_min: Number(duration), title: title.trim(), kind }),
+                  `В расписание «${group.name}» добавлено: ${kind === "office_hours" ? "office hours, " : ""}${WEEKDAYS_FULL[Number(weekday) - 1]} ${time}`,
                 );
                 if (ok) setTitle("");
                 setBusy(false);
@@ -1009,7 +1017,9 @@ function SchedulePanel({
               Заполнить примером: Вт Math · Чт Verbal · Пт Практис
             </button>
           ) : null}
-          <p className="mt-2 text-xs text-muted">Занятия появятся на странице «Занятия». Изменение расписания пересоздаёт будущие занятия, уже отмеченные не трогает.</p>
+          <p className="mt-2 text-xs text-muted">
+            Занятия появятся на странице «Занятия». Office hours ученики видят отдельным цветом; их не отмечают и они не идут в посещаемость. Изменение расписания пересоздаёт будущие занятия, уже отмеченные не трогает.
+          </p>
         </>
       ) : null}
     </div>

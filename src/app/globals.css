@@ -228,3 +228,67 @@ html.sp-seen .sp-rise {
     color: #2f7a52 !important;
   }
 }
+
+/* ---------- Светлая тема для SAT (менторство остаётся тёмным) ----------
+   Включается атрибутом <html data-theme="sat"> на страницах SAT и во вкладке SAT ученика. */
+html[data-theme="sat"] {
+  color-scheme: light;
+  --navy: #1f2a3c;
+  --navy-soft: #4a628a;
+  --burgundy: #a12a3d;
+  --gold: #8a6d2a;
+  --gold-ink: #ffffff;
+  --light-gray: #d9dee6;
+  --background: #f4f6f9;
+  --foreground: #1f2a3c;
+  --card: #ffffff;
+  --surface: #ffffff;
+  --field: #ffffff;
+  --muted: #5c6675;
+  --border: #d9dde3;
+}
+html[data-theme="sat"] body {
+  background-image:
+    radial-gradient(900px 520px at 88% -8%, rgba(127, 34, 49, 0.07), transparent 62%),
+    radial-gradient(760px 460px at -4% 18%, rgba(35, 51, 74, 0.08), transparent 70%);
+}
+html[data-theme="sat"] ::selection {
+  background: rgba(154, 123, 51, 0.25);
+}
+html[data-theme="sat"] input::placeholder,
+html[data-theme="sat"] textarea::placeholder {
+  color: #8a94a3;
+}
+html[data-theme="sat"] .sp-glass {
+  background: #ffffff;
+  border-color: rgba(35, 51, 74, 0.1);
+  box-shadow: 0 1px 2px rgba(35, 51, 74, 0.05);
+  backdrop-filter: none;
+}
+html[data-theme="sat"] .sp-glass:hover {
+  border-color: rgba(138, 109, 42, 0.45);
+}
+/* Полупрозрачные белые подложки и рамки из тёмной темы → тонкий тёмный оттенок */
+html[data-theme="sat"] [class^="bg-white/"],
+html[data-theme="sat"] [class*=" bg-white/"],
+html[data-theme="sat"] [class^="bg-black/"],
+html[data-theme="sat"] [class*=" bg-black/"] {
+  background-color: rgba(35, 51, 74, 0.05);
+}
+html[data-theme="sat"] [class*="hover:bg-white/"]:hover {
+  background-color: rgba(35, 51, 74, 0.06);
+}
+html[data-theme="sat"] [class^="border-white/"],
+html[data-theme="sat"] [class*=" border-white/"],
+html[data-theme="sat"] [class*=" divide-white/"] > * {
+  border-color: rgba(35, 51, 74, 0.13);
+}
+html[data-theme="sat"] [class*="bg-[#1"] {
+  background-color: #ffffff;
+}
+html[data-theme="sat"] .text-emerald-300 {
+  color: #2f7a52;
+}
+html[data-theme="sat"] .text-sky-200 {
+  color: #2a5c8a;
+}

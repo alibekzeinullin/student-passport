@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { Button } from "@/components/ui/Button";
-import { Input, Label, Select } from "@/components/ui/Field";
+import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { useAuth } from "@/context/AuthContext";
 import { friendly } from "@/lib/groups";
 import {
@@ -98,6 +98,7 @@ export default function LessonsPage() {
   const unmarked = visible.filter(
     (l) =>
       l.status === "planned" &&
+      l.kind !== "office_hours" &&
       l.lesson_date <= today &&
       l.lesson_date >= addDays(today, manager ? -14 : -MARK_WINDOW_DAYS) &&
       !data?.marked.get(l.id) &&
@@ -137,7 +138,7 @@ export default function LessonsPage() {
             groups={editableGroups}
             today={today}
             onSubmit={async (input) => {
-              if (await run(() => addExtraLesson(input), `Занятие добавлено: ${fmtDay(input.date)}, ${input.time}`)) setExtraOpen(false);
+              if (await run(() => addExtraLesson(input), `${input.kind === "office_hours" ? "Office hours добавлены" : "Занятие добавлено"}: ${fmtDay(input.date)}, ${input.time}`)) setExtraOpen(false);
             }}
           />
         ) : null}
@@ -218,6 +219,7 @@ export default function LessonsPage() {
                     {items.map((l) => {
                       const marked = data?.marked.get(l.id) ?? 0;
                       const cancelled = l.status === "cancelled";
+                      const oh = l.kind === "office_hours";
                       return (
                         <button
                           key={l.id}
@@ -227,16 +229,18 @@ export default function LessonsPage() {
                           className={`w-full rounded-xl border px-2.5 py-2 text-left text-xs transition ${
                             openId === l.id
                               ? "border-gold bg-gold/15"
-                              : isToday
+                              : oh
+                                ? "border-violet-500/40 bg-violet-500/10 hover:border-violet-500/70"
+                                : isToday
                                 ? "border-gold/40 bg-white/[0.06] hover:border-gold"
                                 : "border-white/10 bg-white/[0.03] hover:border-white/30"
                           } ${cancelled ? "opacity-50" : ""}`}
                         >
                           <span className={`block font-semibold text-navy ${cancelled ? "line-through" : ""}`}>{hhmm(l.starts_at)}</span>
                           <span className="block truncate text-navy">{l.groups?.name}</span>
-                          <span className="block truncate text-muted">{l.title || "занятие"}</span>
+                          <span className="block truncate text-muted">{oh ? `Office hours${l.title && l.title !== "Office hours" ? ` · ${l.title}` : ""}` : l.title || "занятие"}</span>
                           <span className="mt-1 block">
-                            {cancelled ? (
+                            {oh ? null : cancelled ? (
                               <span className="text-muted">отменено</span>
                             ) : marked ? (
                               <span className="text-emerald-300">✓ отмечено</span>
@@ -333,6 +337,8 @@ function LessonPanel({
 }) {
   const [roster, setRoster] = useState<RosterMark[] | null>(null);
   const [topic, setTopic] = useState(lesson.topic);
+  const [homework, setHomework] = useState(lesson.homework ?? "");
+  const officeHours = lesson.kind === "office_hours";
   const [busy, setBusy] = useState(false);
   const [action, setAction] = useState<"none" | "move" | "sub">("none");
   const [moveDate, setMoveDate] = useState(lesson.lesson_date);
@@ -390,14 +396,34 @@ function LessonPanel({
       ) : null}
       {loadError ? <p className="mt-4 text-sm text-burgundy">{loadError}</p> : null}
 
-      {!cancelled ? (
-        <div className="mt-4">
-          <Label htmlFor="topic">Тема занятия</Label>
-          <Input id="topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Проценты" disabled={locked} />
+      {officeHours ? (
+        <p className="mt-4 rounded-2xl bg-violet-500/10 px-4 py-3 text-sm text-navy">
+          Это office hours: ученики видят их в расписании отдельным цветом. Отметки не нужны и в посещаемость не идут.
+        </p>
+      ) : null}
+
+      {!cancelled && !officeHours ? (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div>
+            <Label htmlFor="topic">Тема занятия</Label>
+            <Input id="topic" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Проценты" disabled={locked} />
+          </div>
+          <div>
+            <Label htmlFor="homework">Домашнее задание к следующему занятию</Label>
+            <Textarea
+              id="homework"
+              value={homework}
+              onChange={(e) => setHomework(e.target.value)}
+              placeholder={"Практис по процентам, задачи 1–15\nСсылки можно вставлять — у ученика они станут кликабельными"}
+              className="min-h-20"
+              disabled={locked}
+            />
+            <p className="mt-1 text-xs text-muted">Ученик увидит это в кабинете как «что сделать к следующему занятию».</p>
+          </div>
         </div>
       ) : null}
 
-      {roster && !cancelled ? (
+      {roster && !cancelled && !officeHours ? (
         roster.length === 0 ? (
           <p className="mt-4 text-sm text-muted">В группе на эту дату нет учеников.</p>
         ) : (
@@ -449,7 +475,7 @@ function LessonPanel({
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
-                  await run(() => saveMarks(lesson.id, topic, roster), `Отметки сохранены: ${lesson.groups?.name}, ${fmtDay(lesson.lesson_date)}`);
+                  await run(() => saveMarks(lesson.id, topic, roster, homework), `Отметки сохранены: ${lesson.groups?.name}, ${fmtDay(lesson.lesson_date)}`);
                   setBusy(false);
                 }}
               >
@@ -588,16 +614,24 @@ function ExtraForm({
 }: {
   groups: { id: string; name: string }[];
   today: string;
-  onSubmit: (input: { groupId: string; date: string; time: string; duration: number; title: string }) => Promise<void>;
+  onSubmit: (input: { groupId: string; date: string; time: string; duration: number; title: string; kind: "lesson" | "office_hours" }) => Promise<void>;
 }) {
+  const [kind, setKind] = useState<"lesson" | "office_hours">("lesson");
   const [groupId, setGroupId] = useState(groups[0]?.id ?? "");
   const [date, setDate] = useState(today);
   const [time, setTime] = useState("17:00");
   const [duration, setDuration] = useState("90");
-  const [title, setTitle] = useState("Office hours");
+  const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   return (
     <section className="sp-rise grid gap-4 rounded-3xl border border-gold/25 bg-[#162030] px-5 py-5 sm:grid-cols-6 sm:px-6">
+      <div className="sm:col-span-6">
+        <Label htmlFor="ex-kind">Вид</Label>
+        <Select id="ex-kind" value={kind} onChange={(e) => setKind(e.target.value as "lesson" | "office_hours")} className="sm:w-56">
+          <option value="lesson">Занятие</option>
+          <option value="office_hours">Office hours</option>
+        </Select>
+      </div>
       <div className="sm:col-span-2">
         <Label htmlFor="ex-group">Группа</Label>
         <Select id="ex-group" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
@@ -622,7 +656,7 @@ function ExtraForm({
       </div>
       <div>
         <Label htmlFor="ex-title">Что</Label>
-        <Input id="ex-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <Input id="ex-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={kind === "office_hours" ? "Вопросы по Math" : "Math"} />
       </div>
       <div className="sm:col-span-6">
         <Button
@@ -630,11 +664,11 @@ function ExtraForm({
           disabled={busy || !groupId || !date || !time || Number(duration) < 15}
           onClick={async () => {
             setBusy(true);
-            await onSubmit({ groupId, date, time, duration: Number(duration), title });
+            await onSubmit({ groupId, date, time, duration: Number(duration), title, kind });
             setBusy(false);
           }}
         >
-          {busy ? "Добавляю…" : "Добавить занятие"}
+          {busy ? "Добавляю…" : kind === "office_hours" ? "Добавить office hours" : "Добавить занятие"}
         </Button>
       </div>
     </section>

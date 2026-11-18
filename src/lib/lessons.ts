@@ -44,7 +44,10 @@ export interface SlotRow {
   title: string;
   valid_from: string;
   valid_to: string | null;
+  kind?: LessonKind;
 }
+
+export type LessonKind = "lesson" | "office_hours";
 
 export interface LessonRow {
   id: string;
@@ -56,11 +59,18 @@ export interface LessonRow {
   duration_min: number;
   title: string;
   topic: string;
+  /** office hours не отмечаются и не идут в посещаемость */
+  kind?: LessonKind;
+  /** домашнее задание, заданное на этом занятии */
+  homework?: string;
   status: "planned" | "cancelled";
   moved_from: string;
   teacher_id: string | null;
   groups: { name: string; course_id: string; archived: boolean } | null;
 }
+
+export const LESSON_COLUMNS =
+  "id, group_id, slot_id, slot_date, lesson_date, starts_at, duration_min, title, topic, kind, homework, status, moved_from, teacher_id, groups(name, course_id, archived)";
 
 export interface RosterMark {
   student_id: string;
@@ -126,7 +136,7 @@ export async function loadWeek(from: string, to: string): Promise<WeekData> {
   const [lessons, marked, links, members, groups] = await Promise.all([
     supabase
       .from("lessons")
-      .select("id, group_id, slot_id, slot_date, lesson_date, starts_at, duration_min, title, topic, status, moved_from, teacher_id, groups(name, course_id, archived)")
+      .select(LESSON_COLUMNS)
       .gte("lesson_date", from)
       .lte("lesson_date", to)
       .order("lesson_date")
@@ -179,7 +189,7 @@ export async function loadRoster(lessonId: string): Promise<RosterMark[]> {
   return (data as RosterMark[]) ?? [];
 }
 
-export async function saveMarks(lessonId: string, topic: string, marks: RosterMark[]) {
+export async function saveMarks(lessonId: string, topic: string, marks: RosterMark[], homework?: string) {
   const supabase = createClient();
   // Все ученики занятия: так снятая отметка тоже сохранится
   const rows = marks.map((m) => ({
@@ -194,17 +204,20 @@ export async function saveMarks(lessonId: string, topic: string, marks: RosterMa
     const { error } = await supabase.from("lesson_marks").upsert(rows, { onConflict: "lesson_id,student_id" });
     fail(error);
   }
-  const { error } = await supabase.from("lessons").update({ topic: topic.trim() }).eq("id", lessonId);
+  const patch: Record<string, string> = { topic: topic.trim() };
+  if (homework !== undefined) patch.homework = homework.trim();
+  const { error } = await supabase.from("lessons").update(patch).eq("id", lessonId);
   fail(error);
 }
 
-export async function updateLesson(id: string, patch: Partial<Pick<LessonRow, "lesson_date" | "starts_at" | "status" | "moved_from" | "teacher_id" | "topic" | "title" | "duration_min">>) {
+export async function updateLesson(id: string, patch: Partial<Pick<LessonRow, "lesson_date" | "starts_at" | "status" | "moved_from" | "teacher_id" | "topic" | "title" | "duration_min" | "homework">>) {
   const { error } = await createClient().from("lessons").update(patch).eq("id", id);
   fail(error);
 }
 
-export async function addExtraLesson(input: { groupId: string; date: string; time: string; duration: number; title: string }) {
+export async function addExtraLesson(input: { groupId: string; date: string; time: string; duration: number; title: string; kind?: LessonKind }) {
   const { error } = await createClient().from("lessons").insert({
+    kind: input.kind ?? "lesson",
     group_id: input.groupId,
     lesson_date: input.date,
     starts_at: input.time,
@@ -224,14 +237,14 @@ export async function deleteLesson(id: string) {
 export async function loadSlots(): Promise<SlotRow[]> {
   const { data, error } = await createClient()
     .from("schedule_slots")
-    .select("id, group_id, weekday, starts_at, duration_min, title, valid_from, valid_to")
+    .select("id, group_id, weekday, starts_at, duration_min, title, valid_from, valid_to, kind")
     .order("weekday")
     .order("starts_at");
   if (error) return [];
   return (data as SlotRow[]) ?? [];
 }
 
-export async function addSlot(groupId: string, slot: { weekday: number; starts_at: string; duration_min: number; title: string }) {
+export async function addSlot(groupId: string, slot: { weekday: number; starts_at: string; duration_min: number; title: string; kind?: LessonKind }) {
   const { error } = await createClient().from("schedule_slots").insert({ group_id: groupId, ...slot });
   fail(error);
 }
@@ -281,7 +294,7 @@ export async function loadStudentUpcoming(from: string, to: string): Promise<Les
   await supabase.rpc("ensure_lessons", { p_from: from, p_to: to });
   const { data, error } = await supabase
     .from("lessons")
-    .select("id, group_id, slot_id, slot_date, lesson_date, starts_at, duration_min, title, topic, status, moved_from, teacher_id, groups(name, course_id, archived)")
+    .select(LESSON_COLUMNS)
     .gte("lesson_date", from)
     .lte("lesson_date", to)
     .order("lesson_date")
