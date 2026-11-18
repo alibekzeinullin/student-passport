@@ -17,6 +17,7 @@ import { StudentOverview } from "@/components/StudentOverview";
 import { TermGradesChart } from "@/components/TermGradesChart";
 import { WorksBoard } from "@/components/works/WorksBoard";
 import { ParentPlanSection } from "@/components/ParentPlanSection";
+import { ParentEssays } from "@/components/essays/ParentEssays";
 
 export default function ParentHubPage({
   params,
@@ -104,6 +105,8 @@ export default function ParentHubPage({
       <StudentOverview student={student} mode="parent" parentToken={studentToken} />
 
       <TermGradesChart student={student} mode="parent" parentToken={studentToken} />
+
+      <ParentEssays token={studentToken} />
 
       <section>
         <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-gold">Проекты и исследования</p>

@@ -34,6 +34,11 @@ export interface ReportFacts {
   essaysAverage: number | null;
   essaysSubmitted: number;
   deadlinesSubmitted: string[];
+  /** Эссе, проверенные за месяц (последняя версия по теме) */
+  essayItems?: { title: string; status: "accepted" | "revision"; score: number | null }[];
+  /** Всего принято тем за всё время и цель */
+  essaysTotalAccepted?: number;
+  essaysGoal?: number;
 }
 
 export interface ReportInput {
@@ -81,7 +86,8 @@ export function buildReportMessage(input: ReportInput): string {
     stats.push(`Встречи: ${parts.join(", ")}`);
   }
   if (facts.homeworkCompletion !== null) stats.push(`Домашние задания: ${facts.homeworkCompletion}%`);
-  if (facts.essaysAccepted || facts.essaysSubmitted) {
+  const essayItems = facts.essayItems ?? [];
+  if (!essayItems.length && (facts.essaysAccepted || facts.essaysSubmitted)) {
     const parts: string[] = [];
     if (facts.essaysAccepted) parts.push(`принято ${facts.essaysAccepted}${facts.essaysAverage !== null ? ` (средняя оценка ${facts.essaysAverage.toFixed(1).replace(".0", "")}/10)` : ""}`);
     if (facts.essaysSubmitted > facts.essaysAccepted) parts.push(`сдано ${facts.essaysSubmitted}`);
@@ -106,6 +112,16 @@ export function buildReportMessage(input: ReportInput): string {
     if (!items.length) continue;
     out.push("", `${NUM[n] ?? `${n + 1}.`} ${title}:`);
     items.forEach((i) => out.push(`— ${i}`));
+    n += 1;
+  }
+
+  if (essayItems.length) {
+    out.push("", `${NUM[n] ?? `${n + 1}.`} Эссе:`);
+    essayItems.forEach((e) =>
+      out.push(`— «${e.title}» — ${e.status === "accepted" ? `принято${e.score !== null ? `, ${e.score.toFixed(1).replace(".0", "").replace(".", ",")}/10` : ""}` : "на доработке"}`),
+    );
+    if (facts.essaysTotalAccepted !== undefined && facts.essaysGoal) out.push(`Всего принято тем: ${facts.essaysTotalAccepted} из ${facts.essaysGoal}`);
+    out.push(`Тексты и комментарии ментора: ${input.link}#essays`);
     n += 1;
   }
 

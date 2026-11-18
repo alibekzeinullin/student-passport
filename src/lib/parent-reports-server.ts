@@ -4,7 +4,7 @@ import type { DbStudent } from "@/lib/supabase/database.types";
 import { mapDbStudentToProfile } from "@/lib/supabase/mappers";
 import { MEETING_COLUMNS, mapMeeting, type DbMeeting } from "@/lib/meetings";
 import { mapDeadline, type DbDeadline } from "@/lib/deadlines";
-import { mapSubmission, type DbSubmission } from "@/lib/essays";
+import { TOPICS_GOAL, essayScore, mapSubmission, type DbSubmission } from "@/lib/essays";
 import { collectMonthFacts } from "@/lib/monthly-draft";
 import { all } from "@/lib/monthly-auto";
 import { nextStepText, type PlanEntry, PLAN_COLUMNS } from "@/lib/program-plan";
@@ -122,6 +122,18 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
     // план года может быть ещё не создан — тогда просто без «Что дальше»
     admin.from("program_plan").select(PLAN_COLUMNS).order("start_month"),
   ]);
+  // для блока «Эссе»: названия тем и сколько тем принято за всё время
+  const [topicsRows, acceptedRows] = await Promise.all([
+    paged<{ id: string; number: number; title: string }>(() => admin.from("essay_topics").select("id, number, title")),
+    paged<{ student_id: string; topic_id: string }>(() => {
+      const q = admin.from("essay_submissions").select("student_id, topic_id").eq("status", "accepted");
+      return onlyStudent ? q.eq("student_id", onlyStudent) : q;
+    }),
+  ]);
+  const topicTitle = new Map(topicsRows.map((t) => [t.id, t.title]));
+  const essaysGoal = Math.max(TOPICS_GOAL, topicsRows.length);
+  const acceptedTopics = new Map<string, Set<string>>();
+  acceptedRows.forEach((r) => acceptedTopics.set(r.student_id, (acceptedTopics.get(r.student_id) ?? new Set()).add(r.topic_id)));
   const plan = (planRes.data as PlanEntry[] | null) ?? [];
   const pinnedIds = new Set(students.filter((s) => (s as { pinned?: boolean | null }).pinned).map((s) => s.id));
   const meetings = meetingsRaw.map(mapMeeting);
@@ -181,6 +193,9 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
           essaysAverage: facts.essaysAverage,
           essaysSubmitted: facts.essaysSubmitted,
           deadlinesSubmitted: facts.submittedDeadlines.map((d) => d.title),
+          essayItems: monthEssayItems(essays.filter((e) => e.studentId === student.id), from, to, topicTitle),
+          essaysTotalAccepted: acceptedTopics.get(student.id)?.size ?? 0,
+          essaysGoal,
         },
         notes,
         next: nextStepText(plan, month, student.className),
@@ -188,6 +203,29 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
       } satisfies StudentReportData;
     })
     .sort((a, b) => Number(pinnedIds.has(b.studentId)) - Number(pinnedIds.has(a.studentId)) || a.name.localeCompare(b.name, "ru"));
+}
+
+/** Эссе, проверенные в этом месяце: по теме — последняя проверенная версия. */
+function monthEssayItems(
+  list: ReturnType<typeof mapSubmission>[],
+  from: string,
+  to: string,
+  titles: Map<string, string>,
+): { title: string; status: "accepted" | "revision"; score: number | null }[] {
+  const byTopic = new Map<string, ReturnType<typeof mapSubmission>>();
+  list
+    .filter((e) => e.reviewedAt && e.reviewedAt >= from && e.reviewedAt < to && (e.status === "accepted" || e.status === "revision"))
+    .forEach((e) => {
+      const prev = byTopic.get(e.topicId);
+      if (!prev || e.version > prev.version) byTopic.set(e.topicId, e);
+    });
+  return Array.from(byTopic.values())
+    .sort((a, b) => (a.reviewedAt ?? "").localeCompare(b.reviewedAt ?? ""))
+    .map((e) => ({
+      title: titles.get(e.topicId) ?? "Эссе",
+      status: e.status as "accepted" | "revision",
+      score: e.status === "accepted" ? essayScore(e) : null,
+    }));
 }
 
 export function messageFor(data: StudentReportData, month: string, draft: { overall: string; groupNote: string; help: string }): string {
