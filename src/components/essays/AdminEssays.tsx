@@ -7,6 +7,7 @@ import {
   CRITERIA,
   TOPICS_GOAL,
   deleteTopic,
+  essayScore,
   essaySummary,
   fetchSubmissions,
   fetchTopics,
@@ -26,7 +27,7 @@ import { VoiceButton, appendText } from "@/components/ui/VoiceButton";
 import { ReviewCard } from "@/components/essays/StudentEssays";
 import { StatusPill, WordCounter, formatScore } from "@/components/essays/EssayBits";
 
-type Tab = "review" | "rating" | "topics";
+type Tab = "review" | "done" | "rating" | "topics";
 
 export function AdminEssays() {
   const { students } = useStudents();
@@ -34,6 +35,12 @@ export function AdminEssays() {
   const [topics, setTopics] = useState<EssayTopic[]>(() => peekTopics() ?? []);
   const [subs, setSubs] = useState<EssaySubmission[]>(() => peekSubmissions() ?? []);
   const [error, setError] = useState("");
+  // открыть проверенное эссе / эссе ученика во вкладке «Проверенные»
+  const [doneFocus, setDoneFocus] = useState<{ id?: string; studentId?: string; nonce: number }>({ nonce: 0 });
+  const openDone = useCallback((f: { id?: string; studentId?: string }) => {
+    setDoneFocus((prev) => ({ ...f, nonce: prev.nonce + 1 }));
+    setTab("done");
+  }, []);
 
   const reload = useCallback(
     () =>
@@ -62,6 +69,7 @@ export function AdminEssays() {
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: "review", label: "Проверка", badge: queue.length },
+    { key: "done", label: `Проверенные (${subs.filter((x) => x.reviewedAt).length})` },
     { key: "rating", label: "Рейтинг" },
     { key: "topics", label: `Темы (${topics.length})` },
   ];
@@ -91,9 +99,11 @@ export function AdminEssays() {
       {error ? <p className="rounded-2xl border border-burgundy/30 bg-burgundy/10 px-4 py-3 text-sm text-burgundy">{error}</p> : null}
 
       {tab === "review" ? (
-        <ReviewQueue queue={queue} subs={subs} topics={topics} students={students} onDone={reload} />
+        <ReviewQueue queue={queue} subs={subs} topics={topics} students={students} onDone={reload} onOpenDone={openDone} />
+      ) : tab === "done" ? (
+        <Reviewed key={doneFocus.nonce} subs={subs} topics={topics} students={students} focus={doneFocus} onChange={reload} />
       ) : tab === "rating" ? (
-        <Rating subs={subs} students={students} topicsCount={topics.length} />
+        <Rating subs={subs} students={students} topicsCount={topics.length} onOpenDone={openDone} />
       ) : (
         <Topics topics={topics} subs={subs} onChange={reload} />
       )}
@@ -116,12 +126,14 @@ function ReviewQueue({
   topics,
   students,
   onDone,
+  onOpenDone,
 }: {
   queue: EssaySubmission[];
   subs: EssaySubmission[];
   topics: EssayTopic[];
   students: StudentLite[];
   onDone: () => Promise<void>;
+  onOpenDone: (f: { id?: string; studentId?: string }) => void;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const current = queue.find((q) => q.id === openId) ?? queue[0] ?? null;
@@ -138,12 +150,19 @@ function ReviewQueue({
         </p>
         {recent.length ? (
           <div>
-            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted">Недавно проверены</h3>
+            <h3 className="mb-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted">
+              Недавно проверены ·{" "}
+              <button type="button" onClick={() => onOpenDone({})} className="normal-case tracking-normal text-gold hover:underline">
+                все проверенные →
+              </button>
+            </h3>
             <ul className="space-y-1 text-sm">
               {recent.map((s) => (
-                <li key={s.id} className="flex flex-wrap items-center gap-2 text-muted">
-                  <span className="text-navy">{studentName(students, s.studentId)}</span>· тема {topics.find((t) => t.id === s.topicId)?.number ?? "?"}
-                  <StatusPill status={s.status} />
+                <li key={s.id}>
+                  <button type="button" onClick={() => onOpenDone({ id: s.id })} className="flex flex-wrap items-center gap-2 text-left text-muted hover:text-navy">
+                    <span className="text-navy">{studentName(students, s.studentId)}</span>· тема {topics.find((t) => t.id === s.topicId)?.number ?? "?"}
+                    <StatusPill status={s.status} />
+                  </button>
                 </li>
               ))}
             </ul>
@@ -195,20 +214,25 @@ function ReviewForm({
   previous,
   student,
   onDone,
+  edit = false,
+  onCancel,
 }: {
   sub: EssaySubmission;
   topic?: EssayTopic;
   previous: EssaySubmission[];
   student: string;
   onDone: () => Promise<void>;
+  /** Исправление уже проверенной работы: поля заполнены, дата проверки не меняется */
+  edit?: boolean;
+  onCancel?: () => void;
 }) {
   const [scores, setScores] = useState<Record<CriterionKey, number | null>>({
-    scoreStructure: null,
-    scoreContent: null,
-    scoreLanguage: null,
-    scoreTopic: null,
+    scoreStructure: edit ? sub.scoreStructure : null,
+    scoreContent: edit ? sub.scoreContent : null,
+    scoreLanguage: edit ? sub.scoreLanguage : null,
+    scoreTopic: edit ? sub.scoreTopic : null,
   });
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState(edit ? sub.mentorComment : "");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const filled = CRITERIA.every((c) => scores[c.key] !== null);
@@ -225,7 +249,7 @@ function ReviewForm({
     }
     setBusy(true);
     try {
-      await reviewEssay(sub.id, scores, comment, status);
+      await reviewEssay(sub.id, scores, comment, status, { keepReviewedAt: edit });
       await onDone();
     } catch (err) {
       console.error(err);
@@ -306,6 +330,11 @@ function ReviewForm({
           <Button type="button" variant="danger" disabled={busy} onClick={() => void submit("revision")}>
             На доработку
           </Button>
+          {onCancel ? (
+            <Button type="button" variant="ghost" disabled={busy} onClick={onCancel}>
+              Отмена
+            </Button>
+          ) : null}
           {msg ? <span className="text-sm text-burgundy">{msg}</span> : null}
         </div>
       </div>
@@ -313,9 +342,237 @@ function ReviewForm({
   );
 }
 
+// ---------- Проверенные ----------
+
+function fmtDay(iso: string | null): string {
+  return iso ? new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" }) : "";
+}
+
+function Reviewed({
+  subs,
+  topics,
+  students,
+  focus,
+  onChange,
+}: {
+  subs: EssaySubmission[];
+  topics: EssayTopic[];
+  students: StudentLite[];
+  focus: { id?: string; studentId?: string };
+  onChange: () => Promise<void>;
+}) {
+  const focused = focus.id ? subs.find((s) => s.id === focus.id) : undefined;
+  const [studentId, setStudentId] = useState(focus.studentId ?? "all");
+  const [status, setStatus] = useState<"all" | "accepted" | "revision">("all");
+  const [query, setQuery] = useState("");
+  const [openId, setOpenId] = useState<string | null>(focused?.id ?? null);
+  const [editing, setEditing] = useState(false);
+
+  const list = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return subs
+      .filter((s) => s.reviewedAt)
+      .filter((s) => studentId === "all" || s.studentId === studentId)
+      .filter((s) => status === "all" || s.status === status)
+      .filter((s) => {
+        if (!q) return true;
+        const t = topics.find((x) => x.id === s.topicId);
+        return `${studentName(students, s.studentId)} ${t?.number ?? ""} ${t?.title ?? ""} ${s.mentorComment} ${s.body}`.toLowerCase().includes(q);
+      })
+      .sort((a, b) => (b.reviewedAt ?? "").localeCompare(a.reviewedAt ?? ""));
+  }, [subs, topics, students, studentId, status, query]);
+
+  const current = list.find((s) => s.id === openId) ?? list[0] ?? null;
+  const studentOptions = useMemo(
+    () =>
+      students
+        .filter((st) => subs.some((s) => s.studentId === st.id && s.reviewedAt))
+        .sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, "ru")),
+    [students, subs],
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          aria-label="Ученик"
+          value={studentId}
+          onChange={(e) => {
+            setStudentId(e.target.value);
+            setOpenId(null);
+            setEditing(false);
+          }}
+          className="rounded-full border border-white/10 bg-transparent px-3 py-2 text-sm text-navy"
+        >
+          <option value="all">Все ученики</option>
+          {studentOptions.map((st) => (
+            <option key={st.id} value={st.id}>
+              {st.lastName} {st.firstName}
+            </option>
+          ))}
+        </select>
+        <div className="flex rounded-full border border-white/10 p-1 text-sm">
+          {(
+            [
+              ["all", "Все"],
+              ["accepted", "Принятые"],
+              ["revision", "На доработке"],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={status === k}
+              onClick={() => {
+                setStatus(k);
+                setOpenId(null);
+                setEditing(false);
+              }}
+              className={`rounded-full px-3 py-1 ${status === k ? "bg-gold font-semibold text-gold-ink" : "text-muted hover:text-navy"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск: имя, тема, текст, комментарий" className="!w-64" aria-label="Поиск" />
+        <span className="text-xs text-muted">Найдено: {list.length}</span>
+      </div>
+
+      {!current ? (
+        <p className="rounded-3xl border border-dashed border-white/10 px-4 py-10 text-center text-sm text-muted">Под эти фильтры проверенных эссе нет.</p>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <ul className="sp-glass max-h-[75vh] overflow-y-auto rounded-3xl border p-1.5">
+            {list.map((s) => {
+              const t = topics.find((x) => x.id === s.topicId);
+              return (
+                <li key={s.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenId(s.id);
+                      setEditing(false);
+                    }}
+                    aria-current={s.id === current.id ? "true" : undefined}
+                    className={`w-full rounded-2xl px-3 py-2.5 text-left text-sm transition hover:bg-white/[0.04] ${s.id === current.id ? "bg-white/[0.06]" : ""}`}
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-navy">{studentName(students, s.studentId)}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-gold">{formatScore(essayScore(s))}</span>
+                    </span>
+                    <span className="block truncate text-xs text-muted">
+                      {t ? `${t.number}. ${t.title}` : "Тема"}
+                      {s.version > 1 ? ` · v${s.version}` : ""}
+                    </span>
+                    <span className="mt-1 flex items-center gap-2 text-[11px] text-muted">
+                      <StatusPill status={s.status} />
+                      {fmtDay(s.reviewedAt)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {editing ? (
+            <ReviewForm
+              key={`edit-${current.id}`}
+              sub={current}
+              topic={topics.find((t) => t.id === current.topicId)}
+              previous={[]}
+              student={studentName(students, current.studentId)}
+              edit
+              onCancel={() => setEditing(false)}
+              onDone={async () => {
+                setEditing(false);
+                await onChange();
+              }}
+            />
+          ) : (
+            <ReviewedView
+              sub={current}
+              topic={topics.find((t) => t.id === current.topicId)}
+              student={studentName(students, current.studentId)}
+              others={subs.filter((s) => s.studentId === current.studentId && s.topicId === current.topicId && s.id !== current.id && s.reviewedAt)}
+              onEdit={() => setEditing(true)}
+              onOpen={(id) => setOpenId(id)}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReviewedView({
+  sub,
+  topic,
+  student,
+  others,
+  onEdit,
+  onOpen,
+}: {
+  sub: EssaySubmission;
+  topic?: EssayTopic;
+  student: string;
+  others: EssaySubmission[];
+  onEdit: () => void;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <section className="sp-glass min-w-0 rounded-3xl border px-5 py-5 sm:px-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs text-gold">
+            {student} · тема {topic?.number ?? "?"} · версия {sub.version} · проверено {fmtDay(sub.reviewedAt)}
+          </p>
+          <h3 className="mt-1 text-xl font-light text-navy">{topic?.title ?? "Тема"}</h3>
+          {topic?.prompt ? <p className="mt-1 text-sm text-muted">{topic.prompt}</p> : null}
+        </div>
+        <Button type="button" variant="secondary" onClick={onEdit}>
+          Изменить оценку
+        </Button>
+      </div>
+
+      <ReviewCard sub={sub} />
+
+      <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.16em] text-muted">Текст эссе</p>
+      <div className="mt-2 max-h-[55vh] overflow-y-auto whitespace-pre-wrap rounded-2xl bg-black/15 px-4 py-3 text-sm leading-relaxed text-navy">{sub.body}</div>
+      <div className="mt-2">
+        <WordCounter words={sub.wordCount} />
+      </div>
+
+      {others.length ? (
+        <div className="mt-4 text-sm">
+          <p className="text-muted">Другие версии этой темы:</p>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {[...others]
+              .sort((a, b) => a.version - b.version)
+              .map((o) => (
+                <button key={o.id} type="button" onClick={() => onOpen(o.id)} className="rounded-full border border-white/10 px-3 py-1 text-xs text-navy hover:border-gold/60">
+                  v{o.version} · {o.status === "accepted" ? "принята" : "доработка"} · {formatScore(essayScore(o))}
+                </button>
+              ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 // ---------- Рейтинг ----------
 
-function Rating({ subs, students, topicsCount }: { subs: EssaySubmission[]; students: StudentLite[]; topicsCount: number }) {
+function Rating({
+  subs,
+  students,
+  topicsCount,
+  onOpenDone,
+}: {
+  subs: EssaySubmission[];
+  students: StudentLite[];
+  topicsCount: number;
+  onOpenDone: (f: { id?: string; studentId?: string }) => void;
+}) {
   const goal = Math.max(TOPICS_GOAL, topicsCount);
   const rows = useMemo(() => {
     const active = students.filter((s) => s.status !== "paused");
@@ -350,6 +607,11 @@ function Rating({ subs, students, topicsCount }: { subs: EssaySubmission[]; stud
               <span className="w-14 text-right text-xs tabular-nums text-gold" title="Средняя оценка">
                 {formatScore(r.sum.average)}
               </span>
+              {r.sum.accepted || r.sum.revision ? (
+                <button type="button" onClick={() => onOpenDone({ studentId: r.student.id })} className="text-[11px] text-gold hover:underline">
+                  эссе →
+                </button>
+              ) : null}
               <span className="w-28 text-right text-[11px] text-muted">
                 {r.sum.submitted ? `${r.sum.submitted} на проверке` : r.sum.revision ? `${r.sum.revision} на доработке` : r.sum.lastActivity ? new Date(r.sum.lastActivity).toLocaleDateString("ru-RU", { day: "numeric", month: "short" }) : "не начинал"}
               </span>

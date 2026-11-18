@@ -192,6 +192,7 @@ export async function reviewEssay(
   scores: Record<CriterionKey, number | null>,
   comment: string,
   status: "accepted" | "revision",
+  opts: { keepReviewedAt?: boolean } = {},
 ): Promise<void> {
   const { error } = await createClient()
     .from("essay_submissions")
@@ -202,7 +203,8 @@ export async function reviewEssay(
       score_topic: scores.scoreTopic,
       mentor_comment: comment.trim(),
       status,
-      reviewed_at: new Date().toISOString(),
+      // при исправлении старой проверки дату не трогаем — иначе эссе «переедет» в текущий месяц отчётов
+      ...(opts.keepReviewedAt ? {} : { reviewed_at: new Date().toISOString() }),
     })
     .eq("id", id);
   if (error) throw error;
