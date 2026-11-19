@@ -1,0 +1,23 @@
+-- Откат migration-sat-5.sql: удаляет тесты на сайте со всеми попытками.
+drop function if exists public.attempt_result(uuid);
+drop function if exists public.note_tab_switch(uuid);
+drop function if exists public.next_test_section(uuid);
+drop function if exists public.save_test_answer(uuid, uuid, text, boolean);
+drop function if exists public.attempt_state(uuid);
+drop function if exists public.own_attempt(uuid);
+drop function if exists public.expire_attempt(uuid);
+drop function if exists public.advance_attempt(uuid);
+drop function if exists public.start_test(uuid);
+drop function if exists public.my_tests();
+drop function if exists public.rescore_test(uuid);
+drop function if exists public.score_attempt(uuid);
+drop function if exists public.test_is_correct(text, text, text);
+drop function if exists public.test_num(text);
+drop table if exists public.test_answers;
+drop table if exists public.test_attempts;
+drop table if exists public.test_assignments;
+drop table if exists public.test_questions;
+drop table if exists public.test_sections;
+drop table if exists public.online_tests;
+drop function if exists public.can_edit_test(uuid);
+drop function if exists public.is_sat_team();

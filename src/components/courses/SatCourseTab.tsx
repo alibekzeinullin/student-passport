@@ -33,6 +33,7 @@ import {
 } from "@/lib/sat-student";
 import { Button } from "@/components/ui/Button";
 import { Input, Label } from "@/components/ui/Field";
+import { MyTests } from "@/components/tests/MyTests";
 
 function fmt(iso: string | null): string {
   if (!iso) return "—";
@@ -167,6 +168,8 @@ export function SatCourseTab({ course, studentId }: { course: StudentCourse; stu
           </div>
         ) : null}
       </section>
+
+      <MyTests />
 
       {/* Цель, место в группе, посещаемость */}
       <div className="grid gap-3 md:grid-cols-3">
