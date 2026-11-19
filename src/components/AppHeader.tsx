@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { canOpenGroups, homeForRole, isHead, STAFF_ROLE_LABELS, type StaffRole } from "@/lib/staff";
 import type { AuthUser } from "@/lib/types";
 import { useSatTheme, useSatThemeReady } from "@/lib/sat-theme";
+import { inSatSection, rememberSection, SAT_MAIN } from "@/lib/admin-section";
 
 /** Основные разделы ментора (кроме «Ученики» и «Посещаемость»). */
 const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
@@ -16,37 +17,6 @@ const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
   { href: "/admin/summary", label: "Отчёт" },
   { href: "/admin/reports", label: "Родителям" },
 ];
-
-/** Разделы SAT — одинаковые для руководителя и сотрудников SAT. */
-const SAT_MAIN: { href: string; label: string }[] = [
-  { href: "/admin/lessons", label: "Занятия" },
-  { href: "/admin/results", label: "Результаты" },
-  { href: "/admin/tests", label: "Тесты" },
-  { href: "/admin/groups", label: "Группы" },
-];
-
-function isSatPath(pathname: string): boolean {
-  return SAT_MAIN.some((i) => pathname.startsWith(i.href));
-}
-
-/** Общие страницы (есть и в Менторстве, и в SAT) — остаются в том разделе, откуда в них пришли. */
-const SHARED_PATHS = ["/admin/team", "/admin/accounts", "/admin/system"];
-const SECTION_KEY = "sp-admin-section";
-
-function isSharedPath(pathname: string): boolean {
-  return SHARED_PATHS.some((p) => pathname.startsWith(p));
-}
-
-/** Раздел SAT: страница SAT или общая страница, на которую перешли из SAT. */
-function inSatSection(pathname: string): boolean {
-  if (isSatPath(pathname)) return true;
-  if (!isSharedPath(pathname) || typeof window === "undefined") return false;
-  try {
-    return localStorage.getItem(SECTION_KEY) === "sat";
-  } catch {
-    return false;
-  }
-}
 
 /** Реже нужные разделы — под «Ещё». */
 const ADMIN_MORE: { href: string; label: string; show?: (u: AuthUser) => boolean; mentoringOnly?: boolean }[] = [
@@ -73,14 +43,7 @@ export function AppHeader() {
   // разделы SAT (и все страницы сотрудника SAT) — в светлой теме
   const sat = inSatSection(pathname);
   // запоминаем раздел, чтобы общие страницы («Аккаунты», «Команда»…) открывались в нём же
-  useEffect(() => {
-    if (isSharedPath(pathname)) return;
-    try {
-      localStorage.setItem(SECTION_KEY, isSatPath(pathname) ? "sat" : "mentoring");
-    } catch {
-      /* без запоминания */
-    }
-  }, [pathname]);
+  useEffect(() => rememberSection(pathname), [pathname]);
   useSatTheme(Boolean(user) && (sat || (user?.role === "staff" && pathname.startsWith("/admin"))));
   // кабинет ученика сам скажет, когда выбрал вкладку (SAT или нет)
   useSatThemeReady(!loading && !pathname.startsWith("/dashboard"));

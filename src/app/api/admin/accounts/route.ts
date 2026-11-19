@@ -36,6 +36,12 @@ export async function GET(request: Request) {
     if (pErr) throw pErr;
     const { data: students, error: sErr } = await admin.from("students").select("*");
     if (sErr) throw sErr;
+    const { data: enrolls, error: eErr } = await admin.from("enrollments").select("student_id, course_id").is("ends_on", null);
+    if (eErr) throw eErr;
+    const coursesByStudent = new Map<string, string[]>();
+    for (const e of (enrolls as { student_id: string; course_id: string }[]) ?? []) {
+      coursesByStudent.set(e.student_id, [...(coursesByStudent.get(e.student_id) ?? []), e.course_id]);
+    }
 
     const userById = new Map(users.map((u) => [u.id, u]));
     const profileByStudent = new Map(
@@ -59,6 +65,7 @@ export async function GET(request: Request) {
         lastSignInAt: user?.last_sign_in_at ?? null,
         createdAt: user?.created_at ?? null,
         mustChangePassword: Boolean(user?.user_metadata?.must_change_password),
+        courses: coursesByStudent.get(s.id) ?? [],
       };
     });
     rows.sort((a, b) => a.name.localeCompare(b.name, "ru"));

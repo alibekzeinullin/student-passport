@@ -45,6 +45,8 @@ export interface AccountRow {
   lastSignInAt: string | null;
   createdAt: string | null;
   mustChangePassword: boolean;
+  /** Активные курсы ученика (mentoring, sat…) */
+  courses: string[];
 }
 
 export function inviteMessage(params: { name: string; login: string; password: string; url: string }): string {

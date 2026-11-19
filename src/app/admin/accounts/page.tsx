@@ -7,6 +7,8 @@ import { Input, Label, Select } from "@/components/ui/Field";
 import { createClient } from "@/lib/supabase/client";
 import { useStudents } from "@/context/StudentsContext";
 import { inviteMessage, suggestLogin, type AccountRow } from "@/lib/accounts";
+import { usePathname } from "next/navigation";
+import { inSatSection } from "@/lib/admin-section";
 
 async function api<T>(method: string, body?: unknown): Promise<T> {
   const supabase = createClient();
@@ -46,6 +48,8 @@ interface Issued {
 
 export default function AccountsPage() {
   const { refreshStudents } = useStudents();
+  // из раздела SAT — только ученики SAT
+  const sat = inSatSection(usePathname());
   const [rows, setRows] = useState<AccountRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [setupNeeded, setSetupNeeded] = useState(false);
@@ -81,8 +85,8 @@ export default function AccountsPage() {
   }, [load]);
 
   const visible = useMemo(
-    () => rows.filter((r) => showPaused || r.status !== "paused"),
-    [rows, showPaused],
+    () => rows.filter((r) => (showPaused || r.status !== "paused") && (!sat || r.courses.includes("sat"))),
+    [rows, showPaused, sat],
   );
   const neverLogged = visible.filter((r) => r.userId && !r.lastSignInAt).length;
   const tempPasswords = visible.filter((r) => r.mustChangePassword).length;
@@ -108,7 +112,7 @@ export default function AccountsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.16em] text-gold">Аккаунты</p>
-            <h2 className="mt-1 text-3xl font-light tracking-tight text-navy sm:text-4xl">Входы учеников</h2>
+            <h2 className="mt-1 text-3xl font-light tracking-tight text-navy sm:text-4xl">{sat ? "Входы учеников SAT" : "Входы учеников"}</h2>
             <p className="mt-2 max-w-2xl text-sm text-muted">
               Пароли нигде не хранятся: при создании или сбросе сайт один раз показывает временный пароль, а ученик при первом входе придумывает свой.
             </p>
@@ -130,6 +134,7 @@ export default function AccountsPage() {
 
         {creating ? (
           <CreateForm
+            defaultCourse={sat ? "sat" : "mentoring"}
             onCreated={async (i) => {
               setCreating(false);
               setIssued(i);
@@ -195,7 +200,7 @@ export default function AccountsPage() {
                 </tbody>
               </table>
             </div>
-            {rows.some((r) => r.status === "paused") ? (
+            {rows.some((r) => r.status === "paused" && (!sat || r.courses.includes("sat"))) ? (
               <button type="button" onClick={() => setShowPaused((v) => !v)} className="text-sm text-muted underline-offset-2 hover:text-navy hover:underline">
                 {showPaused ? "Скрыть учеников на паузе" : "Показать учеников на паузе"}
               </button>
@@ -217,9 +222,11 @@ function Stat({ label, value, accent = false }: { label: string; value: string; 
 }
 
 function CreateForm({
+  defaultCourse,
   onCreated,
   onError,
 }: {
+  defaultCourse: "mentoring" | "sat";
   onCreated: (i: Issued) => Promise<void>;
   onError: (msg: string) => void;
 }) {
@@ -229,7 +236,7 @@ function CreateForm({
   const [className, setClassName] = useState("");
   const [school, setSchool] = useState("");
   const [educationSystem, setEducationSystem] = useState("Национальная");
-  const [course, setCourse] = useState<"mentoring" | "sat">("mentoring");
+  const [course, setCourse] = useState<"mentoring" | "sat">(defaultCourse);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
