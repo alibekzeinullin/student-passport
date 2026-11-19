@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { canOpenGroups, homeForRole, isHead, STAFF_ROLE_LABELS, type StaffRole } from "@/lib/staff";
@@ -29,6 +29,25 @@ function isSatPath(pathname: string): boolean {
   return SAT_MAIN.some((i) => pathname.startsWith(i.href));
 }
 
+/** Общие страницы (есть и в Менторстве, и в SAT) — остаются в том разделе, откуда в них пришли. */
+const SHARED_PATHS = ["/admin/team", "/admin/accounts", "/admin/system"];
+const SECTION_KEY = "sp-admin-section";
+
+function isSharedPath(pathname: string): boolean {
+  return SHARED_PATHS.some((p) => pathname.startsWith(p));
+}
+
+/** Раздел SAT: страница SAT или общая страница, на которую перешли из SAT. */
+function inSatSection(pathname: string): boolean {
+  if (isSatPath(pathname)) return true;
+  if (!isSharedPath(pathname) || typeof window === "undefined") return false;
+  try {
+    return localStorage.getItem(SECTION_KEY) === "sat";
+  } catch {
+    return false;
+  }
+}
+
 /** Реже нужные разделы — под «Ещё». */
 const ADMIN_MORE: { href: string; label: string; show?: (u: AuthUser) => boolean; mentoringOnly?: boolean }[] = [
   { href: "/admin/team", label: "Команда", show: isHead },
@@ -52,7 +71,17 @@ export function AppHeader() {
   const pathname = usePathname();
   const isParentGuest = pathname.startsWith("/parent/");
   // разделы SAT (и все страницы сотрудника SAT) — в светлой теме
-  useSatTheme(Boolean(user) && (isSatPath(pathname) || (user?.role === "staff" && pathname.startsWith("/admin"))));
+  const sat = inSatSection(pathname);
+  // запоминаем раздел, чтобы общие страницы («Аккаунты», «Команда»…) открывались в нём же
+  useEffect(() => {
+    if (isSharedPath(pathname)) return;
+    try {
+      localStorage.setItem(SECTION_KEY, isSatPath(pathname) ? "sat" : "mentoring");
+    } catch {
+      /* без запоминания */
+    }
+  }, [pathname]);
+  useSatTheme(Boolean(user) && (sat || (user?.role === "staff" && pathname.startsWith("/admin"))));
   // кабинет ученика сам скажет, когда выбрал вкладку (SAT или нет)
   useSatThemeReady(!loading && !pathname.startsWith("/dashboard"));
 
@@ -83,7 +112,7 @@ export function AppHeader() {
                 <span className="block text-xs font-light text-muted sm:text-sm">Digital Passport</span>
               </span>
             </Link>
-            {showSwitch ? <SectionSwitch sat={isSatPath(pathname)} /> : null}
+            {showSwitch ? <SectionSwitch sat={sat} /> : null}
           </div>
 
           {isParentGuest ? (
@@ -104,7 +133,7 @@ export function AppHeader() {
         {!isParentGuest && user ? (
           <div className="-mb-px">
             <nav aria-label="Разделы" className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-              {user.role === "staff" || (user.role === "admin" && isSatPath(pathname)) ? (
+              {user.role === "staff" || (user.role === "admin" && sat) ? (
                 SAT_MAIN.map((item) => (
                   <NavLink key={item.href} href={item.href} active={pathname.startsWith(item.href)}>
                     {item.label}
@@ -147,7 +176,7 @@ export function AppHeader() {
                   ) : null}
                 </>
               ) : null}
-              {user.role === "admin" ? <MoreMenu pathname={pathname} user={user} /> : null}
+              {user.role === "admin" ? <MoreMenu pathname={pathname} user={user} sat={sat} /> : null}
             </nav>
           </div>
         ) : null}
@@ -180,8 +209,7 @@ function NavLink({
   );
 }
 
-function MoreMenu({ pathname, user }: { pathname: string; user: AuthUser }) {
-  const sat = isSatPath(pathname);
+function MoreMenu({ pathname, user, sat }: { pathname: string; user: AuthUser; sat: boolean }) {
   const items = ADMIN_MORE.filter((i) => (!i.show || i.show(user)) && !(sat && i.mentoringOnly));
   const active = items.some((i) => pathname.startsWith(i.href));
   return (

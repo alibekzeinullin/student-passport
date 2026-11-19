@@ -11,7 +11,7 @@ import { useEffect } from "react";
  * до этого момента тема не снимается, даже если потребителей ещё нет.
  */
 let users = 0;
-let settledPath: string | null = null;
+let settled = false;
 
 const STORE_PREFIX = "sp-theme:";
 
@@ -28,7 +28,7 @@ function apply() {
   if (users > 0) {
     document.documentElement.dataset.theme = "sat";
     remember(true);
-  } else if (settledPath === location.pathname) {
+  } else if (settled) {
     delete document.documentElement.dataset.theme;
     remember(false);
   }
@@ -53,7 +53,7 @@ export function useSatTheme(active: boolean) {
 export function useSatThemeReady(ready: boolean) {
   useEffect(() => {
     if (!ready) return;
-    settledPath = location.pathname;
+    settled = true;
     apply();
   }, [ready]);
 }
