@@ -5,9 +5,19 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { StudentDashboard } from "@/components/StudentDashboard";
 import { SatCourseTab } from "@/components/courses/SatCourseTab";
 import { useAuth } from "@/context/AuthContext";
+import { useSatThemeReady } from "@/lib/sat-theme";
 import { hasMentoring, loadStudentCourses, type StudentCourse } from "@/lib/courses";
 
 const MENTORING = "mentoring";
+const TAB_KEY = "sp-dashboard-tab";
+
+function storedTab(): string | null {
+  try {
+    return localStorage.getItem(TAB_KEY);
+  } catch {
+    return null;
+  }
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -19,7 +29,10 @@ export default function DashboardPage() {
     if (!studentId) return;
     let cancelled = false;
     void loadStudentCourses(studentId).then((list) => {
-      if (!cancelled) setCourses(list);
+      if (cancelled) return;
+      // открываем ту вкладку, на которой ученик был в прошлый раз
+      setTab((t) => t ?? storedTab());
+      setCourses(list);
     });
     return () => {
       cancelled = true;
@@ -34,6 +47,16 @@ export default function DashboardPage() {
   // Пока курсы грузятся — показываем менторство, как раньше
   const current = tab && tabs.some((t) => t.id === tab) ? tab : (tabs[0]?.id ?? MENTORING);
   const course = extra.find((c) => c.course_id === current);
+  useSatThemeReady(courses !== null);
+
+  const choose = (id: string) => {
+    setTab(id);
+    try {
+      localStorage.setItem(TAB_KEY, id);
+    } catch {
+      /* без запоминания */
+    }
+  };
 
   return (
     <RequireAuth role="student">
@@ -46,7 +69,7 @@ export default function DashboardPage() {
                 type="button"
                 role="tab"
                 aria-selected={current === t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => choose(t.id)}
                 className={`flex-1 rounded-full px-5 py-2 text-sm transition sm:flex-none ${
                   current === t.id ? "bg-gold font-semibold text-gold-ink" : "text-muted hover:text-navy"
                 }`}
@@ -56,7 +79,7 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : null}
-        {studentId && current === MENTORING ? <StudentDashboard studentId={studentId} accessMode="student" /> : null}
+        {studentId && courses && current === MENTORING ? <StudentDashboard studentId={studentId} accessMode="student" /> : null}
         {course?.course_id === "sat" && studentId ? <SatCourseTab course={course} studentId={studentId} /> : null}
       </div>
     </RequireAuth>
