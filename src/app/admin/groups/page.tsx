@@ -5,7 +5,8 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select } from "@/components/ui/Field";
 import { useAuth } from "@/context/AuthContext";
-import { todayLocal } from "@/lib/api-client";
+import { callApi, todayLocal } from "@/lib/api-client";
+import { suggestLogin } from "@/lib/accounts";
 import {
   activeLinks,
   addGroupStaff,
@@ -734,6 +735,7 @@ function AddStudent({ group, roster, run, today }: { group: GroupRow; roster: Ro
   const [satDate, setSatDate] = useState("");
   const [startsOn, setStartsOn] = useState(today);
   const inSat = useMemo(() => new Map(roster.map((r) => [r.student_id, r.group_id])), [roster]);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     const q = query.trim();
@@ -760,8 +762,14 @@ function AddStudent({ group, roster, run, today }: { group: GroupRow; roster: Ro
 
   return (
     <div className="rounded-2xl border border-white/10 px-4 py-4">
-      <p className="text-xs uppercase tracking-[0.12em] text-muted">Добавить ученика</p>
-      {!picked ? (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs uppercase tracking-[0.12em] text-muted">Добавить ученика</p>
+        <button type="button" onClick={() => setCreating((v) => !v)} className="rounded-full border border-gold/50 px-3 py-1 text-xs text-gold hover:bg-gold/10">
+          {creating ? "Отмена" : "+ Новый ученик (создать аккаунт)"}
+        </button>
+      </div>
+      {creating ? <NewStudentForm group={group} today={today} run={run} onDone={() => setCreating(false)} /> : null}
+      {creating ? null : !picked ? (
         <>
           <Input
             className="mt-3"
@@ -793,7 +801,7 @@ function AddStudent({ group, roster, run, today }: { group: GroupRow; roster: Ro
               })}
             </ul>
           ) : query.trim().length >= 2 && !searching ? (
-            <p className="mt-2 text-xs text-muted">Никого не нашлось. Аккаунт ученика создаётся в «Ещё → Аккаунты».</p>
+            <p className="mt-2 text-xs text-muted">Никого не нашлось — создайте аккаунт кнопкой «+ Новый ученик».</p>
           ) : null}
         </>
       ) : (
@@ -837,6 +845,118 @@ function AddStudent({ group, roster, run, today }: { group: GroupRow; roster: Ro
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Новый ученик: аккаунт + сразу в эту группу. Только SAT — в менторстве его не видно. */
+function NewStudentForm({ group, today, run, onDone }: { group: GroupRow; today: string; run: Run; onDone: () => void }) {
+  const [fullName, setFullName] = useState("");
+  const [login, setLogin] = useState("");
+  const [loginTouched, setLoginTouched] = useState(false);
+  const [className, setClassName] = useState("");
+  const [school, setSchool] = useState("");
+  const [target, setTarget] = useState("");
+  const [satDate, setSatDate] = useState("");
+  const [startsOn, setStartsOn] = useState(today);
+  const [busy, setBusy] = useState(false);
+  const [created, setCreated] = useState<{ name: string; login: string; password: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const shownLogin = loginTouched ? login : suggestLogin(fullName);
+
+  if (created) {
+    const text = `Сайт: ${window.location.origin}\nЛогин: ${created.login}\nПароль: ${created.password}\nПри первом входе сайт попросит сменить пароль.`;
+    return (
+      <div className="mt-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.06] px-4 py-3 text-sm">
+        <p className="text-navy">
+          {created.name} — аккаунт создан и добавлен в «{group.name}». Передайте ученику:
+        </p>
+        <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-white/[0.05] px-3 py-2 font-mono text-xs text-navy">{text}</pre>
+        <p className="mt-1 text-xs text-muted">Пароль показывается один раз. Если потеряется — сбросить можно в «Ещё → Аккаунты» (руководитель).</p>
+        <div className="mt-2 flex gap-2">
+          <Button type="button" variant="secondary" onClick={() => void navigator.clipboard.writeText(text).then(() => setCopied(true))}>
+            {copied ? "Скопировано ✓" : "Скопировать"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setCreated(null);
+              setCopied(false);
+              onDone();
+            }}
+          >
+            Готово
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 grid gap-3 rounded-2xl border border-gold/30 px-4 py-4 sm:grid-cols-4">
+      <div className="sm:col-span-2">
+        <Label htmlFor={`ns-name-${group.id}`}>Имя и фамилия</Label>
+        <Input id={`ns-name-${group.id}`} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Айлин Дуйсенова" />
+      </div>
+      <div className="sm:col-span-2">
+        <Label htmlFor={`ns-login-${group.id}`}>Логин</Label>
+        <Input
+          id={`ns-login-${group.id}`}
+          value={shownLogin}
+          onChange={(e) => {
+            setLoginTouched(true);
+            setLogin(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""));
+          }}
+          placeholder="aylin.duysenova"
+        />
+      </div>
+      <div>
+        <Label htmlFor={`ns-class-${group.id}`}>Класс</Label>
+        <Input id={`ns-class-${group.id}`} value={className} onChange={(e) => setClassName(e.target.value)} placeholder="11A" />
+      </div>
+      <div>
+        <Label htmlFor={`ns-school-${group.id}`}>Школа</Label>
+        <Input id={`ns-school-${group.id}`} value={school} onChange={(e) => setSchool(e.target.value)} placeholder="НИШ" />
+      </div>
+      <div>
+        <Label htmlFor={`ns-target-${group.id}`}>Цель SAT</Label>
+        <Input id={`ns-target-${group.id}`} value={target} inputMode="numeric" onChange={(e) => setTarget(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="1400" />
+      </div>
+      <div>
+        <Label htmlFor={`ns-satdate-${group.id}`}>Дата SAT</Label>
+        <Input id={`ns-satdate-${group.id}`} type="date" value={satDate} onChange={(e) => setSatDate(e.target.value)} />
+      </div>
+      <div>
+        <Label htmlFor={`ns-start-${group.id}`}>В группе с</Label>
+        <Input id={`ns-start-${group.id}`} type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} />
+      </div>
+      <div className="flex items-end sm:col-span-3">
+        <Button
+          type="button"
+          disabled={busy || fullName.trim().split(/\s+/).length < 2 || shownLogin.length < 3 || (target !== "" && parseScore(target) === null)}
+          onClick={async () => {
+            setBusy(true);
+            let res: { login: string; password: string } | null = null;
+            const ok = await run(async () => {
+              res = await callApi<{ login: string; password: string }>("/api/sat/students", "POST", {
+                fullName,
+                login: shownLogin,
+                className,
+                school,
+                groupId: group.id,
+                startsOn,
+                targetScore: parseScore(target),
+                satDate: satDate || null,
+              });
+            }, `${fullName.trim()} добавлен(а) в «${group.name}»`);
+            setBusy(false);
+            if (ok && res) setCreated({ name: fullName.trim(), ...(res as { login: string; password: string }) });
+          }}
+        >
+          {busy ? "Создаю…" : "Создать и добавить в группу"}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -32,7 +32,7 @@ TELEGRAM_API_BASE=http://127.0.0.1:3999
 ENV
 (cd ../.. && set -a && . tests/e2e/next.env && set +a && npx next build && npx next start -p 3000 &)
 # 5. Сценарии (перед каждым повтором — bash reset.sh); этап 2 идёт после этапа 1 на той же базе
-mkdir -p shots && python3 e2e_sat1.py && python3 e2e_sat2.py && python3 e2e_sat3.py && python3 e2e_sat4.py && python3 e2e_reports.py && python3 e2e_reminders.py && python3 e2e_plan.py
+mkdir -p shots && python3 e2e_sat1.py && python3 e2e_sat2.py && python3 e2e_sat3.py && python3 e2e_sat4.py && python3 e2e_sat5.py && python3 e2e_reports.py && python3 e2e_reminders.py && python3 e2e_plan.py
 ```
 
 Что проверяется (35 шагов): руководитель создаёт поток и группы, сотрудника и сотрудников списком
@@ -71,3 +71,7 @@ mkdir -p shots && python3 e2e_sat1.py && python3 e2e_sat2.py && python3 e2e_sat3
 SAT этап 4А (`e2e_sat4.py`, 13 проверок; после sat1–3): светлая тема SAT и тёмная менторства, office hours в расписании группы
 (не попадают в «Не отмечено»), домашка на занятии со ссылкой, ссылка «Практис по теме», у ученика — группа, расписание с длительностью,
 место по моку, официальный SAT (кратно 10), ачивки; права: чужие официальные результаты и место по моку недоступны.
+
+SAT 5 (`e2e_sat5.py`, 13 проверок; после sat1–4): учитель создаёт ученика в своей группе (логин предлагается сам, пароль показывается),
+в чужую группу и ученику — отказ, занятый логин — 409; office hours: кто пришёл, обратная связь и домашка; обратную связь видят
+сотрудники в карточке ученика, ученик — нет (ни на сайте, ни через API).

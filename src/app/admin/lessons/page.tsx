@@ -18,11 +18,13 @@ import {
   isMyLesson,
   isoDate,
   lessonTeacher,
+  loadOhNotes,
   loadRoster,
   loadWeek,
   MARK_WINDOW_DAYS,
   mondayOf,
   saveMarks,
+  saveOhNotes,
   updateLesson,
   WEEKDAYS,
   type LessonRow,
@@ -398,8 +400,12 @@ function LessonPanel({
 
       {officeHours ? (
         <p className="mt-4 rounded-2xl bg-violet-500/10 px-4 py-3 text-sm text-navy">
-          Это office hours: ученики видят их в расписании отдельным цветом. Отметки не нужны и в посещаемость не идут.
+          Это office hours: в посещаемость не идут. Отметьте, кто пришёл, и напишите короткую обратную связь — её видят только учителя и руководители, ученики нет.
         </p>
+      ) : null}
+
+      {officeHours && !cancelled && roster ? (
+        <OfficeHoursNotes lessonId={lesson.id} roster={roster} future={future} initialHomework={lesson.homework ?? ""} run={run} label={`${lesson.groups?.name}, ${fmtDay(lesson.lesson_date)}`} />
       ) : null}
 
       {!cancelled && !officeHours ? (
@@ -586,6 +592,94 @@ function LessonPanel({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Office hours: кто пришёл + обратная связь по каждому (только сотрудники) + домашка по желанию. */
+function OfficeHoursNotes({
+  lessonId,
+  roster,
+  future,
+  initialHomework,
+  run,
+  label,
+}: {
+  lessonId: string;
+  roster: RosterMark[];
+  future: boolean;
+  initialHomework: string;
+  run: Run;
+  label: string;
+}) {
+  const [rows, setRows] = useState<{ student_id: string; full_name: string; class_name: string; attended: boolean; comment: string }[] | null>(null);
+  const [homework, setHomework] = useState(initialHomework);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadOhNotes(lessonId).then((notes) => {
+      if (cancelled) return;
+      const by = new Map(notes.map((n) => [n.student_id, n]));
+      setRows(
+        roster.map((r) => ({
+          student_id: r.student_id,
+          full_name: r.full_name,
+          class_name: r.class_name,
+          attended: by.get(r.student_id)?.attended ?? false,
+          comment: by.get(r.student_id)?.comment ?? "",
+        })),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonId, roster]);
+
+  if (future) return <p className="mt-4 text-sm text-muted">Отметить, кто пришёл, можно в день office hours.</p>;
+  if (!rows) return <p className="mt-4 text-sm text-muted">Загрузка…</p>;
+  const set = (id: string, patch: Partial<{ attended: boolean; comment: string }>) =>
+    setRows((prev) => (prev ? prev.map((r) => (r.student_id === id ? { ...r, ...patch } : r)) : prev));
+  const came = rows.filter((r) => r.attended).length;
+
+  return (
+    <div className="mt-4 space-y-3">
+      <p className="text-sm text-muted">Пришли: {came} из {rows.length}</p>
+      <ul className="space-y-2">
+        {rows.map((r) => (
+          <li key={r.student_id} className={`grid gap-2 rounded-2xl border px-3 py-2 sm:grid-cols-[14rem_minmax(0,1fr)] ${r.attended ? "border-violet-500/40 bg-violet-500/[0.05]" : "border-white/10"}`}>
+            <label className="flex items-center gap-2 text-sm text-navy">
+              <input type="checkbox" checked={r.attended} onChange={(e) => set(r.student_id, { attended: e.target.checked })} aria-label={`Пришёл: ${r.full_name}`} />
+              <span>
+                {r.full_name}
+                <span className="block text-xs text-muted">{r.class_name}</span>
+              </span>
+            </label>
+            <Textarea
+              value={r.comment}
+              onChange={(e) => set(r.student_id, { comment: e.target.value, attended: r.attended || Boolean(e.target.value.trim()) })}
+              placeholder={r.attended ? "С чем пришёл, что разобрали, что посоветовали" : "Если пришёл — отметьте и напишите обратную связь"}
+              className="min-h-12"
+              aria-label={`Обратная связь: ${r.full_name}`}
+            />
+          </li>
+        ))}
+      </ul>
+      <div>
+        <Label htmlFor="oh-homework">Домашнее задание (по желанию)</Label>
+        <Textarea id="oh-homework" value={homework} onChange={(e) => setHomework(e.target.value)} placeholder="Если задали что-то на office hours — ученики группы увидят это в «Домашнем задании»" className="min-h-16" />
+      </div>
+      <Button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          await run(() => saveOhNotes(lessonId, rows, homework), `Office hours сохранены: ${label}`);
+          setBusy(false);
+        }}
+      >
+        {busy ? "Сохраняю…" : "Сохранить"}
+      </Button>
+    </div>
   );
 }
 

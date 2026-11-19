@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Label, Select, Textarea } from "@/components/ui/Field";
 import { useAuth } from "@/context/AuthContext";
 import { friendly, loadGroupsData, type GroupsData, type RosterRow } from "@/lib/groups";
-import { fmtDay, isoDate, loadRosterStats, type RosterStat } from "@/lib/lessons";
+import { fmtDay, isoDate, loadRosterStats, loadStudentOhNotes, type RosterStat, type StudentOhNote } from "@/lib/lessons";
 import {
   addComment,
   createMock,
@@ -341,6 +341,17 @@ function StudentPanel({ student, results, run, onClose }: { student: RosterRow; 
   const [version, setVersion] = useState(0);
   const mocks = studentMocks(student.student_id, results);
   const weak = weakTopics(studentPractices(student.student_id, results)).filter((t) => t.pct < 80).slice(0, 3);
+  const [oh, setOh] = useState<StudentOhNote[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadStudentOhNotes(student.student_id).then((n) => {
+      if (!cancelled) setOh(n);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [student.student_id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -371,6 +382,26 @@ function StudentPanel({ student, results, run, onClose }: { student: RosterRow; 
           Закрыть
         </button>
       </div>
+
+      {oh.length ? (
+        <div className="mt-4 rounded-2xl border border-violet-500/30 bg-violet-500/[0.05] px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.12em] text-muted">
+            Office hours · пришёл {oh.filter((n) => n.attended).length} раз · видят только сотрудники
+          </p>
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {oh.slice(0, 8).map((n) => (
+              <li key={n.lesson_id} className="text-navy">
+                <span className="text-xs text-muted">
+                  {fmtDay(n.lesson_date)}
+                  {n.title && n.title !== "Office hours" ? ` · ${n.title}` : ""}
+                  {n.attended ? "" : " · не пришёл"}
+                </span>
+                {n.comment ? <span className="block whitespace-pre-wrap">{n.comment}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
         <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Комментарий к ученику" className="min-h-20" aria-label="Комментарий" />
