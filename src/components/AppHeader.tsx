@@ -21,6 +21,7 @@ const ADMIN_EXTRA_MAIN: { href: string; label: string }[] = [
 const SAT_MAIN: { href: string; label: string }[] = [
   { href: "/admin/lessons", label: "Занятия" },
   { href: "/admin/results", label: "Результаты" },
+  { href: "/admin/tests", label: "Тесты" },
   { href: "/admin/groups", label: "Группы" },
 ];
 

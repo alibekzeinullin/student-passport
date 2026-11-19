@@ -32,7 +32,7 @@ TELEGRAM_API_BASE=http://127.0.0.1:3999
 ENV
 (cd ../.. && set -a && . tests/e2e/next.env && set +a && npx next build && npx next start -p 3000 &)
 # 5. Сценарии (перед каждым повтором — bash reset.sh); этап 2 идёт после этапа 1 на той же базе
-mkdir -p shots && python3 e2e_sat1.py && python3 e2e_sat2.py && python3 e2e_sat3.py && python3 e2e_sat4.py && python3 e2e_sat5.py && python3 e2e_reports.py && python3 e2e_reminders.py && python3 e2e_plan.py
+mkdir -p shots && python3 e2e_sat1.py && python3 e2e_sat2.py && python3 e2e_sat3.py && python3 e2e_sat4.py && python3 e2e_sat5.py && python3 e2e_sat6.py && python3 e2e_reports.py && python3 e2e_reminders.py && python3 e2e_plan.py
 ```
 
 Что проверяется (35 шагов): руководитель создаёт поток и группы, сотрудника и сотрудников списком
@@ -75,3 +75,8 @@ SAT этап 4А (`e2e_sat4.py`, 13 проверок; после sat1–3): св
 SAT 5 (`e2e_sat5.py`, 13 проверок; после sat1–4): учитель создаёт ученика в своей группе (логин предлагается сам, пароль показывается),
 в чужую группу и ученику — отказ, занятый логин — 409; office hours: кто пришёл, обратная связь и домашка; обратную связь видят
 сотрудники в карточке ученика, ученик — нет (ни на сайте, ни через API).
+
+Тесты на сайте (`e2e_sat6.py`, 12 проверок; после sat1–3): загрузка `public/sat-test-template.docx` → 2 модуля, 5 вопросов,
+темы сопоставлены; правка веса; публикация для группы; ученик проходит (ответы сохраняются сразу, отрывок, Desmos в Math,
+ввод «3.0» = «3»); балл с весами; разбор закрыт, пока учитель не откроет; ключи и таблица ответов ученику недоступны;
+отчёт по темам / ученикам / вопросам; перенос в моки (шкала 200–800 по доле баллов). Разбор Word: `npx tsx tests/unit/test-import.check.ts`.
