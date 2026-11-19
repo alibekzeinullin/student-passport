@@ -85,6 +85,8 @@ export const BACKUP_TABLES = [
   "student_telegram",
   "parent_reports",
   "program_plan",
+  "sat_official_results",
+  "office_hours_notes",
 ] as const;
 
 async function fetchAll(table: string): Promise<Record<string, unknown>[] | null> {

@@ -15,6 +15,18 @@ export function createAdminClient(): SupabaseClient | null {
   });
 }
 
+/** Клиент с правами того, кто прислал запрос (его токен) — чтобы спросить базу «а можно ли ему?». */
+export function createUserClient(request: Request): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const auth = request.headers.get("authorization") ?? "";
+  if (!url || !key || !auth.startsWith("Bearer ")) return null;
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: auth } },
+  });
+}
+
 export class HttpError extends Error {
   constructor(
     public status: number,

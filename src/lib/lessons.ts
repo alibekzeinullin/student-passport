@@ -310,3 +310,58 @@ export function courseWeek(startsOn: string | null, weeksTotal: number | null, t
   if (days < 0) return { week: 0, total: weeksTotal };
   return { week: Math.min(weeksTotal, Math.floor(days / 7) + 1), total: weeksTotal };
 }
+
+// --- Office hours: кто пришёл и обратная связь (видят только сотрудники) ---
+
+export interface OhNote {
+  lesson_id: string;
+  student_id: string;
+  attended: boolean;
+  comment: string;
+  updated_at?: string;
+}
+
+export async function loadOhNotes(lessonId: string): Promise<OhNote[]> {
+  const { data, error } = await createClient().from("office_hours_notes").select("lesson_id, student_id, attended, comment, updated_at").eq("lesson_id", lessonId);
+  if (error) return [];
+  return (data as OhNote[]) ?? [];
+}
+
+/** Сохранить: отмеченные или с комментарием — записать, остальные — удалить. Домашка — по желанию. */
+export async function saveOhNotes(lessonId: string, rows: { student_id: string; attended: boolean; comment: string }[], homework?: string) {
+  const supabase = createClient();
+  const keep = rows.filter((r) => r.attended || r.comment.trim());
+  const drop = rows.filter((r) => !r.attended && !r.comment.trim()).map((r) => r.student_id);
+  if (keep.length) {
+    const { error } = await supabase
+      .from("office_hours_notes")
+      .upsert(keep.map((r) => ({ lesson_id: lessonId, student_id: r.student_id, attended: r.attended, comment: r.comment.trim() })), { onConflict: "lesson_id,student_id" });
+    fail(error);
+  }
+  if (drop.length) {
+    const { error } = await supabase.from("office_hours_notes").delete().eq("lesson_id", lessonId).in("student_id", drop);
+    fail(error);
+  }
+  if (homework !== undefined) {
+    const { error } = await supabase.from("lessons").update({ homework: homework.trim() }).eq("id", lessonId);
+    fail(error);
+  }
+}
+
+export interface StudentOhNote extends OhNote {
+  lesson_date: string;
+  title: string;
+}
+
+/** Все office hours ученика с обратной связью — для карточки ученика у сотрудников. */
+export async function loadStudentOhNotes(studentId: string): Promise<StudentOhNote[]> {
+  const { data, error } = await createClient()
+    .from("office_hours_notes")
+    .select("lesson_id, student_id, attended, comment, updated_at, lessons!inner(lesson_date, title)")
+    .eq("student_id", studentId);
+  if (error) return [];
+  type Row = OhNote & { lessons: { lesson_date: string; title: string } };
+  return ((data as unknown as Row[]) ?? [])
+    .map((r) => ({ ...r, lesson_date: r.lessons.lesson_date, title: r.lessons.title }))
+    .sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
+}
