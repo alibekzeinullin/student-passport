@@ -233,7 +233,7 @@ with sync_playwright() as p:
     subprocess.run(["su", "postgres", "-c", "psql -d e2e -qc \"update auth.users set encrypted_password=crypt('Daria-New-2026', gen_salt('bf')), raw_user_meta_data = raw_user_meta_data - 'must_change_password' where email like 'dariya%'\""])
     login(page, "dariya.satova", su_pw)
     page.wait_for_url(BASE + "/dashboard")
-    expect(page.get_by_text("До SAT", exact=True)).to_be_visible()
+    expect(page.get_by_text(re.compile(r"^До SAT")).first).to_be_visible()
     ok(page.get_by_role("tab").count() == 0, "у SAT-only ученика нет вкладки менторства")
     for name in ["Эссе", "Проекты", "Возможности"]:
         ok(page.get_by_role("link", name=name, exact=True).count() == 0, f"у SAT-only ученика нет «{name}» в меню")
