@@ -136,31 +136,36 @@ export function SatCourseTab({ course, studentId }: { course: StudentCourse; stu
 
   return (
     <div className="space-y-4">
-      {/* Группа, неделя курса и время до экзамена — одна тонкая строка */}
-      <section className="sp-glass flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-2xl border px-4 py-2 text-sm">
-        <span className="font-semibold text-navy">{course.group_name ?? "Группа назначается"}</span>
-        <span className="min-w-0 truncate text-xs text-muted">
-          учитель: <span className="text-navy">{course.teacher_name ?? "назначается"}</span>
-          {course.curator_name ? (
-            <>
-              {" "}
-              · куратор: <span className="text-navy">{course.curator_name}</span>
-            </>
+      {/* Группа, неделя курса и время до экзамена — компактная карточка, не во всю ширину */}
+      <section className="sp-glass flex w-full flex-wrap items-center gap-x-10 gap-y-3 rounded-3xl border px-5 py-4 sm:w-fit">
+        <div className="min-w-0">
+          <p className="text-lg font-semibold text-navy">{course.group_name ?? "Группа назначается"}</p>
+          <p className="text-xs text-muted">
+            {course.stream_name ? `${course.stream_name} · ` : ""}учитель: <span className="text-navy">{course.teacher_name ?? "назначается"}</span>
+            {course.curator_name ? (
+              <>
+                {" "}
+                · куратор: <span className="text-navy">{course.curator_name}</span>
+              </>
+            ) : null}
+          </p>
+          {week ? (
+            <div className="mt-2 flex items-center gap-2 text-xs text-muted">
+              <span className="shrink-0">{week.week === 0 ? "Курс ещё не начался" : `Неделя ${week.week} из ${week.total}`}</span>
+              <span className="h-1.5 w-40 rounded-full bg-navy/10">
+                <span className="block h-1.5 rounded-full bg-gold" style={{ width: `${Math.round((100 * week.week) / week.total)}%` }} />
+              </span>
+            </div>
           ) : null}
-        </span>
-        {week ? (
-          <span className="flex items-center gap-2 text-xs text-muted">
-            {week.week === 0 ? "Курс ещё не начался" : `Неделя ${week.week} из ${week.total}`}
-            <span className="h-1 w-20 rounded-full bg-navy/10">
-              <span className="block h-1 rounded-full bg-gold" style={{ width: `${Math.round((100 * week.week) / week.total)}%` }} />
-            </span>
-          </span>
-        ) : null}
-        <span className="ml-auto text-xs text-muted" title={course.sat_date ? fmt(course.sat_date) : undefined}>
-          До SAT{" "}
-          <span className="font-semibold text-gold">{upcomingSat ? `${left} дн.` : "—"}</span>
-          {course.sat_date ? ` · ${fmt(course.sat_date)}` : ""}
-        </span>
+        </div>
+        <div className="rounded-2xl bg-gold/[0.08] px-4 py-2 text-right">
+          <p className="text-xs text-muted">До SAT</p>
+          <p className="text-navy">
+            <span className="text-2xl font-semibold text-gold">{upcomingSat ? left : "—"}</span>
+            {upcomingSat ? <span className="ml-1 text-sm">дн.</span> : null}
+          </p>
+          <p className="text-xs text-muted">{course.sat_date ? fmt(course.sat_date) : "дата не назначена"}</p>
+        </div>
       </section>
 
       {/* Домашка и расписание — главное, сверху */}
