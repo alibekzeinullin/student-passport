@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { StudentCourse } from "@/lib/courses";
 import { useSatTheme } from "@/lib/sat-theme";
 import { ackLesson, addDays, courseWeek, fmtDay, hhmm, isoDate, loadAcks, loadStudentSatInfo, loadStudentUpcoming, type LessonRow, type StudentSatInfo } from "@/lib/lessons";
@@ -18,9 +18,7 @@ import {
   type TopicScore,
 } from "@/lib/results";
 import {
-  addOfficial,
   computeAchievements,
-  deleteOfficial,
   linkParts,
   loadHomeworkLessons,
   loadMockRank,
@@ -31,8 +29,6 @@ import {
   type MyMark,
   type OfficialResult,
 } from "@/lib/sat-student";
-import { Button } from "@/components/ui/Button";
-import { Input, Label } from "@/components/ui/Field";
 import { MyTests } from "@/components/tests/MyTests";
 
 function fmt(iso: string | null): string {
@@ -77,10 +73,6 @@ export function SatCourseTab({ course, studentId }: { course: StudentCourse; stu
   const [rank, setRank] = useState<MockRank | null>(null);
   const [marks, setMarks] = useState<MyMark[]>([]);
   const [acked, setAcked] = useState<Set<string>>(new Set());
-
-  const reloadOfficial = useCallback(async () => {
-    setOfficial(await loadOfficial(studentId).catch(() => [] as OfficialResult[]));
-  }, [studentId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,7 +232,7 @@ export function SatCourseTab({ course, studentId }: { course: StudentCourse; stu
 
       {/* Динамика и что перерешать */}
       <div className="grid items-start gap-3 lg:grid-cols-5">
-        <MockChart points={points} target={target} studentId={studentId} official={official} onOfficialChange={reloadOfficial} />
+        <MockChart points={points} target={target} official={official} />
         <Redo practices={practices} results={results} />
       </div>
 
@@ -280,17 +272,12 @@ interface Point {
 function MockChart({
   points,
   target,
-  studentId,
   official,
-  onOfficialChange,
 }: {
   points: Point[];
   target: number | null;
-  studentId: string;
   official: OfficialResult[];
-  onOfficialChange: () => Promise<void>;
 }) {
-  const [adding, setAdding] = useState(false);
   const max = 1600;
   return (
     <section className="sp-glass rounded-3xl border px-6 py-6 lg:col-span-3">
@@ -309,20 +296,7 @@ function MockChart({
             </span>
           </div>
         </div>
-        <Button type="button" variant="secondary" onClick={() => setAdding((v) => !v)}>
-          {adding ? "Отмена" : "+ Мой результат SAT"}
-        </Button>
       </div>
-
-      {adding ? (
-        <OfficialForm
-          studentId={studentId}
-          onDone={async () => {
-            setAdding(false);
-            await onOfficialChange();
-          }}
-        />
-      ) : null}
 
       {points.length ? (
         <>
@@ -366,68 +340,12 @@ function MockChart({
           {official.map((o) => (
             <li key={o.id} className="flex items-center gap-2">
               Официальный SAT {fmtDay(o.exam_date)}: {o.total} (Verbal {o.verbal}, Math {o.math})
-              <button
-                type="button"
-                className="text-burgundy hover:underline"
-                onClick={async () => {
-                  if (!window.confirm("Удалить этот результат?")) return;
-                  await deleteOfficial(o.id).catch(() => undefined);
-                  await onOfficialChange();
-                }}
-              >
-                удалить
-              </button>
             </li>
           ))}
         </ul>
       ) : null}
+      <p className="mt-3 text-xs text-muted">Результаты моков и официального SAT вносит учитель.</p>
     </section>
-  );
-}
-
-function OfficialForm({ studentId, onDone }: { studentId: string; onDone: () => Promise<void> }) {
-  const [date, setDate] = useState(isoDate(new Date()));
-  const [verbal, setVerbal] = useState("");
-  const [math, setMath] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  return (
-    <div className="mt-4 grid gap-3 rounded-2xl border border-gold/30 bg-gold/[0.05] px-4 py-4 sm:grid-cols-4">
-      <div>
-        <Label htmlFor="of-date">Дата экзамена</Label>
-        <Input id="of-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-      </div>
-      <div>
-        <Label htmlFor="of-verbal">Verbal</Label>
-        <Input id="of-verbal" inputMode="numeric" value={verbal} onChange={(e) => setVerbal(e.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="200–800" />
-      </div>
-      <div>
-        <Label htmlFor="of-math">Math</Label>
-        <Input id="of-math" inputMode="numeric" value={math} onChange={(e) => setMath(e.target.value.replace(/\D/g, "").slice(0, 3))} placeholder="200–800" />
-      </div>
-      <div className="flex items-end">
-        <Button
-          type="button"
-          disabled={busy || !date || !verbal || !math}
-          onClick={async () => {
-            setBusy(true);
-            setError("");
-            try {
-              await addOfficial(studentId, { date, verbal: Number(verbal), math: Number(math) });
-              await onDone();
-            } catch (err) {
-              setError((err as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          {busy ? "Сохраняю…" : "Сохранить"}
-        </Button>
-      </div>
-      {error ? <p className="text-sm text-burgundy sm:col-span-4">{error}</p> : null}
-      <p className="text-xs text-muted sm:col-span-4">Результат увидят учитель и куратор. Сумма считается сама.</p>
-    </div>
   );
 }
 

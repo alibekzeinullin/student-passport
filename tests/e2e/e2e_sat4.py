@@ -120,6 +120,19 @@ with sync_playwright() as p:
     page.get_by_label(f"Ссылка: {topic}").fill("https://example.com/practice")
     page.locator("li", has=page.get_by_label(f"Ссылка: {topic}")).get_by_role("button", name="Сохранить").click()
     expect(page.get_by_text(f"Ссылка сохранена: {topic}")).to_be_visible()
+    # официальный SAT вносит учитель — в карточке ученика
+    page.get_by_role("tab", name="Таблица группы").click()
+    page.locator("#res-group").select_option(label="SAT-3B")
+    page.locator("tr", has_text="Ахметов Тимур").first.click()
+    page.get_by_role("button", name="+ Внести результат").click()
+    page.locator("#of-verbal").fill("615")
+    page.locator("#of-math").fill("650")
+    page.get_by_role("button", name="Сохранить", exact=True).click()
+    expect(page.get_by_text("кратно 10")).to_be_visible()
+    page.locator("#of-verbal").fill("610")
+    page.get_by_role("button", name="Сохранить", exact=True).click()
+    expect(page.get_by_text("(Verbal 610, Math 650)")).to_be_visible()
+    ok(sql(f"select total from sat_official_results where student_id='{timur}'") == "1260", "учитель внёс официальный SAT")
     logout(page)
 
     # 5. Ученик
@@ -139,16 +152,9 @@ with sync_playwright() as p:
     # место по моку — только своё
     rank_card = page.get_by_text("Место в группе по моку").locator("..")
     expect(rank_card.get_by_text(re.compile(r"из \d+"))).to_be_visible()
-    # официальный SAT
-    page.get_by_role("button", name="+ Мой результат SAT").click()
-    page.locator("#of-verbal").fill("615")
-    page.locator("#of-math").fill("650")
-    page.get_by_role("button", name="Сохранить").click()
-    expect(page.get_by_text("кратно 10")).to_be_visible()
-    page.locator("#of-verbal").fill("610")
-    page.get_by_role("button", name="Сохранить").click()
+    # официальный SAT: виден в графике, но вносить его ученик не может
     expect(page.get_by_text("Официальный SAT", exact=True).first).to_be_visible()
-    ok(sql(f"select total from sat_official_results where student_id='{timur}'") == "1260", "официальный результат сохранён")
+    ok(page.get_by_role("button", name=re.compile("Мой результат SAT")).count() == 0, "у ученика нет кнопки «Мой результат SAT»")
     # что перерешать: тема раскрывается, кнопка практиса
     page.get_by_role("button", name=re.compile(re.escape(topic))).first.click()
     expect(page.get_by_role("link", name="Практис по теме →")).to_have_attribute("href", "https://example.com/practice")
@@ -165,6 +171,11 @@ with sync_playwright() as p:
     tt = token("timur@students.todayscholars.local", "Stud-1234")
     code, _ = rest("POST", "/rest/v1/sat_official_results", tt, {"student_id": aylin, "exam_date": str(TODAY), "verbal": 700, "math": 700})
     ok(code in (401, 403), "ученик не вносит результат за другого")
+    code, _ = rest("POST", "/rest/v1/sat_official_results", tt, {"student_id": timur, "exam_date": str(TODAY), "verbal": 800, "math": 800})
+    ok(code in (401, 403), "ученик не вносит и свой официальный SAT")
+    oid = sql(f"select id from sat_official_results where student_id='{timur}'")
+    rest("DELETE", f"/rest/v1/sat_official_results?id=eq.{oid}", tt)
+    ok(sql(f"select count(*) from sat_official_results where id='{oid}'") == "1", "ученик не удаляет официальный SAT")
     code, body = rest("POST", "/rest/v1/rpc/my_mock_rank", tt, {"p_student": aylin})
     ok(code == 200 and json.loads(body) == [], "чужое место по моку не отдаётся")
     code, body = rest("GET", f"/rest/v1/sat_official_results?student_id=eq.{aylin}", tt)

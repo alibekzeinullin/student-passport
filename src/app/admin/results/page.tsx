@@ -35,6 +35,7 @@ import {
   type Status,
 } from "@/lib/results";
 import { canManageSat, canOpenGroups } from "@/lib/staff";
+import { OfficialSatResults } from "@/components/OfficialSatResults";
 
 type Run = (fn: () => Promise<void>, done?: string) => Promise<boolean>;
 type Tab = "overview" | "mocks" | "practices";
@@ -382,6 +383,8 @@ function StudentPanel({ student, results, run, onClose }: { student: RosterRow; 
           Закрыть
         </button>
       </div>
+
+      <OfficialSatResults studentId={student.student_id} />
 
       {oh.length ? (
         <div className="mt-4 rounded-2xl border border-violet-500/30 bg-violet-500/[0.05] px-4 py-3">
