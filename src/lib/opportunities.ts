@@ -40,6 +40,9 @@ export const SECTIONS: { id: string; title: string }[] = [
   { id: "proj", title: "Проекты и стартапы" },
   { id: "hum", title: "Гуманитарные и эссе" },
   { id: "hack", title: "Хакатоны" },
+  { id: "mun", title: "MUN, право и дебаты" },
+  { id: "vol", title: "Лидерство и волонтёрство" },
+  { id: "learn", title: "Курсы онлайн" },
   { id: "res", title: "Резерв" },
 ];
 
@@ -48,6 +51,7 @@ export const SUMMER_SECTIONS: { id: string; title: string }[] = [
   { id: "summer-usa", title: "США" },
   { id: "summer-res", title: "Исследовательские" },
   { id: "summer-hk", title: "Гонконг" },
+  { id: "summer-eu", title: "Европа, Канада, Азия" },
   { id: "summer-kz", title: "Казахстан и другое" },
 ];
 
@@ -57,6 +61,7 @@ export const TIER_LABELS: Record<string, string> = {
   base: "хорошее дополнение",
   res: "резерв",
   paid: "платная с отбором",
+  open: "платная, набор по мере заполнения",
   kz: "Казахстан",
 };
 
