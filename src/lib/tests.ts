@@ -48,6 +48,10 @@ export interface AssignmentRow {
   closes_at: string | null;
   review_open: boolean;
   created_at: string;
+  /** только присутствующие на занятии и по коду учителя */
+  gated: boolean;
+  access_code: string | null;
+  code_until: string | null;
 }
 
 export interface AttemptRow {
@@ -69,6 +73,8 @@ export interface AnswerRow {
   answer: string;
   is_correct: boolean | null;
   points_awarded: number | null;
+  /** сколько ученик провёл на вопросе, мс */
+  time_ms: number;
 }
 
 function fail(error: { message: string; code?: string } | null): void {
@@ -88,7 +94,7 @@ export async function loadTests(): Promise<{ tests: TestRow[]; sections: Section
     supabase.from("online_tests").select("id, title, description, created_by, created_at").order("created_at", { ascending: false }),
     supabase.from("test_sections").select("id, test_id, position, title, section, minutes, calculator").order("position"),
     supabase.from("test_questions").select("section_id"),
-    supabase.from("test_assignments").select("id, test_id, group_id, opens_at, closes_at, review_open, created_at"),
+    supabase.from("test_assignments").select("id, test_id, group_id, opens_at, closes_at, review_open, created_at, gated, access_code, code_until"),
   ]);
   fail(t.error);
   fail(s.error);
@@ -114,7 +120,7 @@ export async function loadTest(id: string): Promise<TestFull> {
   const [t, s, a] = await Promise.all([
     supabase.from("online_tests").select("id, title, description, created_by, created_at").eq("id", id).single(),
     supabase.from("test_sections").select("id, test_id, position, title, section, minutes, calculator").eq("test_id", id).order("position"),
-    supabase.from("test_assignments").select("id, test_id, group_id, opens_at, closes_at, review_open, created_at").eq("test_id", id),
+    supabase.from("test_assignments").select("id, test_id, group_id, opens_at, closes_at, review_open, created_at, gated, access_code, code_until").eq("test_id", id),
   ]);
   fail(t.error);
   fail(s.error);
@@ -240,14 +246,55 @@ export async function swapQuestions(a: QuestionRow, b: QuestionRow) {
   fail(r.error);
 }
 
-export async function publishTest(testId: string, groupIds: string[], opensAt: string, closesAt: string | null) {
-  const rows = groupIds.map((g) => ({ test_id: testId, group_id: g, opens_at: opensAt, closes_at: closesAt }));
+export async function publishTest(testId: string, groupIds: string[], opensAt: string, closesAt: string | null, gated = true) {
+  const rows = groupIds.map((g) => ({ test_id: testId, group_id: g, opens_at: opensAt, closes_at: closesAt, gated }));
   const { error } = await createClient().from("test_assignments").upsert(rows, { onConflict: "test_id,group_id" });
   fail(error);
 }
 
-export async function updateAssignment(id: string, patch: Partial<Pick<AssignmentRow, "opens_at" | "closes_at" | "review_open">>) {
+export async function updateAssignment(id: string, patch: Partial<Pick<AssignmentRow, "opens_at" | "closes_at" | "review_open" | "gated" | "access_code" | "code_until">>) {
   const { error } = await createClient().from("test_assignments").update(patch).eq("id", id);
+  fail(error);
+}
+
+/** Кто допущен к тесту «в классе» (по публикациям). */
+export async function loadAllowed(assignmentIds: string[]): Promise<{ assignment_id: string; student_id: string }[]> {
+  if (!assignmentIds.length) return [];
+  const { data, error } = await createClient().from("test_allowed").select("assignment_id, student_id").in("assignment_id", assignmentIds);
+  if (error) return [];
+  return (data as { assignment_id: string; student_id: string }[]) ?? [];
+}
+
+/** Код из 6 цифр — учитель говорит его в классе. */
+export function newAccessCode(): string {
+  const a = new Uint32Array(1);
+  crypto.getRandomValues(a);
+  return String(a[0] % 1000000).padStart(6, "0");
+}
+
+/**
+ * Запустить тест в классе: допустить отмеченных учеников (список заменяется) и выдать код на minutes минут.
+ * Тем, кто уже начал, ничего не мешает закончить.
+ */
+export async function openTestSession(assignmentId: string, studentIds: string[], minutes: number): Promise<string> {
+  const supabase = createClient();
+  const del = await supabase.from("test_allowed").delete().eq("assignment_id", assignmentId);
+  fail(del.error);
+  if (studentIds.length) {
+    const ins = await supabase.from("test_allowed").insert(studentIds.map((s) => ({ assignment_id: assignmentId, student_id: s })));
+    fail(ins.error);
+  }
+  const code = newAccessCode();
+  const up = await supabase
+    .from("test_assignments")
+    .update({ gated: true, access_code: code, code_until: new Date(Date.now() + minutes * 60000).toISOString() })
+    .eq("id", assignmentId);
+  fail(up.error);
+  return code;
+}
+
+export async function closeTestSession(assignmentId: string) {
+  const { error } = await createClient().from("test_assignments").update({ access_code: null, code_until: null }).eq("id", assignmentId);
   fail(error);
 }
 
@@ -267,7 +314,7 @@ export async function loadAttempts(testId: string): Promise<{ attempts: AttemptR
   let answers: AnswerRow[] = [];
   const done = attempts.filter((x) => x.finished_at).map((x) => x.id);
   for (let i = 0; i < done.length; i += 50) {
-    const r = await supabase.from("test_answers").select("attempt_id, question_id, answer, is_correct, points_awarded").in("attempt_id", done.slice(i, i + 50));
+    const r = await supabase.from("test_answers").select("attempt_id, question_id, answer, is_correct, points_awarded, time_ms").in("attempt_id", done.slice(i, i + 50));
     fail(r.error);
     answers = answers.concat((r.data as AnswerRow[]) ?? []);
   }
@@ -308,6 +355,12 @@ export interface MyTest {
   score: number | null;
   max_score: number | null;
   review_open: boolean;
+  /** тест запускается учителем в классе */
+  gated: boolean;
+  /** учитель отметил ученика как присутствующего */
+  allowed: boolean;
+  /** код сейчас действует */
+  code_active: boolean;
 }
 
 export async function loadMyTests(): Promise<MyTest[]> {
@@ -316,8 +369,8 @@ export async function loadMyTests(): Promise<MyTest[]> {
   return (data as MyTest[]) ?? [];
 }
 
-export async function startTest(assignmentId: string): Promise<string> {
-  const { data, error } = await createClient().rpc("start_test", { p_assignment: assignmentId });
+export async function startTest(assignmentId: string, code?: string): Promise<string> {
+  const { data, error } = await createClient().rpc("start_test", { p_assignment: assignmentId, p_code: code ?? null });
   fail(error);
   return data as string;
 }
@@ -357,6 +410,12 @@ export async function saveTestAnswer(attemptId: string, questionId: string, answ
 export async function nextTestSection(attemptId: string) {
   const { error } = await createClient().rpc("next_test_section", { p_attempt: attemptId });
   fail(error);
+}
+
+/** Время на вопросе — копится на сервере (не больше 10 минут за раз). */
+export async function addQuestionTime(attemptId: string, questionId: string, ms: number) {
+  if (ms < 300) return;
+  await createClient().rpc("add_question_time", { p_attempt: attemptId, p_question: questionId, p_ms: Math.round(ms) });
 }
 
 export async function noteTabSwitch(attemptId: string) {

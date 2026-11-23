@@ -66,11 +66,13 @@ export interface LessonRow {
   status: "planned" | "cancelled";
   moved_from: string;
   teacher_id: string | null;
+  /** office hours только для этих учеников (null — вся группа) */
+  student_ids?: string[] | null;
   groups: { name: string; course_id: string; archived: boolean } | null;
 }
 
 export const LESSON_COLUMNS =
-  "id, group_id, slot_id, slot_date, lesson_date, starts_at, duration_min, title, topic, kind, homework, status, moved_from, teacher_id, groups(name, course_id, archived)";
+  "id, group_id, slot_id, slot_date, lesson_date, starts_at, duration_min, title, topic, kind, homework, status, moved_from, teacher_id, student_ids, groups(name, course_id, archived)";
 
 export interface RosterMark {
   student_id: string;
@@ -215,9 +217,18 @@ export async function updateLesson(id: string, patch: Partial<Pick<LessonRow, "l
   fail(error);
 }
 
-export async function addExtraLesson(input: { groupId: string; date: string; time: string; duration: number; title: string; kind?: LessonKind }) {
+export async function addExtraLesson(input: {
+  groupId: string;
+  date: string;
+  time: string;
+  duration: number;
+  title: string;
+  kind?: LessonKind;
+  studentIds?: string[] | null;
+}) {
   const { error } = await createClient().from("lessons").insert({
     kind: input.kind ?? "lesson",
+    student_ids: input.kind === "office_hours" && input.studentIds?.length ? input.studentIds : null,
     group_id: input.groupId,
     lesson_date: input.date,
     starts_at: input.time,
@@ -364,4 +375,70 @@ export async function loadStudentOhNotes(studentId: string): Promise<StudentOhNo
   return ((data as unknown as Row[]) ?? [])
     .map((r) => ({ ...r, lesson_date: r.lessons.lesson_date, title: r.lessons.title }))
     .sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
+}
+
+// --- Office hours: кому назначены и кто прочитал ---
+
+/** Ученики группы сейчас — выбрать, кому назначить office hours. */
+export async function loadGroupRoster(groupId: string): Promise<{ student_id: string; full_name: string }[]> {
+  const { data, error } = await createClient().rpc("sat_group_roster", { p_group: groupId });
+  if (error) return [];
+  return (data as { student_id: string; full_name: string }[]) ?? [];
+}
+
+/** Office hours для всей группы (null) или для выбранных учеников. */
+export async function setLessonStudents(lessonId: string, studentIds: string[] | null) {
+  const { error } = await createClient().from("lessons").update({ student_ids: studentIds?.length ? studentIds : null }).eq("id", lessonId);
+  fail(error);
+}
+
+/** Кто отметил «Прочитал»: lesson_id → student_id → время. Ученик видит только свои. */
+export async function loadAcks(lessonIds: string[]): Promise<Map<string, Map<string, string>>> {
+  const out = new Map<string, Map<string, string>>();
+  if (!lessonIds.length) return out;
+  const { data, error } = await createClient().from("lesson_acks").select("lesson_id, student_id, acked_at").in("lesson_id", lessonIds);
+  if (error) return out;
+  for (const r of (data as { lesson_id: string; student_id: string; acked_at: string }[]) ?? []) {
+    const m = out.get(r.lesson_id) ?? new Map<string, string>();
+    m.set(r.student_id, r.acked_at);
+    out.set(r.lesson_id, m);
+  }
+  return out;
+}
+
+export async function ackLesson(lessonId: string) {
+  const { error } = await createClient().rpc("ack_lesson", { p_lesson: lessonId });
+  fail(error);
+}
+
+// --- «Требует внимания» для учителей SAT ---
+
+export interface AttentionRow {
+  kind: "unmarked" | "oh_unread" | "test_review" | "risk";
+  group_id: string;
+  group_name: string;
+  ref_id: string | null;
+  ref_date: string | null;
+  student_id: string | null;
+  student_name: string | null;
+  detail: string;
+}
+
+export async function loadSatAttention(today: string): Promise<AttentionRow[]> {
+  const supabase = createClient();
+  // занятия за две недели должны существовать, чтобы найти неотмеченные
+  await supabase.rpc("ensure_lessons", { p_from: addDays(today, -14), p_to: addDays(today, 7) });
+  const { data, error } = await supabase.rpc("sat_attention");
+  if (error) return [];
+  return (data as AttentionRow[]) ?? [];
+}
+
+/** Кто отмечен «был / опоздал» на сегодняшнем занятии группы — чтобы сразу допустить их к тесту. */
+export async function loadPresentToday(groupId: string, today: string): Promise<string[]> {
+  const supabase = createClient();
+  const { data: ls } = await supabase.from("lessons").select("id").eq("group_id", groupId).eq("lesson_date", today).eq("kind", "lesson");
+  const ids = ((ls as { id: string }[]) ?? []).map((l) => l.id);
+  if (!ids.length) return [];
+  const { data } = await supabase.from("lesson_marks").select("student_id, attendance").in("lesson_id", ids).in("attendance", ["present", "late"]);
+  return Array.from(new Set(((data as { student_id: string }[]) ?? []).map((m) => m.student_id)));
 }

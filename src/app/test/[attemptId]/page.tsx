@@ -10,7 +10,7 @@ import { Directions, ReferenceSheet } from "@/components/tests/ReferenceSheet";
 import { useAuth } from "@/context/AuthContext";
 import { TestResultView } from "@/components/tests/TestResultView";
 import { useSatTheme } from "@/lib/sat-theme";
-import { loadAttemptState, nextTestSection, noteTabSwitch, saveTestAnswer, type RunState } from "@/lib/tests";
+import { addQuestionTime, loadAttemptState, nextTestSection, noteTabSwitch, saveTestAnswer, type RunState } from "@/lib/tests";
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"];
 
@@ -130,6 +130,34 @@ function Runner({ attemptId }: { attemptId: string }) {
     const t = window.setTimeout(() => setFiveMin(false), 8000);
     return () => window.clearTimeout(t);
   }, [fiveMin]);
+
+  // Время на вопросе: считаем, пока вопрос на экране и вкладка видна; отправляем при смене вопроса и каждые 15 секунд
+  const activeQid =
+    state && !state.finished && !review && state.questions?.length ? state.questions[Math.min(index, state.questions.length - 1)].id : null;
+  const clock = useRef<{ qid: string | null; since: number | null }>({ qid: null, since: null });
+  const flushTime = useCallback(() => {
+    const c = clock.current;
+    if (c.qid && c.since !== null) {
+      void addQuestionTime(attemptId, c.qid, Date.now() - c.since).catch(() => undefined);
+      c.since = Date.now();
+    }
+  }, [attemptId]);
+  useEffect(() => {
+    clock.current = { qid: activeQid, since: activeQid && document.visibilityState === "visible" ? Date.now() : null };
+    const t = window.setInterval(flushTime, 15000);
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        flushTime();
+        clock.current.since = null;
+      } else if (clock.current.qid) clock.current.since = Date.now();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      flushTime();
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [activeQid, flushTime]);
 
   // Уход со страницы — отмечаем (учитель увидит число)
   useEffect(() => {

@@ -104,6 +104,24 @@ with sync_playwright() as p:
     page.locator("label", has_text="SAT-3B").get_by_role("checkbox").check()
     page.get_by_role("button", name="Опубликовать").click()
     expect(page.get_by_text("Опубликовано для: SAT-3B")).to_be_visible()
+    ok(sql(f"select gated from test_assignments where test_id='{test_id}'") == "t", "по умолчанию тест «только в классе»")
+    # до запуска в классе ученик начать не может
+    tt0 = token("timur@students.todayscholars.local", "Stud-1234")
+    asg = sql(f"select id from test_assignments where test_id='{test_id}'")
+    code0, body0 = rest("POST", "/rest/v1/rpc/start_test", tt0, {"p_assignment": asg, "p_code": "000000"})
+    ok(code0 >= 400 and "Учитель ещё не открыл" in body0, "без отметки учителя тест не начать (даже с кодом)")
+    # запуск в классе: отмечаем Тимура, получаем код
+    page.get_by_role("button", name="Запустить в классе").click()
+    page.wait_for_timeout(1500)  # успеет подставить отмеченных на сегодняшнем занятии
+    cb = page.locator("label", has_text="Ахметов Тимур").get_by_role("checkbox")
+    if not cb.is_checked():
+        cb.click()
+    expect(cb).to_be_checked()
+    page.get_by_role("button", name="Открыть и получить код").click()
+    expect(page.get_by_text("Тест открыт отмеченным ученикам")).to_be_visible()
+    access = sql(f"select access_code from test_assignments where id='{asg}'")
+    ok(len(access) == 6 and sql(f"select count(*) from test_allowed where assignment_id='{asg}'") == "1", "код из 6 цифр, допущен 1 ученик")
+    expect(page.get_by_text(access).first).to_be_visible()
     logout(page)
 
     # 4. Ученик проходит
@@ -111,7 +129,11 @@ with sync_playwright() as p:
     page.wait_for_url(BASE + "/dashboard")
     page.get_by_role("tab", name="SAT").click()
     expect(page.get_by_role("heading", name="Тесты")).to_be_visible()
-    page.get_by_role("button", name="Начать тест").click()
+    page.get_by_label(re.compile("Код для теста")).fill("123456" if access != "123456" else "654321")
+    page.get_by_role("button", name="Начать", exact=True).click()
+    expect(page.get_by_text("Неверный код")).to_be_visible()
+    page.get_by_label(re.compile("Код для теста")).fill(access)
+    page.get_by_role("button", name="Начать", exact=True).click()
     page.wait_for_url(re.compile(r"/test/[0-9a-f-]{36}$"))
     attempt = page.url.rsplit("/", 1)[1]
     expect(page.get_by_role("timer")).to_be_visible()
@@ -177,10 +199,16 @@ with sync_playwright() as p:
     page.goto(f"{BASE}/admin/tests/{test_id}")
     page.get_by_role("tab", name=re.compile("Результаты")).click()
     expect(page.get_by_text("Завершили 1 из", exact=False)).to_be_visible()
+    page.get_by_role("tab", name="По темам").click()
     first_topic = page.locator("li", has=page.get_by_role("button", name=re.compile("Central ideas and details"))).first
     expect(first_topic.get_by_text("0%")).to_be_visible()
     first_topic.get_by_role("button").click()
     expect(page.get_by_text("Меньше 50%: Ахметов Тимур")).to_be_visible()
+    page.get_by_role("tab", name="Кто как ответил").click()
+    expect(page.get_by_text("✗ A").first).to_be_visible()
+    ok(int(sql(f"select coalesce(sum(time_ms),0) from test_answers where attempt_id='{attempt}'")) > 1000, "время на вопросы записано")
+    page.get_by_role("tab", name="Время").click()
+    expect(page.get_by_text("Секунды на вопрос", exact=False)).to_be_visible()
     page.get_by_role("tab", name="По ученикам").click()
     expect(page.get_by_text("5/7 · 71%")).to_be_visible()
     page.get_by_role("tab", name="По вопросам").click()

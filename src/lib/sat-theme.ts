@@ -12,10 +12,18 @@ import { useEffect } from "react";
  */
 let users = 0;
 let settled = false;
+/** Запоминаем тему страницы только для вошедшего пользователя: при выходе тема снимается, но не записывается. */
+let signedIn = false;
+
+/** Вызывается в шапке при каждой отрисовке — до того, как сработают эффекты выхода. */
+export function setThemeUser(hasUser: boolean) {
+  signedIn = hasUser;
+}
 
 const STORE_PREFIX = "sp-theme:";
 
 function remember(sat: boolean) {
+  if (!signedIn) return;
   try {
     localStorage.setItem(STORE_PREFIX + location.pathname, sat ? "sat" : "");
   } catch {

@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { canOpenGroups, homeForRole, isHead, STAFF_ROLE_LABELS, type StaffRole } from "@/lib/staff";
 import type { AuthUser } from "@/lib/types";
-import { useSatTheme, useSatThemeReady } from "@/lib/sat-theme";
+import { setThemeUser, useSatTheme, useSatThemeReady } from "@/lib/sat-theme";
 import { inSatSection, rememberSection, SAT_MAIN } from "@/lib/admin-section";
 
 /** Основные разделы ментора (кроме «Ученики» и «Посещаемость»). */
@@ -42,6 +42,7 @@ export function AppHeader() {
   const isParentGuest = pathname.startsWith("/parent/");
   // разделы SAT (и все страницы сотрудника SAT) — в светлой теме
   const sat = inSatSection(pathname);
+  setThemeUser(Boolean(user));
   // запоминаем раздел, чтобы общие страницы («Аккаунты», «Команда»…) открывались в нём же
   useEffect(() => rememberSection(pathname), [pathname]);
   useSatTheme(Boolean(user) && (sat || (user?.role === "staff" && pathname.startsWith("/admin"))));

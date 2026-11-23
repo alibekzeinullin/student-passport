@@ -127,7 +127,7 @@ with sync_playwright() as p:
     page.wait_for_url(BASE + "/dashboard")
     page.get_by_role("tab", name="SAT").click()
     expect(page.locator("html")).to_have_attribute("data-theme", "sat")
-    expect(page.get_by_text("Ваша группа")).to_be_visible()
+    expect(page.get_by_role("heading", name="Расписание")).to_be_visible()
     expect(page.get_by_text("SAT-3B", exact=True).first).to_be_visible()
     # расписание: office hours отдельно, с длительностью
     expect(page.get_by_text(re.compile(r"^Office hours · Вопросы по Math$")).first).to_be_visible()

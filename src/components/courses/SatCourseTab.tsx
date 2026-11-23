@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { StudentCourse } from "@/lib/courses";
 import { useSatTheme } from "@/lib/sat-theme";
-import { addDays, courseWeek, fmtDay, hhmm, isoDate, loadStudentSatInfo, loadStudentUpcoming, type LessonRow, type StudentSatInfo } from "@/lib/lessons";
+import { ackLesson, addDays, courseWeek, fmtDay, hhmm, isoDate, loadAcks, loadStudentSatInfo, loadStudentUpcoming, type LessonRow, type StudentSatInfo } from "@/lib/lessons";
 import {
   loadComments,
   loadResults,
@@ -76,6 +76,7 @@ export function SatCourseTab({ course, studentId }: { course: StudentCourse; stu
   const [official, setOfficial] = useState<OfficialResult[]>([]);
   const [rank, setRank] = useState<MockRank | null>(null);
   const [marks, setMarks] = useState<MyMark[]>([]);
+  const [acked, setAcked] = useState<Set<string>>(new Set());
 
   const reloadOfficial = useCallback(async () => {
     setOfficial(await loadOfficial(studentId).catch(() => [] as OfficialResult[]));
@@ -85,7 +86,7 @@ export function SatCourseTab({ course, studentId }: { course: StudentCourse; stu
     let cancelled = false;
     void Promise.all([
       loadStudentSatInfo(studentId),
-      loadStudentUpcoming(today, addDays(today, 13)),
+      loadStudentUpcoming(today, addDays(today, 27)),
       loadResults().catch(() => null),
       loadComments(studentId).catch(() => [] as CommentRow[]),
       loadOfficial(studentId).catch(() => [] as OfficialResult[]),
@@ -95,7 +96,11 @@ export function SatCourseTab({ course, studentId }: { course: StudentCourse; stu
     ]).then(([i, u, r, c, o, rk, mk, hw]) => {
       if (cancelled) return;
       setInfo(i);
-      setSchedule(u.filter((l) => l.groups?.course_id === "sat"));
+      const sat = u.filter((l) => l.groups?.course_id === "sat");
+      setSchedule(sat);
+      void loadAcks(sat.filter((l) => l.kind === "office_hours").map((l) => l.id)).then((m) => {
+        if (!cancelled) setAcked(new Set(Array.from(m.keys())));
+      });
       setResults(r);
       setComment(c.find((x) => x.visibility === "family") ?? null);
       setOfficial(o);
@@ -131,43 +136,51 @@ export function SatCourseTab({ course, studentId }: { course: StudentCourse; stu
 
   return (
     <div className="space-y-4">
-      {/* Группа и время до экзамена */}
-      <section className="sp-glass rounded-3xl border px-6 py-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.12em] text-muted">Ваша группа</p>
-            <p className="mt-1 text-3xl font-light text-navy">{course.group_name ?? "назначается"}</p>
-            <p className="mt-1 text-sm text-muted">
-              {course.stream_name ? `${course.stream_name} · ` : ""}учитель: <span className="text-navy">{course.teacher_name ?? "назначается"}</span>
-              {course.curator_name ? (
-                <>
-                  {" "}
-                  · куратор: <span className="text-navy">{course.curator_name}</span>
-                </>
-              ) : null}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-[0.12em] text-muted">До официальной сдачи SAT</p>
-            <p className="mt-1 flex items-baseline justify-end gap-2">
-              <span className="text-5xl font-light text-gold">{upcomingSat ? left : "—"}</span>
-              {upcomingSat ? <span className="text-navy">дней</span> : null}
-            </p>
-            <p className="text-sm text-muted">{course.sat_date ? fmt(course.sat_date) : "Дата экзамена пока не назначена"}</p>
-          </div>
+      {/* Группа, неделя курса и время до экзамена — одной строкой */}
+      <section className="sp-glass flex flex-wrap items-center gap-x-6 gap-y-3 rounded-3xl border px-5 py-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-lg font-semibold text-navy">{course.group_name ?? "Группа назначается"}</p>
+          <p className="text-xs text-muted">
+            {course.stream_name ? `${course.stream_name} · ` : ""}учитель: <span className="text-navy">{course.teacher_name ?? "назначается"}</span>
+            {course.curator_name ? (
+              <>
+                {" "}
+                · куратор: <span className="text-navy">{course.curator_name}</span>
+              </>
+            ) : null}
+          </p>
+          {week ? (
+            <div className="mt-2 flex max-w-sm items-center gap-2 text-xs text-muted">
+              <span className="shrink-0">{week.week === 0 ? "Курс ещё не начался" : `Неделя ${week.week} из ${week.total}`}</span>
+              <span className="h-1.5 flex-1 rounded-full bg-navy/10">
+                <span className="block h-1.5 rounded-full bg-gold" style={{ width: `${Math.round((100 * week.week) / week.total)}%` }} />
+              </span>
+            </div>
+          ) : null}
         </div>
-        {week ? (
-          <div className="mt-5">
-            <div className="flex justify-between text-xs text-muted">
-              <span>{week.week === 0 ? "Курс ещё не начался" : `Неделя ${week.week} из ${week.total}`}</span>
-              <span>В группе с {fmt(course.starts_on)}</span>
-            </div>
-            <div className="mt-1.5 h-2 rounded-full bg-navy/10">
-              <div className="h-2 rounded-full bg-gold" style={{ width: `${Math.round((100 * week.week) / week.total)}%` }} />
-            </div>
-          </div>
-        ) : null}
+        <div className="rounded-2xl bg-gold/[0.08] px-4 py-2 text-right">
+          <p className="text-xs text-muted">До SAT</p>
+          <p className="text-navy">
+            <span className="text-2xl font-semibold text-gold">{upcomingSat ? left : "—"}</span>
+            {upcomingSat ? <span className="ml-1 text-sm">дн.</span> : null}
+          </p>
+          <p className="text-xs text-muted">{course.sat_date ? fmt(course.sat_date) : "дата не назначена"}</p>
+        </div>
       </section>
+
+      {/* Домашка и расписание — главное, сверху */}
+      <div className="grid items-start gap-3 lg:grid-cols-5">
+        <Homework lessons={homework} marks={marks} />
+        <Schedule
+          lessons={schedule}
+          today={today}
+          acked={acked}
+          onAck={async (id) => {
+            await ackLesson(id);
+            setAcked((prev) => new Set(prev).add(id));
+          }}
+        />
+      </div>
 
       <MyTests />
 
@@ -225,15 +238,9 @@ export function SatCourseTab({ course, studentId }: { course: StudentCourse; stu
         </section>
       </div>
 
-      {/* Динамика и расписание */}
+      {/* Динамика и что перерешать */}
       <div className="grid items-start gap-3 lg:grid-cols-5">
         <MockChart points={points} target={target} studentId={studentId} official={official} onOfficialChange={reloadOfficial} />
-        <Schedule lessons={schedule} today={today} />
-      </div>
-
-      {/* Домашка и что перерешать */}
-      <div className="grid items-start gap-3 lg:grid-cols-5">
-        <Homework lessons={homework} marks={marks} />
         <Redo practices={practices} results={results} />
       </div>
 
@@ -426,15 +433,29 @@ function OfficialForm({ studentId, onDone }: { studentId: string; onDone: () => 
 
 // ---------- Расписание ----------
 
-function Schedule({ lessons, today }: { lessons: LessonRow[]; today: string }) {
+function Schedule({
+  lessons,
+  today,
+  acked,
+  onAck,
+}: {
+  lessons: LessonRow[];
+  today: string;
+  acked: Set<string>;
+  onAck: (lessonId: string) => Promise<void>;
+}) {
   const tomorrow = addDays(today, 1);
+  const weekEnd = addDays(today, 6);
   const [all, setAll] = useState(false);
-  const shown = all ? lessons : lessons.slice(0, 6);
+  const [busy, setBusy] = useState<string | null>(null);
+  const week = lessons.filter((l) => l.lesson_date <= weekEnd);
+  const shown = all ? lessons : week;
+  const later = lessons.length - week.length;
   return (
-    <section className="sp-glass rounded-3xl border px-6 py-6 lg:col-span-2">
+    <section className="sp-glass rounded-3xl border px-5 py-5 lg:col-span-2">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-lg text-navy">Расписание</h3>
-        <span className="text-xs text-muted">2 недели</span>
+        <span className="text-xs text-muted">{all ? "4 недели" : "эта неделя"}</span>
       </div>
       <div className="mt-1 flex gap-3 text-xs text-muted">
         <span className="inline-flex items-center gap-1.5">
@@ -444,17 +465,19 @@ function Schedule({ lessons, today }: { lessons: LessonRow[]; today: string }) {
           <i className="inline-block h-2.5 w-2.5 rounded-full bg-violet-500" /> office hours
         </span>
       </div>
-      {lessons.length ? (
+      {shown.length ? (
         <ul className="mt-3 space-y-2">
           {shown.map((l) => {
             const oh = l.kind === "office_hours";
             const cancelled = l.status === "cancelled";
+            const personal = oh && Boolean(l.student_ids?.length);
+            const read = acked.has(l.id);
             return (
               <li
                 key={l.id}
                 className={`flex gap-3 rounded-2xl border-l-4 px-3 py-2 ${oh ? "border-violet-500 bg-violet-500/[0.07]" : "border-gold bg-gold/[0.06]"} ${cancelled ? "opacity-50" : ""}`}
               >
-                <span className="w-24 shrink-0 text-sm">
+                <span className="w-20 shrink-0 text-sm">
                   <span className={`block font-semibold ${oh ? "text-violet-700" : "text-gold"}`}>
                     {l.lesson_date === today ? "Сегодня" : l.lesson_date === tomorrow ? "Завтра" : fmtDay(l.lesson_date)}
                   </span>
@@ -462,7 +485,7 @@ function Schedule({ lessons, today }: { lessons: LessonRow[]; today: string }) {
                     {hhmm(l.starts_at)}–{endTime(l.starts_at, l.duration_min)}
                   </span>
                 </span>
-                <span className="min-w-0 text-sm">
+                <span className="min-w-0 flex-1 text-sm">
                   <span className={`block text-navy ${cancelled ? "line-through" : ""}`}>
                     {oh ? `Office hours${l.title && l.title !== "Office hours" ? ` · ${l.title}` : ""}` : l.title || "Занятие"}
                   </span>
@@ -470,19 +493,40 @@ function Schedule({ lessons, today }: { lessons: LessonRow[]; today: string }) {
                     {cancelled ? "отменено" : durationLabel(l.duration_min)}
                     {l.moved_from && !cancelled ? ` · перенесено с ${l.moved_from}` : ""}
                     {l.topic ? ` · ${l.topic}` : ""}
-                    {oh && !cancelled ? " · можно прийти с вопросами" : ""}
+                    {personal && !cancelled ? " · лично для вас" : ""}
                   </span>
+                  {oh && !cancelled ? (
+                    read ? (
+                      <span className="mt-1 inline-block text-xs text-emerald-600">✓ Прочитано</span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={busy === l.id}
+                        onClick={async () => {
+                          setBusy(l.id);
+                          try {
+                            await onAck(l.id);
+                          } finally {
+                            setBusy(null);
+                          }
+                        }}
+                        className="mt-1.5 rounded-full bg-violet-600 px-3 py-1 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+                      >
+                        {busy === l.id ? "…" : "Прочитал(а)"}
+                      </button>
+                    )
+                  ) : null}
                 </span>
               </li>
             );
           })}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-muted">На ближайшие 2 недели занятий нет.</p>
+        <p className="mt-3 text-sm text-muted">{all ? "На 4 недели вперёд занятий нет." : "На этой неделе занятий нет."}</p>
       )}
-      {lessons.length > 6 ? (
+      {later > 0 || all ? (
         <button type="button" onClick={() => setAll((v) => !v)} className="mt-3 text-sm text-gold hover:underline">
-          {all ? "Свернуть" : `Показать ещё ${lessons.length - 6}`}
+          {all ? "Только эта неделя" : `Показать дальше (ещё ${later})`}
         </button>
       ) : null}
     </section>
@@ -495,7 +539,7 @@ function Homework({ lessons, marks }: { lessons: LessonRow[]; marks: MyMark[] })
   const [current, ...earlier] = lessons;
   const markOf = (id: string) => marks.find((m) => m.lesson_id === id);
   return (
-    <section className="sp-glass rounded-3xl border px-6 py-6 lg:col-span-2">
+    <section className="sp-glass rounded-3xl border px-6 py-6 lg:col-span-3">
       <h3 className="text-lg text-navy">Домашнее задание</h3>
       {current ? (
         <>
@@ -565,7 +609,7 @@ function Redo({ practices, results }: { practices: TopicScore[]; results: Result
   const urlOf = (topicId: string | null) => (topicId ? (results?.topics.find((t) => t.id === topicId)?.practice_url ?? "") : "");
 
   return (
-    <section className="sp-glass rounded-3xl border px-6 py-6 lg:col-span-3">
+    <section className="sp-glass rounded-3xl border px-6 py-6 lg:col-span-2">
       <h3 className="text-lg text-navy">Что перерешать</h3>
       <p className="mt-1 text-sm text-muted">Все темы ваших практисов — от самой слабой. Нажмите на тему, чтобы увидеть историю.</p>
       {weak.length ? (

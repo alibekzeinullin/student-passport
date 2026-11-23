@@ -18,6 +18,8 @@ import {
   isMyLesson,
   isoDate,
   lessonTeacher,
+  loadAcks,
+  loadGroupRoster,
   loadOhNotes,
   loadRoster,
   loadWeek,
@@ -25,6 +27,7 @@ import {
   mondayOf,
   saveMarks,
   saveOhNotes,
+  setLessonStudents,
   updateLesson,
   WEEKDAYS,
   type LessonRow,
@@ -32,6 +35,7 @@ import {
   type WeekData,
 } from "@/lib/lessons";
 import { canManageSat, canOpenGroups } from "@/lib/staff";
+import { SatAttention } from "@/components/SatAttention";
 
 type Run = (fn: () => Promise<void>, done?: string) => Promise<boolean>;
 
@@ -48,6 +52,7 @@ export default function LessonsPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [extraOpen, setExtraOpen] = useState(false);
+  const [attentionKey, setAttentionKey] = useState(0);
 
   const weekEnd = addDays(weekStart, 6);
   // Подгружаем и неделю, и последние 2 недели — для блока «Не отмечено»
@@ -81,6 +86,7 @@ export default function LessonsPage() {
         await fn();
         if (done) setNotice(done);
         await load();
+        setAttentionKey((k) => k + 1);
         return true;
       } catch (err) {
         setError(friendly((err as Error).message));
@@ -134,6 +140,16 @@ export default function LessonsPage() {
 
         {error ? <div className="rounded-2xl border border-burgundy/30 bg-burgundy/10 px-4 py-3 text-sm text-burgundy">{error}</div> : null}
         {notice ? <div className="rounded-2xl border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-gold">{notice}</div> : null}
+
+        <SatAttention
+          today={today}
+          hide={["unmarked"]}
+          reloadKey={attentionKey}
+          onOpenLesson={(id, date) => {
+            if (date) setWeekStart(mondayOf(date));
+            setOpenId(id);
+          }}
+        />
 
         {extraOpen ? (
           <ExtraForm
@@ -240,7 +256,7 @@ export default function LessonsPage() {
                         >
                           <span className={`block font-semibold text-navy ${cancelled ? "line-through" : ""}`}>{hhmm(l.starts_at)}</span>
                           <span className="block truncate text-navy">{l.groups?.name}</span>
-                          <span className="block truncate text-muted">{oh ? `Office hours${l.title && l.title !== "Office hours" ? ` · ${l.title}` : ""}` : l.title || "занятие"}</span>
+                          <span className="block truncate text-muted">{oh ? `Office hours${l.title && l.title !== "Office hours" ? ` · ${l.title}` : ""}${l.student_ids?.length ? ` · для ${l.student_ids.length} уч.` : ""}` : l.title || "занятие"}</span>
                           <span className="mt-1 block">
                             {oh ? null : cancelled ? (
                               <span className="text-muted">отменено</span>
@@ -402,6 +418,10 @@ function LessonPanel({
         <p className="mt-4 rounded-2xl bg-violet-500/10 px-4 py-3 text-sm text-navy">
           Это office hours: в посещаемость не идут. Отметьте, кто пришёл, и напишите короткую обратную связь — её видят только учителя и руководители, ученики нет.
         </p>
+      ) : null}
+
+      {officeHours && !cancelled && roster ? (
+        <OhInvite lesson={lesson} roster={roster} run={run} />
       ) : null}
 
       {officeHours && !cancelled && roster ? (
@@ -708,15 +728,30 @@ function ExtraForm({
 }: {
   groups: { id: string; name: string }[];
   today: string;
-  onSubmit: (input: { groupId: string; date: string; time: string; duration: number; title: string; kind: "lesson" | "office_hours" }) => Promise<void>;
+  onSubmit: (input: { groupId: string; date: string; time: string; duration: number; title: string; kind: "lesson" | "office_hours"; studentIds: string[] | null }) => Promise<void>;
 }) {
   const [kind, setKind] = useState<"lesson" | "office_hours">("lesson");
+  const [forWhom, setForWhom] = useState<"all" | "some">("all");
+  const [members, setMembers] = useState<{ student_id: string; full_name: string }[]>([]);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const [groupId, setGroupId] = useState(groups[0]?.id ?? "");
   const [date, setDate] = useState(today);
   const [time, setTime] = useState("17:00");
   const [duration, setDuration] = useState("90");
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (kind !== "office_hours" || !groupId) return;
+    let cancelled = false;
+    void loadGroupRoster(groupId).then((r) => {
+      if (cancelled) return;
+      setMembers(r);
+      setPicked(new Set());
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, groupId]);
   return (
     <section className="sp-rise grid gap-4 rounded-3xl border border-gold/25 bg-[#162030] px-5 py-5 sm:grid-cols-6 sm:px-6">
       <div className="sm:col-span-6">
@@ -752,13 +787,34 @@ function ExtraForm({
         <Label htmlFor="ex-title">Что</Label>
         <Input id="ex-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={kind === "office_hours" ? "Вопросы по Math" : "Math"} />
       </div>
+      {kind === "office_hours" ? (
+        <div className="sm:col-span-6">
+          <Label>Для кого</Label>
+          <div className="flex flex-wrap gap-2 text-sm">
+            {(
+              [
+                ["all", "Вся группа"],
+                ["some", "Выбранные ученики"],
+              ] as const
+            ).map(([k, label]) => (
+              <label key={k} className={`flex items-center gap-2 rounded-full border px-3 py-1.5 ${forWhom === k ? "border-gold bg-gold/10 text-navy" : "border-white/15 text-navy"}`}>
+                <input type="radio" name="oh-for" checked={forWhom === k} onChange={() => setForWhom(k)} />
+                {label}
+              </label>
+            ))}
+          </div>
+          {forWhom === "some" ? (
+            <StudentPicker members={members} picked={picked} onChange={setPicked} />
+          ) : null}
+        </div>
+      ) : null}
       <div className="sm:col-span-6">
         <Button
           type="button"
-          disabled={busy || !groupId || !date || !time || Number(duration) < 15}
+          disabled={busy || !groupId || !date || !time || Number(duration) < 15 || (kind === "office_hours" && forWhom === "some" && !picked.size)}
           onClick={async () => {
             setBusy(true);
-            await onSubmit({ groupId, date, time, duration: Number(duration), title, kind });
+            await onSubmit({ groupId, date, time, duration: Number(duration), title, kind, studentIds: kind === "office_hours" && forWhom === "some" ? Array.from(picked) : null });
             setBusy(false);
           }}
         >
@@ -766,5 +822,102 @@ function ExtraForm({
         </Button>
       </div>
     </section>
+  );
+}
+
+function StudentPicker({
+  members,
+  picked,
+  onChange,
+}: {
+  members: { student_id: string; full_name: string }[];
+  picked: Set<string>;
+  onChange: (next: Set<string>) => void;
+}) {
+  if (!members.length) return <p className="mt-2 text-sm text-muted">В группе пока нет учеников.</p>;
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {members.map((m) => (
+        <label
+          key={m.student_id}
+          className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${picked.has(m.student_id) ? "border-violet-500 bg-violet-500/10 text-navy" : "border-white/15 text-navy"}`}
+        >
+          <input
+            type="checkbox"
+            checked={picked.has(m.student_id)}
+            onChange={(e) => {
+              const n = new Set(picked);
+              if (e.target.checked) n.add(m.student_id);
+              else n.delete(m.student_id);
+              onChange(n);
+            }}
+          />
+          {m.full_name}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** Office hours: для кого (вся группа или 1–3 ученика) и кто отметил «Прочитал». */
+function OhInvite({ lesson, roster, run }: { lesson: LessonRow; roster: RosterMark[]; run: Run }) {
+  const initial = lesson.student_ids ?? null;
+  const [forWhom, setForWhom] = useState<"all" | "some">(initial?.length ? "some" : "all");
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(initial ?? []));
+  const [acks, setAcks] = useState<Map<string, string>>(new Map());
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadAcks([lesson.id]).then((m) => {
+      if (!cancelled) setAcks(m.get(lesson.id) ?? new Map());
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lesson.id]);
+
+  const invited = initial?.length ? roster.filter((r) => initial.includes(r.student_id)) : roster;
+  const unread = invited.filter((r) => !acks.has(r.student_id));
+  const changed =
+    (forWhom === "all" ? null : Array.from(picked).sort().join(",")) !== (initial?.length ? [...initial].sort().join(",") : null);
+
+  return (
+    <div className="mt-4 rounded-2xl border border-violet-500/30 bg-violet-500/[0.05] px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-navy">Для кого:</span>
+        {(
+          [
+            ["all", "вся группа"],
+            ["some", "выбранные ученики"],
+          ] as const
+        ).map(([k, label]) => (
+          <label key={k} className={`flex items-center gap-2 rounded-full border px-3 py-1 ${forWhom === k ? "border-violet-500 bg-violet-500/10" : "border-white/15"} text-navy`}>
+            <input type="radio" name={`oh-${lesson.id}`} checked={forWhom === k} onChange={() => setForWhom(k)} />
+            {label}
+          </label>
+        ))}
+        {changed ? (
+          <Button
+            type="button"
+            disabled={busy || (forWhom === "some" && !picked.size)}
+            onClick={async () => {
+              setBusy(true);
+              await run(() => setLessonStudents(lesson.id, forWhom === "all" ? null : Array.from(picked)), "Сохранено: кому назначены office hours");
+              setBusy(false);
+            }}
+          >
+            Сохранить
+          </Button>
+        ) : null}
+      </div>
+      {forWhom === "some" ? (
+        <StudentPicker members={roster.map((r) => ({ student_id: r.student_id, full_name: r.full_name }))} picked={picked} onChange={setPicked} />
+      ) : null}
+      <p className="mt-3 text-sm text-navy">
+        Прочитали {invited.length - unread.length} из {invited.length}
+        {unread.length ? <span className="text-muted"> · ещё нет: {unread.map((r) => r.full_name).join(", ")}</span> : null}
+      </p>
+    </div>
   );
 }

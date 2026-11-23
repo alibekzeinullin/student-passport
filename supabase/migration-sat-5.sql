@@ -232,6 +232,8 @@ end;
 $$;
 
 -- 6) Ученик: список, старт, вопросы модуля, ответ, следующий модуль ---------------------------------
+-- (sat-6 меняет набор колонок — пересоздаём, чтобы файл можно было запускать повторно)
+drop function if exists public.my_tests();
 create or replace function public.my_tests()
 returns table (
   assignment_id uuid, test_id uuid, title text, description text, opens_at timestamptz, closes_at timestamptz,
