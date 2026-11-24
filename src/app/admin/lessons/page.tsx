@@ -36,6 +36,8 @@ import {
 } from "@/lib/lessons";
 import { canManageSat, canOpenGroups } from "@/lib/staff";
 import { SatAttention } from "@/components/SatAttention";
+import { StudentDigestPanel } from "@/components/StudentDigestPanel";
+import { lastOhFeedback, loadStudentDigest, ohDraft, type Digest } from "@/lib/student-digest";
 
 type Run = (fn: () => Promise<void>, done?: string) => Promise<boolean>;
 
@@ -681,6 +683,12 @@ function OfficeHoursNotes({
               className="min-h-12"
               aria-label={`Обратная связь: ${r.full_name}`}
             />
+            <OhStudentDigest
+              lessonId={lessonId}
+              studentId={r.student_id}
+              name={r.full_name}
+              onDraft={(text) => set(r.student_id, { comment: r.comment.trim() ? `${r.comment.trim()}\n${text}` : text, attended: true })}
+            />
           </li>
         ))}
       </ul>
@@ -918,6 +926,44 @@ function OhInvite({ lesson, roster, run }: { lesson: LessonRow; roster: RosterMa
         Прочитали {invited.length - unread.length} из {invited.length}
         {unread.length ? <span className="text-muted"> · ещё нет: {unread.map((r) => r.full_name).join(", ")}</span> : null}
       </p>
+    </div>
+  );
+}
+
+/** Сводка по ученику в office hours — открывается по кнопке, с прошлой обратной связи по office hours. */
+function OhStudentDigest({ lessonId, studentId, name, onDraft }: { lessonId: string; studentId: string; name: string; onDraft: (text: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [digest, setDigest] = useState<Digest | null>(null);
+  useEffect(() => {
+    if (!open || digest) return;
+    let cancelled = false;
+    void lastOhFeedback(studentId, lessonId)
+      .then((last) => loadStudentDigest(studentId, last))
+      .then((d) => {
+        if (!cancelled) setDigest(d);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [open, digest, studentId, lessonId]);
+  return (
+    <div className="sm:col-span-2">
+      <div className="flex flex-wrap gap-3 text-xs">
+        <button type="button" onClick={() => setOpen((v) => !v)} className="text-gold hover:underline" aria-expanded={open}>
+          {open ? "Скрыть сводку" : `Сводка: ${name}`}
+        </button>
+        {open && digest ? (
+          <button type="button" onClick={() => onDraft(ohDraft(digest))} className="text-navy hover:underline">
+            Черновик в заметку
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <div className="mt-2">
+          <StudentDigestPanel digest={digest} />
+        </div>
+      ) : null}
     </div>
   );
 }

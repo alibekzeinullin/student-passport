@@ -36,6 +36,8 @@ import {
 } from "@/lib/results";
 import { canManageSat, canOpenGroups } from "@/lib/staff";
 import { OfficialSatResults } from "@/components/OfficialSatResults";
+import { StudentDigestPanel } from "@/components/StudentDigestPanel";
+import { familyDraft, lastFamilyFeedback, loadStudentDigest, type Digest } from "@/lib/student-digest";
 
 type Run = (fn: () => Promise<void>, done?: string) => Promise<boolean>;
 type Tab = "overview" | "mocks" | "practices";
@@ -343,6 +345,21 @@ function StudentPanel({ student, results, run, onClose }: { student: RosterRow; 
   const mocks = studentMocks(student.student_id, results);
   const weak = weakTopics(studentPractices(student.student_id, results)).filter((t) => t.pct < 80).slice(0, 3);
   const [oh, setOh] = useState<StudentOhNote[]>([]);
+  const [digest, setDigest] = useState<Digest | null>(null);
+
+  // Сводка с прошлой обратной связи — чтобы не искать данные по разным страницам
+  useEffect(() => {
+    let cancelled = false;
+    void lastFamilyFeedback(student.student_id)
+      .then((last) => loadStudentDigest(student.student_id, last, results))
+      .then((d) => {
+        if (!cancelled) setDigest(d);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [student.student_id, results, version]);
 
   useEffect(() => {
     let cancelled = false;
@@ -406,8 +423,28 @@ function StudentPanel({ student, results, run, onClose }: { student: RosterRow; 
         </div>
       ) : null}
 
+      <div className="mt-4 space-y-2">
+        <StudentDigestPanel digest={digest} />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!digest}
+            onClick={() => {
+              if (!digest) return;
+              if (body.trim() && !window.confirm("Заменить написанный текст черновиком?")) return;
+              setBody(familyDraft(student.full_name.trim().split(/\s+/).at(-1) ?? student.full_name, digest));
+              setVisibility("family");
+            }}
+          >
+            Черновик по данным
+          </Button>
+          <span className="text-xs text-muted">Подставит цифры в комментарий для ученика и родителя — допишите своими словами.</span>
+        </div>
+      </div>
+
       <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-        <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Комментарий к ученику" className="min-h-20" aria-label="Комментарий" />
+        <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Комментарий к ученику" className="min-h-32" aria-label="Комментарий" />
         <div className="flex flex-col gap-2">
           <div role="group" aria-label="Кто увидит" className="flex flex-col gap-1 text-sm">
             <label className="flex items-center gap-2 text-navy">
