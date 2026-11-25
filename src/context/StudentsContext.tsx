@@ -72,18 +72,15 @@ export function StudentsProvider({ children }: { children: ReactNode }) {
 
     try {
       if (userRole === "admin") {
-        const { data, error } = await supabase
-          .from("students")
-          .select("*")
-          .order("last_name", { ascending: true });
+        // ученики и зачисления — параллельно
+        const [{ data, error }, { data: enr, error: enrErr }] = await Promise.all([
+          supabase.from("students").select("*").order("last_name", { ascending: true }),
+          supabase.from("enrollments").select("student_id, course_id").is("ends_on", null),
+        ]);
 
         if (error) throw error;
         // Менторская часть — только ученики менторства: «только SAT» живут в разделе SAT
         const satOnly = new Set<string>();
-        const { data: enr, error: enrErr } = await supabase
-          .from("enrollments")
-          .select("student_id, course_id")
-          .is("ends_on", null);
         if (!enrErr && enr) {
           const courses = new Map<string, Set<string>>();
           (enr as { student_id: string; course_id: string }[]).forEach((e) => {

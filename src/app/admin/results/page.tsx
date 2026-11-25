@@ -424,7 +424,7 @@ function StudentPanel({ student, results, run, onClose }: { student: RosterRow; 
       ) : null}
 
       <div className="mt-4 space-y-2">
-        <StudentDigestPanel digest={digest} />
+        <StudentDigestPanel digest={digest} showOhNotes={false} />
         <div className="flex flex-wrap items-center gap-3">
           <Button
             type="button"

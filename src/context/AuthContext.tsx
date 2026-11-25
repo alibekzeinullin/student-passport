@@ -39,21 +39,57 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-async function loadAuthUser(): Promise<AuthUser | null> {
+const AUTH_CACHE_KEY = "sp-auth-user";
+
+/** Пользователь из прошлого визита — чтобы показать страницу сразу, пока данные обновляются в фоне. */
+function readCachedUser(userId: string): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(AUTH_CACHE_KEY);
+    if (!raw) return null;
+    const u = JSON.parse(raw) as AuthUser;
+    return u.id === userId ? u : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedUser(u: AuthUser | null) {
+  try {
+    if (u) localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(u));
+    else localStorage.removeItem(AUTH_CACHE_KEY);
+  } catch {
+    /* без кэша */
+  }
+}
+
+/** Сессия из браузера — без запроса к серверу (токен всё равно проверяет база при каждом запросе). */
+async function sessionUser() {
+  const { data } = await createClient().auth.getSession();
+  return data.session?.user ?? null;
+}
+
+let inflight: Promise<AuthUser | null> | null = null;
+
+/** Один запрос на всех: при старте его могут вызвать сразу несколько мест. */
+function loadAuthUser(): Promise<AuthUser | null> {
+  inflight ??= loadAuthUserRaw().finally(() => {
+    inflight = null;
+  });
+  return inflight;
+}
+
+async function loadAuthUserRaw(): Promise<AuthUser | null> {
   if (!isSupabaseConfigured()) return null;
 
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await sessionUser();
   if (!user) return null;
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("id, role, full_name, student_id")
-    .eq("id", user.id)
-    .maybeSingle();
+  // профиль и роли — параллельно (у ученика ролей просто нет)
+  const [{ data: profile, error }, { data: roles }] = await Promise.all([
+    supabase.from("profiles").select("id, role, full_name, student_id").eq("id", user.id).maybeSingle(),
+    supabase.from("staff_roles").select("role").eq("user_id", user.id),
+  ]);
 
   if (error || !profile) {
     console.error("Failed to load profile", error);
@@ -61,12 +97,7 @@ async function loadAuthUser(): Promise<AuthUser | null> {
   }
 
   const typed = profile as DbProfile;
-  let staffRoles: string[] = [];
-  if (typed.role !== "student") {
-    // Таблица появляется с migration-sat-1.sql; до этого просто нет ролей
-    const { data: roles } = await supabase.from("staff_roles").select("role").eq("user_id", user.id);
-    staffRoles = ((roles as { role: string }[] | null) ?? []).map((r) => r.role).sort();
-  }
+  const staffRoles = typed.role !== "student" ? ((roles as { role: string }[] | null) ?? []).map((r) => r.role).sort() : [];
   let hasMentoring = true;
   if (typed.role === "student" && typed.student_id) {
     // Таблица зачислений появляется с migration-sat-1.sql; без неё — все ученики менторские
@@ -120,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return next;
       });
+      writeCachedUser(next);
     } catch (error) {
       console.error(error);
       setUser(null);
@@ -134,6 +166,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Повторный визит: показываем страницу сразу по сохранённому пользователю, а свежие данные подтягиваем в фоне
+    void sessionUser().then((u) => {
+      const cached = u ? readCachedUser(u.id) : null;
+      if (cached) {
+        setUser((prev) => prev ?? cached);
+        setLoading(false);
+      }
+    });
     void refreshUser();
 
     const supabase = createClient();
@@ -144,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
       if (event === "SIGNED_OUT") {
         clearCache();
+        writeCachedUser(null);
         setUser(null);
         return;
       }
@@ -202,6 +243,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(next);
+      writeCachedUser(next);
       return { ok: true, user: next };
     },
     [],
@@ -301,6 +343,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
     }
     clearCache();
+    writeCachedUser(null);
     setUser(null);
   }, []);
 
