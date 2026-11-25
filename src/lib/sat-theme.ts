@@ -67,4 +67,4 @@ export function useSatThemeReady(ready: boolean) {
 }
 
 /** Выполняется в <head> до первой отрисовки. Пути SAT — те же, что в AppHeader (SAT_MAIN) + прохождение теста. */
-export const SAT_THEME_BOOT = `(function(){try{var p=location.pathname;var sat=/^\\/(admin\\/(lessons|results|tests|groups)|test\\/)/.test(p);var s=localStorage.getItem("${STORE_PREFIX}"+p);if(s!==null)sat=s==="sat";if(sat)document.documentElement.dataset.theme="sat";}catch(e){}})();`;
+export const SAT_THEME_BOOT = `(function(){try{var p=location.pathname;var sat=/^\\/(admin\\/(lessons|results|tests|groups|sat-links)|test\\/)/.test(p);var s=localStorage.getItem("${STORE_PREFIX}"+p);if(s!==null)sat=s==="sat";if(sat)document.documentElement.dataset.theme="sat";}catch(e){}})();`;

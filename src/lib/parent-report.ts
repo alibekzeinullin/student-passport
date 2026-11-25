@@ -39,6 +39,8 @@ export interface ReportFacts {
   /** Всего принято тем за всё время и цель */
   essaysTotalAccepted?: number;
   essaysGoal?: number;
+  /** Цели на четверть (той, к которой относится месяц) */
+  goals?: { title: string; done: number; target: number }[];
 }
 
 export interface ReportInput {
@@ -112,6 +114,13 @@ export function buildReportMessage(input: ReportInput): string {
     if (!items.length) continue;
     out.push("", `${NUM[n] ?? `${n + 1}.`} ${title}:`);
     items.forEach((i) => out.push(`— ${i}`));
+    n += 1;
+  }
+
+  const goals = facts.goals ?? [];
+  if (goals.length) {
+    out.push("", `${NUM[n] ?? `${n + 1}.`} Цели на четверть:`);
+    goals.forEach((g) => out.push(`— ${g.title}: ${g.done >= g.target ? "выполнено ✓" : `${g.done} из ${g.target}`}`));
     n += 1;
   }
 

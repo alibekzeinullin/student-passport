@@ -18,6 +18,8 @@ import { TermGradesChart } from "@/components/TermGradesChart";
 import { WorksBoard } from "@/components/works/WorksBoard";
 import { ParentPlanSection } from "@/components/ParentPlanSection";
 import { ParentEssays } from "@/components/essays/ParentEssays";
+import { GoalsBlock } from "@/components/GoalsBlock";
+import { PortfolioView } from "@/components/PortfolioView";
 
 export default function ParentHubPage({
   params,
@@ -100,6 +102,8 @@ export default function ParentHubPage({
         <span className="text-gold transition group-hover:translate-x-1" aria-hidden>→</span>
       </Link>
 
+      <GoalsBlock studentId={student.id} mode="parent" parentToken={studentToken} />
+
       <ParentPlanSection className={student.className} />
 
       <StudentOverview student={student} mode="parent" parentToken={studentToken} />
@@ -111,6 +115,11 @@ export default function ParentHubPage({
       <section>
         <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-gold">Проекты и исследования</p>
         <WorksBoard studentId={student.id} mode="parent" parentToken={studentToken} />
+      </section>
+
+      <section>
+        <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.16em] text-gold">Портфолио</p>
+        <PortfolioView student={student} mode="parent" parentToken={studentToken} />
       </section>
 
       <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-3">

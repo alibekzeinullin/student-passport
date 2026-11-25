@@ -10,6 +10,8 @@ import { AcademicActivityTable } from "@/components/AcademicActivityTable";
 import { BooksTable } from "@/components/BooksTable";
 import { SkillChips } from "@/components/SkillChips";
 import { MeetingsJournal } from "@/components/MeetingsJournal";
+import { MeetingBrief } from "@/components/MeetingBrief";
+import { GoalsBlock } from "@/components/GoalsBlock";
 import { StudentOverview } from "@/components/StudentOverview";
 import { TermGradesChart } from "@/components/TermGradesChart";
 import Link from "next/link";
@@ -97,6 +99,12 @@ export function StudentDashboard({
               >
                 Проекты и исследования
               </Link>
+              <Link
+                href="/dashboard/portfolio"
+                className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
+              >
+                Портфолио
+              </Link>
             </nav>
           ) : null}
           {accessMode === "admin" ? (
@@ -127,6 +135,12 @@ export function StudentDashboard({
                 className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
               >
                 Vision Map
+              </Link>
+              <Link
+                href={`/admin/students/${studentId}/portfolio`}
+                className="rounded-full px-4 py-2 text-sm text-muted transition hover:bg-white/5 hover:text-navy"
+              >
+                Портфолио
               </Link>
             </nav>
           ) : null}
@@ -183,6 +197,10 @@ export function StudentDashboard({
           mode={accessMode === "admin" ? "admin" : "student"}
         />
       ) : null}
+
+      {accessMode === "admin" ? <MeetingBrief studentId={studentId} className={student.className} /> : null}
+
+      {accessMode !== "parent" ? <GoalsBlock studentId={studentId} mode={accessMode === "admin" ? "admin" : "student"} /> : null}
 
       {accessMode !== "parent" ? (
         <div id="sec-journal" className="scroll-mt-24">

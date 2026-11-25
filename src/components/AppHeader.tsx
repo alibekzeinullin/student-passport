@@ -23,6 +23,7 @@ const ADMIN_MORE: { href: string; label: string; show?: (u: AuthUser) => boolean
   { href: "/admin/team", label: "Команда", show: isHead },
   { href: "/admin/accounts", label: "Аккаунты" },
   { href: "/admin/plan", label: "План года", mentoringOnly: true },
+  { href: "/admin/links", label: "Полезные ссылки", mentoringOnly: true },
   { href: "/admin/templates", label: "Шаблоны встреч", mentoringOnly: true },
   { href: "/admin/activity", label: "История", mentoringOnly: true },
   { href: "/admin/system", label: "База и копии" },
@@ -64,7 +65,7 @@ export function AppHeader() {
   const showSwitch = Boolean(user && user.role === "admin" && canOpenGroups(user));
 
   return (
-    <header className="relative z-40 border-b border-white/[0.07] bg-[#121b29]/70 text-navy backdrop-blur-md">
+    <header className="relative z-40 border-b print:hidden border-white/[0.07] bg-[#121b29]/70 text-navy backdrop-blur-md">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3 py-3">
           <div className="flex min-w-0 items-center gap-5">
@@ -138,6 +139,9 @@ export function AppHeader() {
                       </NavLink>
                     </>
                   ) : null}
+                  <NavLink href="/links" active={pathname.startsWith("/links")}>
+                    Ссылки
+                  </NavLink>
                 </>
               ) : null}
               {user.role === "admin" ? <MoreMenu pathname={pathname} user={user} sat={sat} /> : null}

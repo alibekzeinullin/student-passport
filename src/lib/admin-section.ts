@@ -6,6 +6,7 @@ export const SAT_MAIN: { href: string; label: string }[] = [
   { href: "/admin/results", label: "Результаты" },
   { href: "/admin/tests", label: "Тесты" },
   { href: "/admin/groups", label: "Группы" },
+  { href: "/admin/sat-links", label: "Ссылки" },
 ];
 
 const SHARED_PATHS = ["/admin/team", "/admin/accounts", "/admin/system"];

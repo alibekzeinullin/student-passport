@@ -9,6 +9,7 @@ import { collectMonthFacts } from "@/lib/monthly-draft";
 import { all } from "@/lib/monthly-auto";
 import { nextStepText, type PlanEntry, PLAN_COLUMNS } from "@/lib/program-plan";
 import { buildReportMessage, type MeetingParentNote, type ReportFacts } from "@/lib/parent-report";
+import { termOf } from "@/lib/goal-terms";
 
 export interface ReportRow {
   id: string;
@@ -123,6 +124,15 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
     admin.from("program_plan").select(PLAN_COLUMNS).order("start_month"),
   ]);
   // для блока «Эссе»: названия тем и сколько тем принято за всё время
+  // цели четверти, к которой относится месяц (таблицы может ещё не быть — тогда без блока)
+  const goalTerm = termOf(`${month}-15`);
+  const goalsRes = await (onlyStudent
+    ? admin.from("student_goals").select("student_id, title, done, target, sort").eq("term", goalTerm).eq("student_id", onlyStudent)
+    : admin.from("student_goals").select("student_id, title, done, target, sort").eq("term", goalTerm));
+  const goalsBy = new Map<string, { title: string; done: number; target: number; sort: number }[]>();
+  ((goalsRes.data as { student_id: string; title: string; done: number; target: number; sort: number }[] | null) ?? []).forEach((g) =>
+    goalsBy.set(g.student_id, [...(goalsBy.get(g.student_id) ?? []), g]),
+  );
   const [topicsRows, acceptedRows] = await Promise.all([
     paged<{ id: string; number: number; title: string }>(() => admin.from("essay_topics").select("id, number, title")),
     paged<{ student_id: string; topic_id: string }>(() => {
@@ -196,6 +206,7 @@ export async function loadReportsData(admin: SupabaseClient, month: string, orig
           essayItems: monthEssayItems(essays.filter((e) => e.studentId === student.id), from, to, topicTitle),
           essaysTotalAccepted: acceptedTopics.get(student.id)?.size ?? 0,
           essaysGoal,
+          goals: (goalsBy.get(student.id) ?? []).sort((a, b) => a.sort - b.sort).map((g) => ({ title: g.title, done: g.done, target: g.target })),
         },
         notes,
         next: nextStepText(plan, month, student.className),

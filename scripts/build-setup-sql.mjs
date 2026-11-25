@@ -29,6 +29,7 @@ const ORDER = [
   "migration-sat-5.sql",
   "migration-sat-6.sql",
   "migration-sat-6b.sql",
+  "migration-mentoring-goals.sql",
   "migration-parent-reports.sql",
   "migration-program-plan.sql",
   "migration-pinned.sql",
