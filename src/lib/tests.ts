@@ -194,7 +194,8 @@ export async function createEmptyTest(title: string): Promise<string> {
   fail(error);
   const id = (data as { id: string }).id;
   const { error: sErr } = await supabase.from("test_sections").insert([
-    { test_id: id, position: 1, title: "Reading and Writing — Модуль 1", section: "verbal", minutes: 32 },
+    // при вставке нескольких строк все поля должны быть у каждой строки — иначе база получает null вместо значения по умолчанию
+    { test_id: id, position: 1, title: "Reading and Writing — Модуль 1", section: "verbal", minutes: 32, calculator: false },
     { test_id: id, position: 2, title: "Math — Модуль 1", section: "math", minutes: 35, calculator: true },
   ]);
   fail(sErr);
